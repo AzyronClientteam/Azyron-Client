@@ -1,0 +1,23 @@
+{
+  "idle": {
+    "timeout": 180,
+    "condition": "none"
+  },
+  "states": {
+    "unfocused": {
+      "frame_rate_target": 15,
+      "volume_multipliers": {
+        "master": 0.25
+      }
+    },
+    "invisible": {
+      "frame_rate_target": 0,
+      "volume_multipliers": {
+        "master": 0.0
+      }
+    },
+    "abandoned": {
+      "frame_rate_target": 10
+    }
+  }
+}

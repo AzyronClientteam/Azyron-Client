@@ -1,0 +1,12 @@
+{
+  "configVersion": 9,
+  "renderNametagsThroughWalls": true,
+  "tracingDistance": 96,
+  "debugMode": false,
+  "sleepDelay": 10,
+  "hitboxLimit": 50,
+  "tickCulling": true,
+  "blockEntityFrustumCulling": true,
+  "safeMode": false,
+  "solidLeaves": false
+}

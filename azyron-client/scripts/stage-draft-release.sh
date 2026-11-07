@@ -1,45 +1,52 @@
 #!/usr/bin/env bash
-# Stages an UNPUBLISHED Draft Release (v1.0) on GitHub with the exact build artifacts:
-#   1. Azyron-Client-1.0.jar
+# Uploads or stages all 4 verified AZYRON CLIENT v0.1.0-pre release assets on GitHub
+# while keeping the release strictly in DRAFT PRE-RELEASE mode (unpublished):
+#   1. Azyron-Client-1.0.1.jar
 #   2. Azyron-Modpack-1.0.mrpack
-#   (+ GitHub's native "Source code (zip)" and "Source code (tar.gz)")
-#
-# NOTE: Uses --draft strictly so nothing is publicly published until explicitly approved.
+#   3. Azyron-Client-Source-v1.0.1.zip
+#   4. Azyron-Client-Source-v1.0.1.tar.gz
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLIENT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RELEASES_DIR="${CLIENT_ROOT}/releases"
+NOTES_FILE="${CLIENT_ROOT}/RELEASE_NOTES_v0.1.0-pre.md"
+REPO="${GITHUB_REPOSITORY:-AzyronClientteam/Azyron-Client}"
+TAG="v0.1.0-pre"
 
-JAR_FILE="${RELEASES_DIR}/Azyron-Client-1.0.jar"
+JAR_FILE="${RELEASES_DIR}/Azyron-Client-1.0.1.jar"
 MRPACK_FILE="${RELEASES_DIR}/Azyron-Modpack-1.0.mrpack"
+SRC_ZIP="${RELEASES_DIR}/Azyron-Client-Source-v1.0.1.zip"
+SRC_TGZ="${RELEASES_DIR}/Azyron-Client-Source-v1.0.1.tar.gz"
 
-if [[ ! -f "${JAR_FILE}" || ! -f "${MRPACK_FILE}" ]]; then
-  echo "Error: Missing build artifacts in ${RELEASES_DIR}" >&2
-  exit 1
+for f in "${JAR_FILE}" "${MRPACK_FILE}" "${SRC_ZIP}" "${SRC_TGZ}" "${NOTES_FILE}"; do
+  if [[ ! -s "${f}" ]]; then
+    echo "Error: Missing or empty required release file: ${f}" >&2
+    exit 1
+  fi
+done
+
+if gh release view "${TAG}" -R "${REPO}" >/dev/null 2>&1; then
+  echo "Uploading complete source archives to existing Draft Pre-Release ${TAG} on ${REPO}..."
+  gh release upload "${TAG}" \
+    "${SRC_ZIP}#Azyron-Client-Source-v1.0.1.zip" \
+    "${SRC_TGZ}#Azyron-Client-Source-v1.0.1.tar.gz" \
+    --clobber \
+    -R "${REPO}"
+else
+  echo "Creating UNPUBLISHED Draft Pre-Release ${TAG} on ${REPO} (--draft --prerelease)..."
+  gh release create "${TAG}" \
+    "${JAR_FILE}#Azyron-Client-1.0.1.jar" \
+    "${MRPACK_FILE}#Azyron-Modpack-1.0.mrpack" \
+    "${SRC_ZIP}#Azyron-Client-Source-v1.0.1.zip" \
+    "${SRC_TGZ}#Azyron-Client-Source-v1.0.1.tar.gz" \
+    --draft \
+    --prerelease \
+    --title "AZYRON CLIENT v0.1.0 PRE-RELEASE" \
+    --notes-file "${NOTES_FILE}" \
+    -R "${REPO}"
 fi
 
-NOTES_FILE="$(mktemp)"
-trap 'rm -f "${NOTES_FILE}"' EXIT
-
-cat << 'EOF' > "${NOTES_FILE}"
-**AZYRON CLIENT – PERFORMANCE. SMOOTHNESS. STYLE.**
-High-FPS Minecraft Java Edition **1.21.11** Fabric client developed by **JIGNESH GAMING**, engineered for desktop launchers and **PojavLauncher**.
-
-### Highlights
-- **Target Platform:** Minecraft Java Edition `1.21.11` (Fabric Loader `>=0.17.3`, Java 21).
-- **Performance Profiles:** *Potato Mode*, *Balanced Mode*, and *Smooth FPS Mode* with particle throttling, frame-spike stabilization, and safe memory trimming.
-- **Client Menu & HUD Editor:** Open with `Right Shift` (or via the Pause Menu on PojavLauncher) to configure modules and drag/scale widgets.
-- **Included Modules:** FPS Counter (1% Lows), CPS Counter, Ping Display, Coordinates HUD, Keystrokes HUD, Armor HUD, Potion Effects HUD, Memory HUD, Toggle Sprint, Smooth Zoom, and Custom Crosshair.
-EOF
-
-echo "Staging UNPUBLISHED Draft Release v1.0 on GitHub (--draft)..."
-gh release create "v1.0" \
-  "${JAR_FILE}#Azyron-Client-1.0.jar" \
-  "${MRPACK_FILE}#Azyron-Modpack-1.0.mrpack" \
-  --draft \
-  --title "AZYRON CLIENT 1.0" \
-  --notes-file "${NOTES_FILE}"
-
-echo "Draft release v1.0 created (unpublished). Review on GitHub Releases before approving public release."
+echo "Done. Verifying release remains DRAFT (unpublished):"
+gh release view "${TAG}" -R "${REPO}" --json tagName,name,isDraft,isPrerelease,assets

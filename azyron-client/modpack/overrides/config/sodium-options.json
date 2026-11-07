@@ -1,0 +1,16 @@
+{
+  "quality": {
+    "weather_quality": "FAST",
+    "leaves_quality": "FAST",
+    "enable_vignette": false
+  },
+  "performance": {
+    "chunk_builder_threads": 0,
+    "chunk_build_defer_mode": "NEARBY",
+    "animate_only_visible_textures": true,
+    "use_entity_culling": true,
+    "use_fog_occlusion": true,
+    "use_block_face_culling": true,
+    "use_no_error_g_l_context": true
+  }
+}

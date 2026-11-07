@@ -1,38 +1,45 @@
-# Stages an UNPUBLISHED Draft Release (v1.0) on GitHub (--draft only, never auto-published).
+# Uploads or stages all 4 verified AZYRON CLIENT v0.1.0-pre release assets on GitHub
+# while keeping the release strictly in DRAFT PRE-RELEASE mode (unpublished).
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ClientRoot = Resolve-Path (Join-Path $ScriptDir "..")
 $ReleasesDir = Join-Path $ClientRoot "releases"
+$NotesFile = Join-Path $ClientRoot "RELEASE_NOTES_v0.1.0-pre.md"
+$Repo = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "AzyronClientteam/Azyron-Client" }
+$Tag = "v0.1.0-pre"
 
-$JarFile = Join-Path $ReleasesDir "Azyron-Client-1.0.jar"
+$JarFile = Join-Path $ReleasesDir "Azyron-Client-1.0.1.jar"
 $MrpackFile = Join-Path $ReleasesDir "Azyron-Modpack-1.0.mrpack"
+$SrcZip = Join-Path $ReleasesDir "Azyron-Client-Source-v1.0.1.zip"
+$SrcTgz = Join-Path $ReleasesDir "Azyron-Client-Source-v1.0.1.tar.gz"
 
-if (!(Test-Path $JarFile) -or !(Test-Path $MrpackFile)) {
-    throw "Missing build artifacts in $ReleasesDir"
+foreach ($f in @($JarFile, $MrpackFile, $SrcZip, $SrcTgz, $NotesFile)) {
+    if (!(Test-Path $f) -or ((Get-Item $f).Length -eq 0)) {
+        throw "Missing or empty required release file: $f"
+    }
 }
 
-$Notes = @"
-**AZYRON CLIENT – PERFORMANCE. SMOOTHNESS. STYLE.**
-High-FPS Minecraft Java Edition **1.21.11** Fabric client developed by **JIGNESH GAMING**, engineered for desktop launchers and **PojavLauncher**.
-
-### Highlights
-- **Target Platform:** Minecraft Java Edition ``1.21.11`` (Fabric Loader ``>=0.17.3``, Java 21).
-- **Performance Profiles:** *Potato Mode*, *Balanced Mode*, and *Smooth FPS Mode* with particle throttling, frame-spike stabilization, and safe memory trimming.
-- **Client Menu & HUD Editor:** Open with ``Right Shift`` (or via the Pause Menu on PojavLauncher) to configure modules and drag/scale widgets.
-- **Included Modules:** FPS Counter (1% Lows), CPS Counter, Ping Display, Coordinates HUD, Keystrokes HUD, Armor HUD, Potion Effects HUD, Memory HUD, Toggle Sprint, Smooth Zoom, and Custom Crosshair.
-"@
-
-$NotesFile = [System.IO.Path]::GetTempFileName()
-Set-Content -Path $NotesFile -Value $Notes -Encoding UTF8
-
-try {
-    gh release create "v1.0" `
-        "$JarFile#Azyron-Client-1.0.jar" `
+gh release view $Tag -R $Repo *> $null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "Uploading source archives to existing Draft Pre-Release $Tag on $Repo..."
+    gh release upload $Tag `
+        "$SrcZip#Azyron-Client-Source-v1.0.1.zip" `
+        "$SrcTgz#Azyron-Client-Source-v1.0.1.tar.gz" `
+        --clobber `
+        -R $Repo
+} else {
+    Write-Host "Creating UNPUBLISHED Draft Pre-Release $Tag on $Repo (--draft --prerelease)..."
+    gh release create $Tag `
+        "$JarFile#Azyron-Client-1.0.1.jar" `
         "$MrpackFile#Azyron-Modpack-1.0.mrpack" `
+        "$SrcZip#Azyron-Client-Source-v1.0.1.zip" `
+        "$SrcTgz#Azyron-Client-Source-v1.0.1.tar.gz" `
         --draft `
-        --title "AZYRON CLIENT 1.0" `
-        --notes-file $NotesFile
-} finally {
-    Remove-Item -Force $NotesFile -ErrorAction SilentlyContinue
+        --prerelease `
+        --title "AZYRON CLIENT v0.1.0 PRE-RELEASE" `
+        --notes-file $NotesFile `
+        -R $Repo
 }
+
+gh release view $Tag -R $Repo --json tagName,name,isDraft,isPrerelease,assets
