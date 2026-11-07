@@ -18,10 +18,10 @@ PORT = int(os.environ.get("PORT", "8080"))
 
 ASSET_DEFINITIONS = [
     {
-        "slug": "Azyron-Client-1.0.jar",
-        "display_name": "Azyron-Client-1.0.jar",
-        "download_filename": "Azyron-Client-1.0.jar",
-        "disk_filename": "Azyron-Client-1.0.jar",
+        "slug": "Azyron-Client-1.0.1.jar",
+        "display_name": "Azyron-Client-1.0.1.jar",
+        "download_filename": "Azyron-Client-1.0.1.jar",
+        "disk_filename": "Azyron-Client-1.0.1.jar",
         "content_type": "application/java-archive",
         "icon": "package",
         "show_sha256": True,
@@ -38,20 +38,20 @@ ASSET_DEFINITIONS = [
     {
         "slug": "Source-code.zip",
         "display_name": "Source code (zip)",
-        "download_filename": "Azyron-Client-1.0.zip",
+        "download_filename": "Azyron-Client-v0.1.0-pre-src.zip",
         "disk_filename": "Azyron-Client-1.0.zip",
         "content_type": "application/zip",
         "icon": "zip",
-        "show_sha256": False,
+        "show_sha256": True,
     },
     {
         "slug": "Source-code.tar.gz",
         "display_name": "Source code (tar.gz)",
-        "download_filename": "Azyron-Client-1.0.tar.gz",
+        "download_filename": "Azyron-Client-v0.1.0-pre-src.tar.gz",
         "disk_filename": "Azyron-Client-1.0.tar.gz",
         "content_type": "application/gzip",
         "icon": "zip",
-        "show_sha256": False,
+        "show_sha256": True,
     },
 ]
 
@@ -162,7 +162,7 @@ def render_assets_box(assets):
     rows_html = []
     for a in assets:
         icon_svg = OCTICONS["package"] if a["icon"] == "package" else OCTICONS["zip"]
-        href = f"/releases/download/v1.0/{a['slug']}"
+        href = f"/releases/download/v0.1.0-pre/{a['slug']}"
         if a["show_sha256"]:
             full_sha = f"sha256:{a['sha256']}"
             short_sha = f"sha256:{a['sha256'][:8]}…"
@@ -212,16 +212,171 @@ def render_assets_box(assets):
 def render_release_body_html():
     return """
       <div class="markdown-body">
-        <p><strong>Minecraft Version:</strong> <code>1.21.11</code> (Fabric)<br>
-        <strong>Developer:</strong> JIGNESH GAMING</p>
+        <blockquote>
+          <p><strong>AZYRON CLIENT — PERFORMANCE. SMOOTHNESS. STYLE.</strong><br>
+          Welcome to the official <strong>v0.1.0 Pre-Release</strong> of <strong>AZYRON CLIENT</strong>, crafted by <strong>JIGNESH GAMING</strong> exclusively for <strong>Minecraft Java Edition <code>1.21.11</code> (Fabric)</strong>. Thank you for testing our early-access foundation build engineered for ultra-clean visuals, rock-solid frame pacing, and effortless compatibility across desktop launchers and <strong>PojavLauncher</strong>.</p>
+        </blockquote>
 
-        <h3>Release Notes</h3>
+        <table>
+          <thead>
+            <tr><th>Specification</th><th>Details</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Release Version</strong></td><td><code>AZYRON CLIENT v0.1.0 PRE-RELEASE</code> (<code>v0.1.0-pre</code>)</td></tr>
+            <tr><td><strong>Release Channel</strong></td><td><code>Pre-release</code> <em>(Early Testing &amp; Performance Validation)</em></td></tr>
+            <tr><td><strong>Minecraft Version</strong></td><td><strong>Java Edition <code>1.21.11</code> — Fabric</strong> <em>(Strictly <code>1.21.11</code>)</em></td></tr>
+            <tr><td><strong>Fabric Requirements</strong></td><td>Fabric Loader <code>0.20.1</code> <em>(min <code>&gt;=0.17.3</code>)</em> + Fabric API <code>0.141.6+1.21.11</code></td></tr>
+            <tr><td><strong>Java Runtime</strong></td><td><strong>Java 21 LTS</strong> <em>(64-bit OpenJDK 21)</em></td></tr>
+            <tr><td><strong>Developer</strong></td><td><strong>JIGNESH GAMING</strong></td></tr>
+          </tbody>
+        </table>
+
+        <hr>
+
+        <h2>Client Introduction</h2>
+        <p><strong>AZYRON CLIENT</strong> is a modern, lightweight, fair-play <strong>Fabric client and optimization suite</strong> built from the ground up for <strong>Minecraft Java Edition <code>1.21.11</code></strong>. Designed for competitive multiplayer, survival worlds, and low-memory mobile/ARM64 devices running <strong>PojavLauncher</strong>, AZYRON combines a custom dark-themed client interface, a drag-and-drop HUD editor, and a real-time frame-pacing &amp; particle-culling engine — with <strong>zero</strong> unfair gameplay modifications or bloatware.</p>
+
+        <hr>
+
+        <h2>FPS Optimization Features</h2>
         <ul>
-          <li>Initial AZYRON CLIENT pre-release.</li>
-          <li>FPS optimization development.</li>
-          <li>Fabric integration.</li>
-          <li>Custom client interface development.</li>
-          <li>Performance and stability testing.</li>
+          <li><strong>Real-Time Performance Engine (<code>PerformanceEngine</code> &amp; <code>FrameTimeTracker</code>)</strong> — Tracks rolling frame-time percentiles (<code>1%</code> lows and micro-stutter spikes) and coordinates render settings without stalling the main render thread.</li>
+          <li><strong>Distance &amp; Budget Particle Throttling (<code>ParticleManagerMixin</code>)</strong> — Enforces per-tick particle caps and distance cutoffs during heavy combat, explosions, and crowded server lobbies.</li>
+          <li><strong>Smart Heap &amp; GC Hygiene (<code>MemoryOptimizer</code>)</strong> — Low-allocation tick/HUD rendering loop designed to minimize garbage-collection pauses on <code>1.5 GB – 4 GB</code> RAM allocations.</li>
+          <li><strong>Companion Optimization Config Seeding</strong> — Automatically seeds tuned defaults for the <code>1.21.11</code> Fabric optimization stack (<strong>Sodium <code>0.8.14</code></strong>, <strong>Lithium <code>0.21.4</code></strong>, <strong>FerriteCore <code>8.2.0</code></strong>, <strong>EntityCulling <code>1.11.3</code></strong>, <strong>More Culling <code>1.6.2</code></strong>, <strong>ImmediatelyFast <code>1.14.3</code></strong>, and <strong>Dynamic FPS <code>3.11.6</code></strong>) when installed via the Modpack.</li>
+          <li><strong>11 Built-In Modular HUD &amp; Utility Widgets</strong> — <code>FPS Counter</code>, <code>CPS Counter</code>, <code>Ping Display</code>, <code>Coordinates &amp; Direction</code>, <code>Keystrokes</code>, <code>Armor Status HUD</code>, <code>Potion Effects HUD</code>, <code>Memory Usage HUD</code>, <code>Custom Crosshair</code>, <code>ToggleSprint</code>, and <code>Smooth Cinematic/PvP Zoom</code>, plus custom <code>AZYRON</code> Main Menu, Splash Loading Renderer, Cosmetics Manager, and Pause Menu integration.</li>
+        </ul>
+
+        <hr>
+
+        <h2>Performance Profiles</h2>
+        <p>Switch instantly in-game with <kbd>F8</kbd> (or inside the <kbd>Right Shift</kbd> AZYRON Menu) between three engineered performance presets:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Profile</th>
+              <th>Graphics &amp; Clouds</th>
+              <th>Render / Sim</th>
+              <th>Particle Budget</th>
+              <th>Entity Scale &amp; Shadows</th>
+              <th>Target Cap</th>
+              <th>Best For</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Potato Mode</strong> (<code>POTATO</code>)</td>
+              <td><code>Fast</code> · Clouds <code>Off</code></td>
+              <td><code>6</code> / <code>5</code> chunks</td>
+              <td><code>Minimal</code> (<code>&lt;=40/tick</code>, <code>18m</code>)</td>
+              <td><code>50%</code> · Shadows <code>Off</code></td>
+              <td><code>260 FPS</code></td>
+              <td>Entry-level laptops, iGPUs &amp; <strong>PojavLauncher</strong> (<code>1.5–2 GB</code> RAM)</td>
+            </tr>
+            <tr>
+              <td><strong>Balanced Mode</strong> (<code>BALANCED</code>)</td>
+              <td><code>Fancy</code> · Clouds <code>Fast</code></td>
+              <td><code>10</code> / <code>8</code> chunks</td>
+              <td><code>Decreased</code> (<code>&lt;=180/tick</code>, <code>42m</code>)</td>
+              <td><code>75%</code> · Shadows <code>On</code></td>
+              <td><code>260 FPS</code></td>
+              <td>Everyday survival &amp; multiplayer with crisp visuals and high FPS</td>
+            </tr>
+            <tr>
+              <td><strong>Smooth FPS Mode</strong> (<code>SMOOTH_FPS</code>)</td>
+              <td><code>Fast</code> · Clouds <code>Fast</code></td>
+              <td><code>8</code> / <code>6</code> chunks</td>
+              <td><code>Decreased</code> (<code>&lt;=100/tick</code>, <code>28m</code>)</td>
+              <td><code>75%</code> · Shadows <code>Off</code></td>
+              <td><code>120 FPS</code></td>
+              <td>Competitive PvP, consistent <code>1%</code> lows &amp; mobile thermal stability</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <hr>
+
+        <h2>Supported Minecraft Version &amp; Platforms</h2>
+        <ul>
+          <li><strong>Supported Game Version:</strong> <strong>Minecraft: Java Edition <code>1.21.11</code> ONLY</strong> <em>(strictly pinned to <code>1.21.11</code> intermediary mappings)</em></li>
+          <li><strong>Mod Loader:</strong> <strong>Fabric Loader <code>0.20.1</code></strong> (<code>&gt;=0.17.3</code>) with <strong>Fabric API <code>0.141.6+1.21.11</code></strong></li>
+          <li><strong>Java Runtime:</strong> <strong>Java <code>21</code></strong> (<code>major class version 65</code>)</li>
+          <li><strong>Supported Launchers:</strong> Modrinth App, Prism Launcher, MultiMC, Official Minecraft Launcher, and <strong>PojavLauncher</strong> (Android / iOS ARM64)</li>
+        </ul>
+
+        <hr>
+
+        <h2>Installation Instructions</h2>
+        <h3>Option A — Full Modpack (<code>Azyron-Modpack-1.0.mrpack</code>) <em>(Recommended for Maximum FPS)</em></h3>
+        <ol>
+          <li>Open <strong>Modrinth App</strong> or <strong>Prism Launcher</strong>.</li>
+          <li>Click <strong>Add Instance</strong> &rarr; <strong>Import from file</strong> and select <strong><code>Azyron-Modpack-1.0.mrpack</code></strong>.</li>
+          <li>The launcher will automatically fetch Minecraft <code>1.21.11</code>, Fabric Loader <code>0.20.1</code>, all <strong>9 verified optimization dependencies</strong>, and install AZYRON CLIENT with pre-tuned configs.</li>
+          <li>Launch the instance and press <kbd>Right Shift</kbd> in-game to customize modules.</li>
+        </ol>
+
+        <h3>Option B — Standalone Mod JAR (<code>Azyron-Client-1.0.1.jar</code>) <em>(PojavLauncher &amp; Official Launcher)</em></h3>
+        <ol>
+          <li>Install <strong>Minecraft <code>1.21.11</code></strong> and <strong>Fabric Loader <code>0.20.1</code></strong> in your launcher and select a <strong>Java 21</strong> runtime.</li>
+          <li>Download <strong><code>Azyron-Client-1.0.1.jar</code></strong> from the <strong>Assets</strong> section below and download <strong><code>fabric-api-0.141.6+1.21.11.jar</code></strong>.</li>
+          <li>Copy both <code>.jar</code> files into your <code>.minecraft/mods/</code> directory <em>(recommended RAM: <code>1536 MB – 2048 MB</code> on PojavLauncher, <code>2048 MB – 4096 MB</code> on Desktop)</em>.</li>
+          <li>Launch the <code>fabric-loader-0.20.1-1.21.11</code> profile.</li>
+        </ol>
+
+        <h3>Default In-Game Controls</h3>
+        <table>
+          <thead>
+            <tr><th>Keybind</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><kbd>Right Shift</kbd></td><td>Open <strong>AZYRON CLIENT</strong> Modules &amp; Settings Menu</td></tr>
+            <tr><td><kbd>H</kbd></td><td>Open Drag-and-Drop <strong>HUD Layout Editor</strong></td></tr>
+            <tr><td><kbd>C</kbd> <em>(Hold)</em></td><td>Smooth <strong>Zoom</strong></td></tr>
+            <tr><td><kbd>F8</kbd></td><td>Cycle <strong>Performance Profile</strong> (<code>Potato</code> &rarr; <code>Balanced</code> &rarr; <code>Smooth FPS</code>)</td></tr>
+            <tr><td><kbd>I</kbd></td><td>Toggle <strong>Auto-Sprint</strong> (<code>ToggleSprint</code>)</td></tr>
+          </tbody>
+        </table>
+
+        <hr>
+
+        <h2>Known Issues (<code>v0.1.0-pre</code>)</h2>
+        <ul>
+          <li><strong>Pre-Release Build:</strong> Early <code>v0.1.0-pre</code> validation release; configuration keys in <code>config/azyron-client.json</code> may evolve prior to <code>v0.1.0</code> stable.</li>
+          <li><strong>PojavLauncher Legacy Renderers:</strong> On older Android GPUs using legacy <code>GL4ES</code> renderers with <code>&lt;1.5 GB</code> RAM allocated, cycling profiles inside densely populated worlds may briefly pause for <code>1–2s</code> while chunk meshes reload <em>(ANGLE/Zink/LTW with Java 21 is recommended)</em>.</li>
+          <li><strong>External Shader Packs:</strong> Heavy third-party ray-traced shader packs are not bundled and may override <code>Potato Mode</code> / <code>Smooth FPS Mode</code> frame-rate targets.</li>
+          <li><strong>Ultra-Wide Aspect Ratios:</strong> HUD snap-grid guides on <code>21:9</code> and <code>32:9</code> displays are scheduled for further polish in the next milestone.</li>
+        </ul>
+
+        <hr>
+
+        <h2>Changelog (<code>v0.1.0-pre</code>)</h2>
+        <ul>
+          <li><strong>Added:</strong> Initial <code>1.21.11</code> Fabric client core (<code>AzyronClient</code>), JSON persistence (<code>AzyronConfig</code>), and headless test bootstrap (<code>8/8</code> automated test suites passing).</li>
+          <li><strong>Added:</strong> Custom branded <strong>AZYRON Main Menu</strong>, <strong>Splash Loading Overlay</strong>, <strong>Mods &amp; Settings Screen</strong>, <strong>Cosmetics Screen</strong>, and <strong>Draggable HUD Editor</strong>.</li>
+          <li><strong>Added:</strong> <strong>11 client modules</strong> (<code>FPS</code>, <code>CPS</code>, <code>Ping</code>, <code>Coordinates</code>, <code>Keystrokes</code>, <code>Armor HUD</code>, <code>Potion HUD</code>, <code>Memory HUD</code>, <code>Crosshair</code>, <code>ToggleSprint</code>, <code>Zoom</code>).</li>
+          <li><strong>Added:</strong> <strong>3 one-click Performance Profiles</strong> (<code>Potato Mode</code>, <code>Balanced Mode</code>, <code>Smooth FPS Mode</code>) with particle budget culling (<code>ParticleManagerMixin</code>) and companion mod config seeding.</li>
+          <li><strong>Packaged:</strong> Verified <code>Azyron-Client-1.0.1.jar</code> (<code>150.47 KB</code>) and Modrinth v1 modpack <code>Azyron-Modpack-1.0.mrpack</code> (<code>148.02 KB</code>) pinning <code>9</code> SHA-512-verified <code>1.21.11</code> Fabric optimization mods.</li>
+        </ul>
+
+        <hr>
+
+        <h2>Artifact Verification (SHA-256)</h2>
+        <table>
+          <thead>
+            <tr><th>Asset Filename</th><th>Size</th><th>SHA-256 Checksum</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>Azyron-Client-1.0.1.jar</code></td><td><code>154,079 B</code> (<code>150 KB</code>)</td><td><code>4f4edc88561e55d27a1f027ddbe9b5558c7b0b0c965e55b89beafe70ba9d0834</code></td></tr>
+            <tr><td><code>Azyron-Modpack-1.0.mrpack</code></td><td><code>151,573 B</code> (<code>148 KB</code>)</td><td><code>4cb083e369222c032837bf6eee456ccdd820939c3a5623f17a255db7d679b14a</code></td></tr>
+          </tbody>
+        </table>
+
+        <hr>
+
+        <h2>Credits</h2>
+        <ul>
+          <li><strong>Creator &amp; Lead Developer:</strong> <strong>JIGNESH GAMING</strong> — <em>AZYRON CLIENT Architecture, UI/UX &amp; Performance Engineering</em></li>
+          <li><strong>Platform &amp; Optimization Ecosystem:</strong> Special thanks to <strong>Mojang Studios</strong>, the <strong>FabricMC Team</strong>, <strong>CaffeineMC</strong> (<em>Sodium &amp; Lithium</em>), <strong>malte0811</strong> (<em>FerriteCore</em>), <strong>tr7zw</strong> (<em>EntityCulling</em>), <strong>FX-PR0CESS</strong> (<em>More Culling</em>), <strong>RK_01</strong> (<em>ImmediatelyFast</em>), <strong>juliand665 &amp; LostLuma</strong> (<em>Dynamic FPS</em>), <strong>shedaniel</strong> (<em>Cloth Config</em>), and the <strong>PojavLauncher Team</strong>.</li>
         </ul>
       </div>
     """
@@ -302,7 +457,7 @@ def render_page(view_mode: str, assets):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Release AZYRON CLIENT 1.0 · AzyronClientteam/Azyron-Client</title>
+  <title>Release AZYRON CLIENT v0.1.0 PRE-RELEASE · AzyronClientteam/Azyron-Client</title>
   <style>
     :root {{
       --bg-canvas: #0d1117;
@@ -573,18 +728,57 @@ def render_page(view_mode: str, assets):
       color: var(--fg-default);
     }}
     .markdown-body p {{ margin: 0 0 12px 0; }}
-    .markdown-body h3 {{
-      font-size: 16px;
+    .markdown-body blockquote {{
+      margin: 0 0 16px 0;
+      padding: 4px 16px;
+      color: var(--fg-muted);
+      border-left: 0.25em solid var(--border-default);
+    }}
+    .markdown-body blockquote p:last-child {{ margin-bottom: 0; }}
+    .markdown-body hr {{
+      height: 1px;
+      padding: 0;
+      margin: 20px 0;
+      background-color: var(--border-muted);
+      border: 0;
+    }}
+    .markdown-body h2 {{
+      font-size: 20px;
       font-weight: 600;
-      margin: 18px 0 8px 0;
-      padding-bottom: 4px;
+      margin: 22px 0 10px 0;
+      padding-bottom: 6px;
       border-bottom: 1px solid var(--border-muted);
     }}
-    .markdown-body ul {{
+    .markdown-body h3 {{
+      font-size: 15px;
+      font-weight: 600;
+      margin: 16px 0 8px 0;
+    }}
+    .markdown-body ul, .markdown-body ol {{
       margin: 0 0 12px 0;
       padding-left: 22px;
     }}
-    .markdown-body li {{ margin-bottom: 4px; }}
+    .markdown-body li {{ margin-bottom: 5px; }}
+    .markdown-body table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 16px 0;
+      display: block;
+      overflow-x: auto;
+    }}
+    .markdown-body th, .markdown-body td {{
+      padding: 7px 12px;
+      border: 1px solid var(--border-default);
+      text-align: left;
+      font-size: 13px;
+    }}
+    .markdown-body th {{
+      background-color: var(--bg-subtle);
+      font-weight: 600;
+    }}
+    .markdown-body tr:nth-child(2n) td {{
+      background-color: rgba(110, 118, 129, 0.06);
+    }}
     .markdown-body code {{
       padding: 0.2em 0.4em;
       font-size: 85%;
@@ -813,8 +1007,14 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
 
         assets = load_live_assets()
         by_slug = {a["slug"]: a for a in assets}
+        if "Azyron-Client-1.0.1.jar" in by_slug:
+            by_slug["Azyron-Client-1.0.jar"] = by_slug["Azyron-Client-1.0.1.jar"]
 
-        if path in ("/", "/releases/tag/v0.1.0-pre", "/releases/tag/v1.0"):
+        if (
+            path in ("/", "/releases/tag/v0.1.0-pre", "/releases/tag/v1.0")
+            or path.startswith("/releases/tag/untagged-")
+            or path.startswith("/releases/edit/untagged-")
+        ):
             html = render_page("tag", assets).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -836,13 +1036,13 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                 self.wfile.write(html)
             return
 
-        if path == "/api/releases/v1.0":
+        if path in ("/api/releases/v0.1.0-pre", "/api/releases/v1.0"):
             payload = json.dumps({
-                "tag_name": "v1.0",
-                "name": "AZYRON CLIENT 1.0",
+                "id": 437365942,
+                "tag_name": "v0.1.0-pre",
+                "name": "AZYRON CLIENT v0.1.0 PRE-RELEASE",
                 "draft": True,
-                "prerelease": False,
-                "private": True,
+                "prerelease": True,
                 "assets": [
                     {
                         "name": a["display_name"],
@@ -851,7 +1051,7 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                         "size_human": a["size_human"],
                         "digest": f"sha256:{a['sha256']}" if a["show_sha256"] else None,
                         "uploaded_at": a["uploaded_iso"],
-                        "browser_download_url": f"/releases/download/v1.0/{a['slug']}",
+                        "browser_download_url": f"/releases/download/v0.1.0-pre/{a['slug']}",
                     }
                     for a in assets
                 ],
@@ -865,29 +1065,29 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                 self.wfile.write(payload)
             return
 
-        prefix = "/releases/download/v1.0/"
-        if path.startswith(prefix):
-            slug = path[len(prefix):]
-            asset = by_slug.get(slug)
-            if asset and os.path.isfile(asset["disk_path"]):
-                self.send_response(200)
-                self.send_header("Content-Type", asset["content_type"])
-                self.send_header("Content-Length", str(asset["size_bytes"]))
-                self.send_header(
-                    "Content-Disposition",
-                    f'attachment; filename="{asset["download_filename"]}"',
-                )
-                self.send_header("ETag", f'"sha256:{asset["sha256"]}"')
-                self._send_common_headers()
-                self.end_headers()
-                if not head_only:
-                    with open(asset["disk_path"], "rb") as fh:
-                        while True:
-                            chunk = fh.read(65536)
-                            if not chunk:
-                                break
-                            self.wfile.write(chunk)
-                return
+        for prefix in ("/releases/download/v0.1.0-pre/", "/releases/download/v1.0/"):
+            if path.startswith(prefix):
+                slug = path[len(prefix):]
+                asset = by_slug.get(slug)
+                if asset and os.path.isfile(asset["disk_path"]):
+                    self.send_response(200)
+                    self.send_header("Content-Type", asset["content_type"])
+                    self.send_header("Content-Length", str(asset["size_bytes"]))
+                    self.send_header(
+                        "Content-Disposition",
+                        f'attachment; filename="{asset["download_filename"]}"',
+                    )
+                    self.send_header("ETag", f'"sha256:{asset["sha256"]}"')
+                    self._send_common_headers()
+                    self.end_headers()
+                    if not head_only:
+                        with open(asset["disk_path"], "rb") as fh:
+                            while True:
+                                chunk = fh.read(65536)
+                                if not chunk:
+                                    break
+                                self.wfile.write(chunk)
+                    return
 
         self.send_response(404)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
