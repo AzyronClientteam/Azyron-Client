@@ -13,15 +13,15 @@
 
 ---
 
-## Pre-Built Release Artifacts (`azyron-client/releases/`)
+## Pre-Built Release Assets (`azyron-client/releases/`)
 
-| File | Description |
+| Asset | Description |
 | :--- | :--- |
-| `releases/azyron-client-1.0.0+mc1.21.11.jar` | Production Minecraft `1.21.11` Fabric client JAR (`intermediary` remapped + Mixin refmap) |
-| `releases/AZYRON-CLIENT-1.0.0+mc1.21.11.mrpack` | One-click Modrinth Modpack containing AZYRON CLIENT + all 9 verified `1.21.11` optimization mods + pre-tuned configs |
-| `releases/AZYRON-CLIENT-PojavLauncher-1.21.11-Pack.zip` | Ready-to-extract `.minecraft` bundle (`mods/` + `config/` + dependency download scripts) for PojavLauncher & manual installs |
-| `releases/azyron-client-1.0.0+mc1.21.11-sources.jar` | Complete Java 21 source archive |
-| `releases/download-dependencies.sh` / `.ps1` | SHA-512 verified downloader scripts for the `1.21.11` Fabric optimization mod stack |
+| `releases/Azyron-Client-1.0.jar` | Production Minecraft `1.21.11` Fabric client JAR (`intermediary` remapped + Mixin refmap) |
+| `releases/Azyron-Modpack-1.0.mrpack` | Modrinth Modpack containing `Azyron-Client-1.0.jar` + all 9 verified `1.21.11` optimization mods + pre-tuned configs |
+| `releases/Azyron-Client-1.0.zip` | Source code archive (`.zip`) |
+| `releases/Azyron-Client-1.0.tar.gz` | Source code archive (`.tar.gz`) |
+| `releases/SHA256SUMS.txt` | Verified SHA-256 checksums for all release assets |
 
 ---
 

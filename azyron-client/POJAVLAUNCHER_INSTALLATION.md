@@ -23,12 +23,12 @@
 ---
 
 ### Method A: One-Click Modpack Import (`.mrpack`) — *Fastest*
-1. Copy `releases/AZYRON-CLIENT-1.0.0+mc1.21.11.mrpack` to your phone's `Downloads` folder.
+1. Copy `releases/Azyron-Modpack-1.0.mrpack` to your phone's `Downloads` folder.
 2. Open **PojavLauncher** → tap the **Profile Selector** → **Create New Profile** → **Modpack** (or **Import Modrinth `.mrpack`**).
-3. Select `AZYRON-CLIENT-1.0.0+mc1.21.11.mrpack`.
+3. Select `Azyron-Modpack-1.0.mrpack`.
 4. PojavLauncher will automatically install:
    - Minecraft **`1.21.11`** + **Fabric Loader `0.20.1`**
-   - **`azyron-client-1.0.0+mc1.21.11.jar`**
+   - **`Azyron-Client-1.0.jar`**
    - All 9 verified `1.21.11` optimization mods (**Fabric API**, **Sodium**, **Lithium**, **FerriteCore**, **EntityCulling**, **MoreCulling**, **Cloth Config**, **Dynamic FPS**, **ImmediatelyFast**)
    - Pre-tuned `config/` files for maximum mobile FPS.
 5. Tap **Play** — you will see **"Welcome to AZYRON CLIENT"** on the custom loading screen followed by the dark purple & electric-blue **AZYRON CLIENT** main menu!
