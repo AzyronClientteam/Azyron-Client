@@ -65,6 +65,7 @@ public final class AzyronClient implements ClientModInitializer {
 
         this.performanceEngine = new PerformanceEngine(this.config.getActiveProfile());
         this.performanceEngine.seedCompanionModConfigsIfMissing();
+        com.jigneshgaming.azyron.util.PlatformCompat.auditInstalledModCompatibility();
         this.config.save();
 
         registerKeyBindings();

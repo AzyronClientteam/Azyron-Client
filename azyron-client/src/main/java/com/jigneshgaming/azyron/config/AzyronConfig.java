@@ -84,10 +84,31 @@ public final class AzyronConfig {
                 if (this.data.activeProfile == null || this.data.activeProfile.isBlank()) {
                     this.data.activeProfile = MemoryOptimizer.getRecommendedProfileForHardware().name();
                 }
+                if (this.data.discordInviteUrl == null || this.data.discordInviteUrl.isBlank()) {
+                    this.data.discordInviteUrl = "https://discord.gg/jigneshgaming";
+                }
+            } else {
+                backupCorruptedConfigFile("empty-or-null-json");
+                this.data = new ConfigData();
             }
         } catch (Exception e) {
-            AzyronClient.LOGGER.warn("[AZYRON] Failed reading config, restoring clean hardware-tuned defaults: {}", e.getMessage());
+            backupCorruptedConfigFile(e.getClass().getSimpleName());
+            AzyronClient.LOGGER.warn("[AZYRON] Backed up malformed config and restored hardware-tuned defaults: {}", e.getMessage());
             this.data = new ConfigData();
+        }
+    }
+
+    private void backupCorruptedConfigFile(String reason) {
+        try {
+            if (Files.exists(configFile) && Files.isRegularFile(configFile)) {
+                String ts = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")
+                        .withZone(java.time.ZoneOffset.UTC)
+                        .format(java.time.Instant.now());
+                Path bak = configFile.resolveSibling(configFile.getFileName().toString() + "." + ts + ".bak");
+                Files.copy(configFile, bak, StandardCopyOption.COPY_ATTRIBUTES);
+                AzyronClient.LOGGER.warn("[AZYRON] Backed up malformed config ({}) -> {}", reason, bak);
+            }
+        } catch (Throwable ignored) {
         }
     }
 

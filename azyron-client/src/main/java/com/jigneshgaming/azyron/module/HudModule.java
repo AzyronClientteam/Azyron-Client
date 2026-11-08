@@ -52,14 +52,17 @@ public abstract class HudModule extends AzyronModule {
     public float getAnchorY() { return anchorY; }
 
     public void setAnchor(float x, float y) {
-        this.anchorX = Math.max(0.0f, Math.min(1.0f, x));
-        this.anchorY = Math.max(0.0f, Math.min(1.0f, y));
+        float safeX = Float.isFinite(x) ? x : defaultAnchorX;
+        float safeY = Float.isFinite(y) ? y : defaultAnchorY;
+        this.anchorX = Math.max(0.0f, Math.min(1.0f, safeX));
+        this.anchorY = Math.max(0.0f, Math.min(1.0f, safeY));
     }
 
     public float getScale() { return scale; }
 
     public void setScale(float scale) {
-        this.scale = Math.max(0.5f, Math.min(2.0f, scale));
+        float safeScale = Float.isFinite(scale) ? scale : 1.0f;
+        this.scale = Math.max(0.5f, Math.min(2.0f, safeScale));
     }
 
     public int getWidth() { return width; }
@@ -105,7 +108,12 @@ public abstract class HudModule extends AzyronModule {
         return AzyronTheme.resolvePresetColor(accentMode.getValue());
     }
 
+    private boolean renderErrorLogged = false;
+
     public final void renderOnHud(DrawContext context, MinecraftClient client, boolean editorPreview) {
+        if (context == null) {
+            return;
+        }
         int sw = context.getScaledWindowWidth();
         int sh = context.getScaledWindowHeight();
         int px = getScreenX(sw);
@@ -113,10 +121,21 @@ public abstract class HudModule extends AzyronModule {
 
         Matrix3x2fStack matrices = context.getMatrices();
         matrices.pushMatrix();
-        matrices.translate(px, py);
-        matrices.scale(scale, scale);
-        renderWidget(context, client, editorPreview);
-        matrices.popMatrix();
+        try {
+            matrices.translate(px, py);
+            matrices.scale(scale, scale);
+            renderWidget(context, client, editorPreview);
+        } catch (Throwable t) {
+            if (!renderErrorLogged) {
+                renderErrorLogged = true;
+                com.jigneshgaming.azyron.AzyronClient.LOGGER.error(
+                        "[AZYRON] Guarded render error in HUD module '{}' (other HUD widgets isolated safely): {}",
+                        getName(), t.toString()
+                );
+            }
+        } finally {
+            matrices.popMatrix();
+        }
     }
 
     protected abstract void renderWidget(DrawContext context, MinecraftClient client, boolean editorPreview);

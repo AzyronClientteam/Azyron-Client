@@ -4,13 +4,20 @@
   "package": "com.jigneshgaming.azyron.mixin",
   "compatibilityLevel": "JAVA_21",
   "refmap": "azyron-client.refmap.json",
+  "mixins": [
+    "PersistentStateManagerMixin"
+  ],
   "client": [
     "GameMenuScreenMixin",
+    "GameOptionsMixin",
     "GameRendererMixin",
     "InGameHudMixin",
+    "IntegratedServerMixin",
     "MinecraftClientMixin",
     "MouseMixin",
+    "NarratorManagerMixin",
     "ParticleManagerMixin",
+    "RealmsAvailabilityMixin",
     "SplashOverlayMixin"
   ],
   "injectors": {

@@ -201,19 +201,22 @@ public final class UiRenderUtils {
     }
 
     public static void drawScaledText(DrawContext ctx, TextRenderer font, String text, int x, int y, float scale, int color, boolean centered) {
-        if (font == null || text == null || text.isEmpty()) {
+        if (ctx == null || font == null || text == null || text.isEmpty() || !Float.isFinite(scale) || scale <= 0.0f) {
             return;
         }
         Matrix3x2fStack matrices = ctx.getMatrices();
         matrices.pushMatrix();
-        matrices.translate(x, y);
-        matrices.scale(scale, scale);
-        if (centered) {
-            ctx.drawCenteredTextWithShadow(font, text, 0, 0, color);
-        } else {
-            ctx.drawTextWithShadow(font, text, 0, 0, color);
+        try {
+            matrices.translate(x, y);
+            matrices.scale(scale, scale);
+            if (centered) {
+                ctx.drawCenteredTextWithShadow(font, text, 0, 0, color);
+            } else {
+                ctx.drawTextWithShadow(font, text, 0, 0, color);
+            }
+        } finally {
+            matrices.popMatrix();
         }
-        matrices.popMatrix();
     }
 
     /**

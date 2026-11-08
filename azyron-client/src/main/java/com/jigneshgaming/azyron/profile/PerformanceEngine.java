@@ -75,6 +75,11 @@ public final class PerformanceEngine {
         boolean changed = false;
 
         try {
+            if (opts.syncChunkWrites && !IntegratedServerOptimizer.shouldForceSyncChunkWrites(opts.syncChunkWrites)) {
+                opts.syncChunkWrites = false;
+                changed = true;
+            }
+
             int curView = opts.getViewDistance().getValue();
             if (curView > tier.getMaxSafeViewDistance()) {
                 opts.getViewDistance().setValue(tier.getMaxSafeViewDistance());
@@ -202,6 +207,9 @@ public final class PerformanceEngine {
                 opts.getVignette().setValue(profile.isVignette());
                 opts.getEnableVsync().setValue(profile.isVsync());
                 opts.getMaxFps().setValue(profile.getMaxFps());
+                if (!IntegratedServerOptimizer.shouldForceSyncChunkWrites(opts.syncChunkWrites)) {
+                    opts.syncChunkWrites = false;
+                }
                 opts.write();
             } catch (Throwable t) {
                 AzyronClient.LOGGER.warn("[AZYRON] Non-fatal warning applying GameOptions preset: {}", t.getMessage());
@@ -236,10 +244,10 @@ public final class PerformanceEngine {
         int budget = activeProfile.getMaxParticlesPerTick();
         double maxDist = activeProfile.getMaxParticleDistanceBlocks();
 
-        // Dynamically tighten particle load during live frame-time spikes or high 3GB–8GB RAM pressure
-        if (FrameTimeTracker.isExperiencingFrameSpike()) {
-            budget = Math.max(16, budget / 3);
-            maxDist = Math.min(maxDist, 16.0);
+        // Dynamically tighten particle load during live frame-time spikes or high/critical 3GB–8GB RAM pressure
+        if (FrameTimeTracker.isExperiencingFrameSpike() || MemoryOptimizer.isCriticalMemoryPressure()) {
+            budget = Math.max(12, budget / 4);
+            maxDist = Math.min(maxDist, 14.0);
         } else if (activeProfile != PerformanceProfile.POTATO && MemoryOptimizer.isHighMemoryPressure()) {
             budget = Math.min(budget, MemoryOptimizer.detectRamTier().getDynamicParticleCap());
             maxDist = Math.min(maxDist, 24.0);
@@ -298,7 +306,7 @@ public final class PerformanceEngine {
             Files.createDirectories(configDir);
 
             MemoryOptimizer.RamTier tier = MemoryOptimizer.detectRamTier();
-            int chunkThreads = tier.getRecommendedChunkThreads();
+            int chunkThreads = MemoryOptimizer.computeOptimalChunkBuilderThreads();
             int cpuAheadLimit = (tier == MemoryOptimizer.RamTier.TIER_3GB || tier == MemoryOptimizer.RamTier.TIER_4GB) ? 2 : 3;
             int tracingDist = (tier == MemoryOptimizer.RamTier.TIER_3GB) ? 64 : 96;
 
@@ -371,22 +379,32 @@ public final class PerformanceEngine {
                     + "mixin.world=true\n"
             );
 
-            writeIfAbsent(configDir.resolve("immediatelyfast.json"),
-                    "{\n"
-                    + "  \"font_atlas_resizing\": false,\n"
-                    + "  \"map_atlas_generation\": true,\n"
-                    + "  \"hud_batching\": true,\n"
-                    + "  \"fast_text_lookup\": true,\n"
-                    + "  \"fast_buffer_upload\": false\n"
-                    + "}\n"
-            );
+            // Seed valid ImmediatelyFast 1.14+ (MC 1.21.11) config ONLY if user manually installed ImmediatelyFast,
+            // disabling enhanced_batching and FBO state skipping on Android/PojavLauncher to avoid mobile GL glitches.
+            if (FabricLoader.getInstance().isModLoaded("immediatelyfast")) {
+                boolean mobile = com.jigneshgaming.azyron.util.PlatformCompat.isAndroidOrPojav();
+                writeIfAbsent(configDir.resolve("immediatelyfast.json"),
+                        "{\n"
+                        + "  \"enhanced_batching\": " + (!mobile) + ",\n"
+                        + "  \"font_atlas_resizing\": false,\n"
+                        + "  \"map_atlas_generation\": true,\n"
+                        + "  \"map_atlas_size\": 1024,\n"
+                        + "  \"skip_text_translucency_sorting\": true,\n"
+                        + "  \"fast_text_lookup\": true,\n"
+                        + "  \"avoid_redundant_framebuffer_switching\": " + (!mobile) + ",\n"
+                        + "  \"batch_animated_item_updates\": " + (!mobile) + ",\n"
+                        + "  \"fast_gui_layer_lookup\": true\n"
+                        + "}\n"
+                );
+            }
 
             writeIfAbsent(configDir.resolve("dynamic_fps.json"),
                     "{\n"
                     + "  \"idle\": { \"timeout\": 180, \"condition\": \"none\" },\n"
+                    + "  \"battery_tracker\": { \"enabled\": false },\n"
                     + "  \"states\": {\n"
                     + "    \"unfocused\": { \"frame_rate_target\": 15, \"volume_multipliers\": { \"master\": 0.25 } },\n"
-                    + "    \"invisible\": { \"frame_rate_target\": 0, \"volume_multipliers\": { \"master\": 0.0 } },\n"
+                    + "    \"invisible\": { \"frame_rate_target\": 1, \"volume_multipliers\": { \"master\": 0.0 } },\n"
                     + "    \"abandoned\": { \"frame_rate_target\": 10 }\n"
                     + "  }\n"
                     + "}\n"

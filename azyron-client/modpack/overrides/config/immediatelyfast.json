@@ -1,7 +1,11 @@
 {
+  "enhanced_batching": false,
   "font_atlas_resizing": false,
   "map_atlas_generation": true,
-  "hud_batching": true,
+  "map_atlas_size": 1024,
+  "skip_text_translucency_sorting": true,
   "fast_text_lookup": true,
-  "fast_buffer_upload": false
+  "avoid_redundant_framebuffer_switching": false,
+  "batch_animated_item_updates": false,
+  "fast_gui_layer_lookup": true
 }

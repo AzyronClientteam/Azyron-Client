@@ -1,7 +1,11 @@
-# AZYRON CLIENT (Minecraft 1.21.11 Fabric) - Verified Dependency Downloader (Windows PowerShell)
+# AZYRON CLIENT v1.0.2 (Minecraft 1.21.11 Fabric) - Verified Dependency Downloader (Windows PowerShell)
+# Pass -DesktopImmediatelyFast ONLY on desktop Windows GPUs (excluded by default for Android/PojavLauncher compatibility).
+param(
+    [switch]$DesktopImmediatelyFast = $false
+)
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path 'mods' | Out-Null
-Write-Host '=== Downloading AZYRON CLIENT 1.21.11 Optimization Mod Stack ===' -ForegroundColor Cyan
+Write-Host '=== Downloading AZYRON CLIENT v1.0.2 (1.21.11 Fabric) Verified Optimization Stack ===' -ForegroundColor Cyan
 Write-Host ' -> Fabric API (fabric-api-0.141.6+1.21.11.jar)'
 Invoke-WebRequest -Uri 'https://cdn.modrinth.com/data/P7dR8mSH/versions/6qAuTtLR/fabric-api-0.141.6%2B1.21.11.jar' -OutFile 'mods/fabric-api-0.141.6+1.21.11.jar'
 $hash = (Get-FileHash -Path 'mods/fabric-api-0.141.6+1.21.11.jar' -Algorithm SHA512).Hash.ToLower()
@@ -34,8 +38,13 @@ Write-Host ' -> Dynamic FPS (dynamic-fps-3.11.6+minecraft-1.21.11-fabric.jar)'
 Invoke-WebRequest -Uri 'https://cdn.modrinth.com/data/LQ3K71Q1/versions/Fab7e5Th/dynamic-fps-3.11.6%2Bminecraft-1.21.11-fabric.jar' -OutFile 'mods/dynamic-fps-3.11.6+minecraft-1.21.11-fabric.jar'
 $hash = (Get-FileHash -Path 'mods/dynamic-fps-3.11.6+minecraft-1.21.11-fabric.jar' -Algorithm SHA512).Hash.ToLower()
 if ($hash -ne 'c45652252e2176cb8e2c44dfd9032c617135a100dcf161b9e6e6717803c14d1359d0f940fa10dc1aa6ad80669983f4b9c5636c0c2953d3314e06f893f0cdc736') { throw 'SHA-512 mismatch for dynamic-fps-3.11.6+minecraft-1.21.11-fabric.jar' }
-Write-Host ' -> ImmediatelyFast (ImmediatelyFast-Fabric-1.14.3+1.21.11.jar)'
-Invoke-WebRequest -Uri 'https://cdn.modrinth.com/data/5ZwdcRci/versions/4EwhsTu7/ImmediatelyFast-Fabric-1.14.3%2B1.21.11.jar' -OutFile 'mods/ImmediatelyFast-Fabric-1.14.3+1.21.11.jar'
-$hash = (Get-FileHash -Path 'mods/ImmediatelyFast-Fabric-1.14.3+1.21.11.jar' -Algorithm SHA512).Hash.ToLower()
-if ($hash -ne '2564cb28259352c3aa5759aceca62667de08a7860a40910dad40a043af851a074b2d75cef50b9fa6f1971febb3a5ecebe4067cbd4b60e63ef711b85f4bc21407') { throw 'SHA-512 mismatch for ImmediatelyFast-Fabric-1.14.3+1.21.11.jar' }
-Write-Host '=== All 1.21.11 dependencies downloaded and SHA-512 verified! ===' -ForegroundColor Green
+
+if ($DesktopImmediatelyFast) {
+    Write-Host ' -> [Desktop Only] ImmediatelyFast (ImmediatelyFast-Fabric-1.14.3+1.21.11.jar)'
+    Invoke-WebRequest -Uri 'https://cdn.modrinth.com/data/5ZwdcRci/versions/4EwhsTu7/ImmediatelyFast-Fabric-1.14.3%2B1.21.11.jar' -OutFile 'mods/ImmediatelyFast-Fabric-1.14.3+1.21.11.jar'
+    $hash = (Get-FileHash -Path 'mods/ImmediatelyFast-Fabric-1.14.3+1.21.11.jar' -Algorithm SHA512).Hash.ToLower()
+    if ($hash -ne '2564cb28259352c3aa5759aceca62667de08a7860a40910dad40a043af851a074b2d75cef50b9fa6f1971febb3a5ecebe4067cbd4b60e63ef711b85f4bc21407') { throw 'SHA-512 mismatch for ImmediatelyFast-Fabric-1.14.3+1.21.11.jar' }
+} else {
+    Write-Host ' [Info] Skipping ImmediatelyFast by default (excluded for universal Android/PojavLauncher compatibility; pass -DesktopImmediatelyFast on desktop PC if desired).' -ForegroundColor Yellow
+}
+Write-Host '=== All verified 1.21.11 dependencies downloaded and SHA-512 verified! ===' -ForegroundColor Green

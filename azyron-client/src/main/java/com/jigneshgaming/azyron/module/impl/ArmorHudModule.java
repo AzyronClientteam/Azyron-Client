@@ -51,8 +51,11 @@ public final class ArmorHudModule extends HudModule {
 
     @Override
     protected void renderWidget(DrawContext context, MinecraftClient client, boolean editorPreview) {
+        if (context == null || client == null || client.textRenderer == null) {
+            return;
+        }
         int count = 0;
-        if (client != null && client.player != null) {
+        if (client.player != null) {
             if (showMainHand.getValue()) {
                 ItemStack held = client.player.getEquippedStack(EquipmentSlot.MAINHAND);
                 if (held != null && !held.isEmpty()) {
@@ -125,8 +128,15 @@ public final class ArmorHudModule extends HudModule {
         for (int i = 0; i < count; i++) {
             ItemStack stack = activeStacks[i];
             int ry = 3 + i * 18;
-            context.drawItem(stack, 5, ry);
-            context.drawItemBar(stack, 5, ry);
+            try {
+                context.drawItem(stack, 5, ry);
+                // Minecraft 1.21.11: DrawContext.drawItemBar (method_64860) is private;
+                // use public DrawContext.drawStackOverlay (method_51431) for durability bar, stack count & cooldowns.
+                context.drawStackOverlay(client.textRenderer, stack, 5, ry);
+            } catch (Throwable ignored) {
+                // Fallback icon marker if a third-party modded ItemStack fails model rendering
+                UiRenderUtils.drawRoundedPanel(context, 5, ry + 1, 14, 14, 0xFF1E293B, slotColors[i]);
+            }
             String lbl = slotLabels[i];
             if (!lbl.isEmpty()) {
                 context.drawTextWithShadow(client.textRenderer, lbl, 24, ry + 4, slotColors[i]);

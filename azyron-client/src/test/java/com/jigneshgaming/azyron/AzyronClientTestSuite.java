@@ -17,6 +17,7 @@ import com.jigneshgaming.azyron.module.impl.CrosshairModule;
 import com.jigneshgaming.azyron.module.impl.ToggleSprintModule;
 import com.jigneshgaming.azyron.module.impl.ZoomModule;
 import com.jigneshgaming.azyron.profile.FrameTimeTracker;
+import com.jigneshgaming.azyron.profile.IntegratedServerOptimizer;
 import com.jigneshgaming.azyron.profile.MemoryOptimizer;
 import com.jigneshgaming.azyron.profile.PerformanceEngine;
 import com.jigneshgaming.azyron.profile.PerformanceProfile;
@@ -27,8 +28,12 @@ import com.jigneshgaming.azyron.ui.AzyronModsScreen;
 import com.jigneshgaming.azyron.ui.HudEditorScreen;
 import com.jigneshgaming.azyron.util.AzyronTheme;
 import com.jigneshgaming.azyron.util.CpsTracker;
+import com.jigneshgaming.azyron.util.OptionsConfigSanitizer;
+import com.jigneshgaming.azyron.util.PersistentStateGuard;
+import com.jigneshgaming.azyron.util.PlatformCompat;
 import com.jigneshgaming.azyron.util.UiRenderUtils;
 import com.mojang.blaze3d.shaders.ShaderType;
+import com.mojang.text2speech.Narrator;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -37,6 +42,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -56,8 +62,15 @@ import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.input.MouseInput;
 import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.option.GraphicsMode;
+import net.minecraft.client.realms.RealmsAvailability;
+import net.minecraft.client.session.Session;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.particle.ParticlesMode;
+import net.minecraft.server.integrated.IntegratedServer;
 
 /**
  * Comprehensive Automated Verification Suite for AZYRON CLIENT v1.0.2
@@ -109,6 +122,16 @@ public final class AzyronClientTestSuite {
                 AzyronClientTestSuite::testFullFabricStartupLifecycleAndRamSmoothness);
         runTest("15. Automatic 3GB-8GB RAM Tier Scaling, Unfocused Background Throttle & 10,000-Frame HUD Stress Test",
                 AzyronClientTestSuite::testAutoRamScalingBackgroundThrottleAndHudBenchmark);
+        runTest("16. Corrupted raids.dat Non-Destructive Backup, 1.21.11 NBT Schema Repair & Atomic Save Protection",
+                AzyronClientTestSuite::testRaidsDatBackupRepairAndAtomicSave);
+        runTest("17. Fullscreen 'off' -> 'false' & Malformed Boolean Option Sanitization",
+                AzyronClientTestSuite::testFullscreenAndOptionsBooleanSanitizer);
+        runTest("18. Android / PojavLauncher Missing Flite Narrator Graceful Fallback (Zero Crash)",
+                AzyronClientTestSuite::testAndroidMissingFliteNarratorFallback);
+        runTest("19. Offline / Local Realms Auth Graceful Handling (Preserving Online Microsoft Auth)",
+                AzyronClientTestSuite::testOfflineLocalRealmsGracefulHandling);
+        runTest("20. Armor HUD 1.21.11 Public Overlay Fix, IntegratedServer Pacing & Corrupt Config Backup",
+                AzyronClientTestSuite::testArmorHudIntegratedServerAndConfigRecovery);
 
         System.out.println("-----------------------------------------------------------------------");
         System.out.printf(" TEST SUMMARY: %d PASSED, %d FAILED%n", passed, failed);
@@ -167,14 +190,18 @@ public final class AzyronClientTestSuite {
 
             JsonObject refmapJson = readJsonEntry(jf, "azyron-client.refmap.json");
             JsonObject mappings = refmapJson.getAsJsonObject("mappings");
+            JsonArray commonMixinArray = mixinsJson.getAsJsonArray("mixins");
+            assertEquals(1, commonMixinArray.size(), "PersistentStateManagerMixin registered in common mixins");
             JsonArray mixinArray = mixinsJson.getAsJsonArray("client");
-            assertEquals(7, mixinArray.size(), "All 7 client Mixins registered");
+            assertEquals(11, mixinArray.size(), "All 11 client Mixins registered");
 
-            for (int i = 0; i < mixinArray.size(); i++) {
-                String mSimple = mixinArray.get(i).getAsString();
-                String internal = "com/jigneshgaming/azyron/mixin/" + mSimple;
-                assertNotNull(jf.getJarEntry(internal + ".class"), "Mixin class present: " + internal);
-                assertTrue(mappings.has(internal), "Refmap entry present for " + internal);
+            for (JsonArray arr : new JsonArray[]{commonMixinArray, mixinArray}) {
+                for (int i = 0; i < arr.size(); i++) {
+                    String mSimple = arr.get(i).getAsString();
+                    String internal = "com/jigneshgaming/azyron/mixin/" + mSimple;
+                    assertNotNull(jf.getJarEntry(internal + ".class"), "Mixin class present: " + internal);
+                    assertTrue(mappings.has(internal), "Refmap entry present for " + internal);
+                }
             }
 
             verifyPng128(jf, "assets/azyron/icon.png");
@@ -318,12 +345,14 @@ public final class AzyronClientTestSuite {
             assertEquals("0.20.1", deps.get("fabric-loader").getAsString(), "mrpack targets Fabric Loader 0.20.1");
 
             JsonArray files = idx.getAsJsonArray("files");
-            assertEquals(9, files.size(), "All 9 verified 1.21.11 Fabric mods included");
+            assertEquals(8, files.size(), "All 8 universal PC + Android/PojavLauncher verified 1.21.11 Fabric mods included");
             Set<String> paths = new HashSet<>();
             for (JsonElement el : files) {
                 JsonObject f = el.getAsJsonObject();
                 String p = f.get("path").getAsString();
                 assertTrue(paths.add(p), "No duplicate mod path in modrinth.index.json: " + p);
+                assertTrue(!p.toLowerCase().contains("immediatelyfast"),
+                        "Android/PojavLauncher incompatible ImmediatelyFast must not be forced in universal modpack");
                 assertEquals(128, f.getAsJsonObject("hashes").get("sha512").getAsString().length(), "Valid SHA-512 hash");
             }
 
@@ -342,14 +371,26 @@ public final class AzyronClientTestSuite {
                         "PojavLauncher safety: use_no_error_g_l_context == false");
             }
 
+            ZipEntry dynEntry = zf.getEntry("overrides/config/dynamic_fps.json");
+            assertNotNull(dynEntry, "dynamic_fps.json in mrpack");
+            try (InputStream in = zf.getInputStream(dynEntry)) {
+                JsonObject dyn = JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+                assertEquals(1, dyn.getAsJsonObject("states").getAsJsonObject("invisible").get("frame_rate_target").getAsInt(),
+                        "Android EGL swap safety: invisible frame_rate_target == 1 (never 0)");
+                assertTrue(!dyn.getAsJsonObject("battery_tracker").get("enabled").getAsBoolean(),
+                        "Android safety: desktop native battery_tracker disabled");
+            }
+
             ZipEntry immEntry = zf.getEntry("overrides/config/immediatelyfast.json");
-            assertNotNull(immEntry, "immediatelyfast.json in mrpack");
+            assertNotNull(immEntry, "immediatelyfast.json fallback config in mrpack");
             try (InputStream in = zf.getInputStream(immEntry)) {
                 JsonObject imm = JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
                 assertTrue(!imm.get("font_atlas_resizing").getAsBoolean(),
-                        "PojavLauncher safety: font_atlas_resizing == false");
-                assertTrue(!imm.get("fast_buffer_upload").getAsBoolean(),
-                        "PojavLauncher safety: fast_buffer_upload == false");
+                        "PojavLauncher fallback safety: font_atlas_resizing == false");
+                assertTrue(!imm.get("enhanced_batching").getAsBoolean(),
+                        "PojavLauncher fallback safety: enhanced_batching == false (1.14.3 schema)");
+                assertTrue(!imm.get("avoid_redundant_framebuffer_switching").getAsBoolean(),
+                        "PojavLauncher fallback safety: avoid_redundant_framebuffer_switching == false");
             }
         }
     }
@@ -644,6 +685,8 @@ public final class AzyronClientTestSuite {
         boolean sawRegistryEntryInterfaceRef = false;
         boolean sawGetAoMethodRef = false;
         boolean sawGetVignetteMethodRef = false;
+        boolean sawPublicDrawStackOverlayRef = false;
+        boolean sawNarratorInterfaceRef = false;
 
         try (JarFile jf = new JarFile(jarPath.toFile())) {
             var entries = jf.entries();
@@ -752,6 +795,23 @@ public final class AzyronClientTestSuite {
                         if ("net/minecraft/class_315".equals(owner) && "method_75335".equals(name)) {
                             sawGetVignetteMethodRef = true;
                         }
+
+                        // 6. DrawContext (class_332) MUST NEVER invoke private method_64860 (drawItemBar);
+                        // ArmorHudModule MUST invoke public method_51431 (drawStackOverlay)
+                        if ("net/minecraft/class_332".equals(owner)) {
+                            assertTrue(!"method_64860".equals(name),
+                                    "IllegalAccessError hazard: private DrawContext.drawItemBar (method_64860) referenced in " + je.getName());
+                            if ("method_51431".equals(name)) {
+                                sawPublicDrawStackOverlayRef = true;
+                            }
+                        }
+
+                        // 7. com.mojang.text2speech.Narrator is an interface -> MUST use CONSTANT_InterfaceMethodref (tag 11)
+                        if ((tag == 10 || tag == 11) && "com/mojang/text2speech/Narrator".equals(owner)) {
+                            assertEquals(11, tag,
+                                    "Narrator." + name + " in " + je.getName() + " MUST be CONSTANT_InterfaceMethodref (tag 11)");
+                            sawNarratorInterfaceRef = true;
+                        }
                     }
                 }
             }
@@ -762,13 +822,17 @@ public final class AzyronClientTestSuite {
                     "1.21.11 keybinding category lang key present");
         }
 
-        assertTrue(checkedClasses >= 40, "Inspected all compiled classes in JAR (" + checkedClasses + ")");
+        assertTrue(checkedClasses >= 50, "Inspected all compiled classes in JAR (" + checkedClasses + ")");
         assertTrue(sawFabricLoaderInterfaceRef, "Verified FabricLoader CONSTANT_InterfaceMethodref in JAR");
         assertTrue(sawFabricEventClassRef, "Verified ClientTickEvents.END_CLIENT_TICK Event descriptor in JAR");
         assertTrue(sawJomlMatrix3x2fReturn, "Verified JOML Matrix3x2fStack.translate/scale return Matrix3x2f in JAR");
         assertTrue(sawRegistryEntryInterfaceRef, "Verified RegistryEntry (class_6880) CONSTANT_InterfaceMethodref in JAR");
         assertTrue(sawGetAoMethodRef && sawGetVignetteMethodRef,
                 "Verified GameOptions.getAo() & getVignette() getter calls in JAR");
+        assertTrue(sawPublicDrawStackOverlayRef,
+                "Verified ArmorHudModule calls public DrawContext.drawStackOverlay (method_51431) with zero private drawItemBar calls");
+        assertTrue(sawNarratorInterfaceRef,
+                "Verified Narrator uses CONSTANT_InterfaceMethodref in JAR");
     }
 
     private static void testFullFabricStartupLifecycleAndRamSmoothness() throws Exception {
@@ -887,6 +951,232 @@ public final class AzyronClientTestSuite {
             FrameTimeTracker.resetForTesting();
             mc.world = prevWorld;
         }
+    }
+
+    private static void testRaidsDatBackupRepairAndAtomicSave() throws Exception {
+        PersistentStateGuard.clearSessionBackupCacheForTests();
+        Path worldDataDir = Files.createTempDirectory("azyron-world-data-");
+
+        // Case 1: 0-byte truncated raids.dat -> backed up without deleting original file
+        Path zeroRaids = worldDataDir.resolve("raids.dat");
+        Files.write(zeroRaids, new byte[0]);
+        Path zeroBak = PersistentStateGuard.ensureBackedUpOnLoadFailure(zeroRaids, "raids", "zero-byte-persistent-state-file");
+        assertNotNull(zeroBak, "0-byte raids.dat backup created");
+        assertTrue(Files.exists(zeroBak), "Backup file exists in azyron_backups/");
+        assertEquals(0L, Files.size(zeroBak), "0-byte backup size matches source");
+        assertTrue(Files.exists(zeroRaids), "Original raids.dat is NEVER deleted");
+
+        // Case 2: Binary-corrupted GZip raids.dat -> exact byte-identical backup created before fallback
+        PersistentStateGuard.clearSessionBackupCacheForTests();
+        byte[] corruptBytes = new byte[]{0x1F, (byte) 0x8B, 0x08, 0x00, 0x42, 0x13, 0x37, (byte) 0xFF};
+        Files.write(zeroRaids, corruptBytes);
+        Path corruptBak = PersistentStateGuard.ensureBackedUpOnLoadFailure(zeroRaids, "raids", "corrupted-gzip");
+        assertNotNull(corruptBak, "Corrupted GZip raids.dat backup created");
+        assertEquals((long) corruptBytes.length, Files.size(corruptBak), "Backup preserves exact original bytes");
+        assertTrue(Files.exists(Path.of(corruptBak.toString() + ".meta.txt")), "Diagnostic .meta.txt written alongside backup");
+
+        // Case 3: Legacy/broken 1.21.11 raids.dat NBT (legacy NextAvailableID/Tick + 1 valid raid + 1 corrupt raid)
+        PersistentStateGuard.clearSessionBackupCacheForTests();
+        NbtCompound legacyRoot = new NbtCompound();
+        NbtCompound legacyData = new NbtCompound();
+        legacyData.putInt("NextAvailableID", 9);
+        legacyData.putInt("Tick", 1450);
+
+        NbtList raidsList = new NbtList();
+        NbtCompound validRaidEntry = new NbtCompound();
+        validRaidEntry.putInt("id", 3);
+        NbtCompound innerRaid = new NbtCompound();
+        innerRaid.putString("status", "ongoing");
+        validRaidEntry.put("raid", innerRaid);
+        raidsList.add(validRaidEntry);
+
+        NbtCompound brokenRaidEntry = new NbtCompound(); // missing id and raid fields
+        raidsList.add(brokenRaidEntry);
+        legacyData.put("raids", raidsList);
+        legacyRoot.put("data", legacyData);
+
+        Path raidsEndFile = worldDataDir.resolve("raids_end.dat");
+        NbtIo.writeCompressed(legacyRoot, raidsEndFile);
+        long originalNbtSize = Files.size(raidsEndFile);
+
+        NbtCompound repaired = PersistentStateGuard.inspectAndRepairRaidsCompound(raidsEndFile, "raids_end", legacyRoot);
+        assertNotNull(repaired, "Repaired raids_end compound returned");
+        NbtCompound repairedData = repaired.getCompound("data").orElseThrow();
+        assertEquals(9, repairedData.getInt("next_id").orElse(-1), "Migrated legacy NextAvailableID -> next_id == 9");
+        assertEquals(1450, repairedData.getInt("tick").orElse(-1), "Migrated legacy Tick -> tick == 1450");
+        assertEquals(1, repairedData.getList("raids").orElseThrow().size(),
+                "Preserved valid raid entry while isolating malformed entry");
+        assertEquals(originalNbtSize, Files.size(raidsEndFile),
+                "Original raids_end.dat on disk was NOT overwritten during in-memory repair");
+        long backupCount = Files.list(worldDataDir.resolve(PersistentStateGuard.BACKUP_SUBDIR))
+                .filter(p -> p.getFileName().toString().startsWith("raids_end.dat.") && p.getFileName().toString().endsWith(".bak"))
+                .count();
+        assertEquals(1L, backupCount, "Mandatory backup of raids_end.dat created BEFORE in-memory tag repair");
+
+        // Case 4: Atomic save via sibling .azyron.tmp + round-trip readCompressed
+        Path atomicTarget = worldDataDir.resolve("raids_atomic.dat");
+        PersistentStateGuard.saveCompressedAtomically(atomicTarget, repaired);
+        assertTrue(Files.exists(atomicTarget) && Files.size(atomicTarget) > 0, "Atomic save committed non-empty file");
+        assertTrue(!Files.exists(worldDataDir.resolve("raids_atomic.dat.azyron.tmp")), "Temporary .azyron.tmp cleaned up");
+        NbtCompound roundTrip = NbtIo.readCompressed(atomicTarget, NbtSizeTracker.ofUnlimitedBytes());
+        assertEquals(9, roundTrip.getCompound("data").orElseThrow().getInt("next_id").orElse(-1),
+                "Atomic compressed raids.dat round-trips losslessly");
+    }
+
+    private static void testFullscreenAndOptionsBooleanSanitizer() {
+        // Direct string normalization tests for Issue #2
+        assertEquals("false", OptionsConfigSanitizer.normalizeBooleanOptionValue("fullscreen", "off", false),
+                "fullscreen:off normalizes to false");
+        assertEquals("false", OptionsConfigSanitizer.normalizeBooleanOptionValue("fullscreen", "OFF", false),
+                "fullscreen:OFF normalizes to false");
+        assertEquals("false", OptionsConfigSanitizer.normalizeBooleanOptionValue("fullscreen", "\"off\"", false),
+                "fullscreen:\"off\" normalizes to false");
+        assertEquals("false", OptionsConfigSanitizer.normalizeBooleanOptionValue("fullscreen", "0", false),
+                "fullscreen:0 normalizes to false");
+        assertEquals("false", OptionsConfigSanitizer.normalizeBooleanOptionValue("fullscreen", "disabled", false),
+                "fullscreen:disabled normalizes to false");
+        assertEquals("true", OptionsConfigSanitizer.normalizeBooleanOptionValue("fullscreen", "on", false),
+                "fullscreen:on normalizes to true");
+        assertEquals("true", OptionsConfigSanitizer.normalizeBooleanOptionValue("fullscreen", "true", false),
+                "fullscreen:true remains true");
+        assertEquals("false", OptionsConfigSanitizer.normalizeBooleanOptionValue("fullscreen", "borderless_corrupt_value", false),
+                "Invalid fullscreen string normalizes safely to false");
+        assertEquals("false", OptionsConfigSanitizer.normalizeBooleanOptionValue("fullscreen", "[broken_json", false),
+                "Malformed JSON token normalizes safely to false");
+
+        // Full options.txt NbtCompound sanitization pass
+        NbtCompound optsNbt = new NbtCompound();
+        optsNbt.putString("fullscreen", "off");
+        optsNbt.putString("enableVsync", "on");
+        optsNbt.putString("ao", "invalid_token");
+        optsNbt.putString("fov", "90");
+        OptionsConfigSanitizer.sanitizeOptionsCompound(optsNbt);
+
+        assertEquals("false", optsNbt.getString("fullscreen").orElse(""), "Compound fullscreen:off -> false");
+        assertEquals("true", optsNbt.getString("enableVsync").orElse(""), "Compound enableVsync:on -> true");
+        assertEquals("true", optsNbt.getString("ao").orElse(""), "Compound invalid ao -> default true");
+        assertEquals("90", optsNbt.getString("fov").orElse(""), "Non-boolean option fov untouched");
+    }
+
+    private static void testAndroidMissingFliteNarratorFallback() {
+        try {
+            // Simulate Android / PojavLauncher environment where libflite.so is absent
+            PlatformCompat.setSimulatedAndroidForTesting(true);
+            PlatformCompat.setSimulatedFliteAvailableForTesting(false);
+            assertTrue(PlatformCompat.isAndroidOrPojav(), "Simulated Android/PojavLauncher detected");
+            assertTrue(!PlatformCompat.isFliteNativeLibraryPresent(), "Flite native library reported absent on Android");
+
+            Narrator safeNarrator = PlatformCompat.createSafeNarrator();
+            assertNotNull(safeNarrator, "Safe narrator fallback is never null");
+            assertEquals(Narrator.EMPTY, safeNarrator, "Missing Flite returns Narrator.EMPTY without JNA crash");
+            assertTrue(!safeNarrator.active(), "Narrator.EMPTY reports active() == false");
+            safeNarrator.say("Welcome to AZYRON CLIENT", true, 1.0f);
+            safeNarrator.clear();
+            safeNarrator.destroy();
+
+            // Simulate desktop Linux without libflite.so.1 installed
+            PlatformCompat.setSimulatedAndroidForTesting(false);
+            PlatformCompat.setSimulatedFliteAvailableForTesting(false);
+            assertEquals(Narrator.EMPTY, PlatformCompat.createSafeNarrator(),
+                    "Minimal Linux without libflite falls back cleanly to Narrator.EMPTY");
+        } finally {
+            PlatformCompat.setSimulatedAndroidForTesting(null);
+            PlatformCompat.setSimulatedFliteAvailableForTesting(null);
+        }
+    }
+
+    private static void testOfflineLocalRealmsGracefulHandling() throws Exception {
+        // Offline / PojavLauncher local accounts
+        Session pojavLocal = new Session("JigneshLocal", "0", Optional.empty());
+        Session blankLocal = new Session("OfflinePlayer", "", Optional.empty());
+        Session offlineTag = new Session("OfflineTag", "offline", Optional.empty());
+        assertTrue(PlatformCompat.isOfflineOrLocalSession(pojavLocal), "Token '0' recognized as local/offline session");
+        assertTrue(PlatformCompat.isOfflineOrLocalSession(blankLocal), "Blank token recognized as local/offline session");
+        assertTrue(PlatformCompat.isOfflineOrLocalSession(offlineTag), "'offline' token recognized as local/offline session");
+        assertTrue(PlatformCompat.isOfflineOrLocalSession(null), "Null session recognized safely as offline");
+
+        // Online Microsoft (MSA) session MUST NOT be treated as offline (auth preserved 100%)
+        String realisticMsaJwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ4dWlkIjoiMjUzNTQxMjM0NTY3ODkwMSIsImFnZSI6IjE4In0.signatureTokenBlock123456";
+        Session onlineMsa = new Session("JigneshMSA", realisticMsaJwt, Optional.of("2535412345678901"));
+        assertTrue(!PlatformCompat.isOfflineOrLocalSession(onlineMsa),
+                "Online Microsoft session is NOT treated as offline — Realms auth remains 100% intact");
+
+        RealmsAvailability.Info offlineInfo = new RealmsAvailability.Info(RealmsAvailability.Type.AUTHENTICATION_ERROR);
+        assertEquals(RealmsAvailability.Type.AUTHENTICATION_ERROR, offlineInfo.type(),
+                "Offline Realms result uses standard AUTHENTICATION_ERROR state with null exception");
+        assertTrue(offlineInfo.exception() == null, "Null exception prevents endless Realms retry loop");
+    }
+
+    private static void testArmorHudIntegratedServerAndConfigRecovery() throws Exception {
+        Path tempCfg = Files.createTempFile("azyron-armor-srv-", ".json");
+        // Write malformed JSON first to verify Issue #9 corrupt config backup + recovery!
+        Files.writeString(tempCfg, "{ broken_json_syntax: [1, 2, ", StandardCharsets.UTF_8);
+
+        AzyronClient client = AzyronClient.bootstrapHeadlessForTests(tempCfg);
+        long cfgBackups = Files.list(tempCfg.getParent())
+                .filter(p -> p.getFileName().toString().startsWith(tempCfg.getFileName().toString() + ".")
+                        && p.getFileName().toString().endsWith(".bak"))
+                .count();
+        assertTrue(cfgBackups >= 1L, "Malformed azyron-client.json is backed up to .bak before restoring defaults");
+
+        // Issue #8: Enable Armor HUD and render all 3 durability modes (Percentage, Points, Bar Only)
+        MinecraftClient mc = MinecraftClient.getInstance();
+        mc.setOverlay(null);
+        mc.getShaderLoader().simulateReloadComplete();
+        AzyronLoadingRenderer.setCoreResourcesReady(true);
+        mc.world = new ClientWorld();
+
+        var armorHud = client.getModuleManager().getArmorHudModule();
+        armorHud.setEnabled(true);
+        // Also test NaN/Infinity resilience on HUD anchors & scale
+        armorHud.setAnchor(Float.NaN, Float.POSITIVE_INFINITY);
+        armorHud.setScale(Float.NaN);
+        assertTrue(Float.isFinite(armorHud.getAnchorX()) && Float.isFinite(armorHud.getAnchorY()),
+                "HudModule rejects NaN/Infinity anchors safely");
+        assertEquals(1.0f, armorHud.getScale(), "HudModule rejects NaN scale safely");
+
+        Setting.ModeSetting durMode = (Setting.ModeSetting) armorHud.getSettings().get(3);
+        DrawContext hudCtx = new DrawContext(854, 480);
+        for (String mode : new String[]{"Percentage", "Points", "Bar Only"}) {
+            durMode.setValue(mode);
+            armorHud.renderOnHud(hudCtx, mc, false);
+        }
+        assertEquals(15, hudCtx.drawnItemCount, "ArmorHudModule rendered 5 equipped slots x 3 modes = 15 items");
+        assertEquals(15, hudCtx.drawnStackOverlayCount,
+                "ArmorHudModule rendered 15 public drawStackOverlay durability overlays with ZERO crashes");
+        assertTrue(hudCtx.drawnStrings.contains("95%"), "ArmorHudModule Percentage mode rendered 95% (475/500)");
+        assertTrue(hudCtx.drawnStrings.contains("475/500"), "ArmorHudModule Points mode rendered 475/500");
+
+        // Issue #6: IntegratedServerOptimizer async chunk writes & MSPT overload simulation pacing
+        assertTrue(!IntegratedServerOptimizer.shouldForceSyncChunkWrites(true),
+                "IntegratedServerOptimizer disables blocking synchronous chunk writes");
+        IntegratedServerOptimizer.resetState();
+        for (int i = 0; i < 20; i++) {
+            IntegratedServerOptimizer.recordServerTickNs(52_000_000L); // 52ms overloaded server ticks
+        }
+        assertTrue(IntegratedServerOptimizer.getAverageMspt() >= 51.0, "Tracked 52ms overloaded MSPT");
+        int stepDown = IntegratedServerOptimizer.computeDesiredSimStepDown(
+                IntegratedServerOptimizer.getAverageMspt(), false, false, 8, 0
+        );
+        assertEquals(1, stepDown, "52ms MSPT steps simulation distance down by 1 chunk");
+        int critStepDown = IntegratedServerOptimizer.computeDesiredSimStepDown(60.0, true, true, 8, 1);
+        assertEquals(2, critStepDown, "Critical overload/RAM pressure steps simulation distance down by 2 chunks");
+        int recovered = IntegratedServerOptimizer.computeDesiredSimStepDown(20.0, false, false, 8, 1);
+        assertEquals(0, recovered, "20ms healthy MSPT restores full simulation distance");
+
+        IntegratedServer server = new IntegratedServer(mc);
+        IntegratedServerOptimizer.onIntegratedServerTick(server, mc);
+
+        // Issue #7: Verify 3GB-8GB JVM heap recommendations & CPU-aware chunk thread caps
+        assertEquals(1408, MemoryOptimizer.getRecommendedJvmHeapMb(3072), "3GB device recommends 1408MB heap");
+        assertEquals(2048, MemoryOptimizer.getRecommendedJvmHeapMb(4096), "4GB device recommends 2048MB heap");
+        assertEquals(3072, MemoryOptimizer.getRecommendedJvmHeapMb(6144), "6GB device recommends 3072MB heap");
+        assertEquals(4096, MemoryOptimizer.getRecommendedJvmHeapMb(8192), "8GB device recommends 4096MB heap");
+        assertTrue(MemoryOptimizer.computeOptimalChunkBuilderThreads() >= 1
+                        && MemoryOptimizer.computeOptimalChunkBuilderThreads() <= 4,
+                "Chunk builder thread budget bounded in [1..4] to protect IntegratedServer workers");
+
+        Files.deleteIfExists(tempCfg);
     }
 
     private static JsonObject readJsonEntry(JarFile jf, String name) throws Exception {

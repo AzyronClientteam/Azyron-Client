@@ -18,10 +18,10 @@ public final class MemoryOptimizer {
      * across desktop launchers and PojavLauncher.
      */
     public enum RamTier {
-        TIER_3GB("3GB RAM (Ultra-Light)", 6, 5, 1, 0, 0.55, 2, 40, 78),
-        TIER_4GB("4GB RAM (Low-Memory)", 7, 6, 1, 1, 0.65, 2, 75, 82),
-        TIER_6GB("5–6GB RAM (Balanced)", 9, 7, 2, 2, 0.80, 3, 130, 86),
-        TIER_8GB("7–8GB+ RAM (High-Headroom)", 10, 8, 2, 2, 0.90, 0, 180, 90);
+        TIER_3GB("3GB RAM (Ultra-Light)", 6, 5, 1, 0, 0.55, 1, 40, 75, 85),
+        TIER_4GB("4GB RAM (Low-Memory)", 7, 6, 1, 1, 0.65, 2, 75, 78, 87),
+        TIER_6GB("5–6GB RAM (Balanced)", 9, 7, 2, 2, 0.80, 3, 130, 82, 89),
+        TIER_8GB("7–8GB+ RAM (High-Headroom)", 10, 8, 2, 2, 0.90, 4, 180, 85, 91);
 
         private final String label;
         private final int maxSafeViewDistance;
@@ -32,6 +32,7 @@ public final class MemoryOptimizer {
         private final int recommendedChunkThreads;
         private final int dynamicParticleCap;
         private final int highPressurePercent;
+        private final int criticalPressurePercent;
 
         RamTier(
                 String label,
@@ -42,7 +43,8 @@ public final class MemoryOptimizer {
                 double maxSafeEntityScale,
                 int recommendedChunkThreads,
                 int dynamicParticleCap,
-                int highPressurePercent
+                int highPressurePercent,
+                int criticalPressurePercent
         ) {
             this.label = label;
             this.maxSafeViewDistance = maxSafeViewDistance;
@@ -53,6 +55,7 @@ public final class MemoryOptimizer {
             this.recommendedChunkThreads = recommendedChunkThreads;
             this.dynamicParticleCap = dynamicParticleCap;
             this.highPressurePercent = highPressurePercent;
+            this.criticalPressurePercent = criticalPressurePercent;
         }
 
         public String getLabel() { return label; }
@@ -64,6 +67,7 @@ public final class MemoryOptimizer {
         public int getRecommendedChunkThreads() { return recommendedChunkThreads; }
         public int getDynamicParticleCap() { return dynamicParticleCap; }
         public int getHighPressurePercent() { return highPressurePercent; }
+        public int getCriticalPressurePercent() { return criticalPressurePercent; }
     }
 
     private static final long BOOT_TIME_MS = System.currentTimeMillis();
@@ -83,6 +87,7 @@ public final class MemoryOptimizer {
     private static int allocationRateMbPerSec = 0;
     private static long lastCleanupMs = 0L;
     private static boolean hadWorldLastTick = false;
+    private static Object lastWorldDimensionKey = null;
 
     private MemoryOptimizer() {
     }
@@ -149,6 +154,38 @@ public final class MemoryOptimizer {
         return usagePercent >= detectRamTier().getHighPressurePercent();
     }
 
+    public static boolean isCriticalMemoryPressure() {
+        return usagePercent >= detectRamTier().getCriticalPressurePercent();
+    }
+
+    /**
+     * Computes optimal chunk mesh builder thread count by balancing RAM tier off-heap buffer budgets
+     * with available CPU cores so singleplayer IntegratedServer chunk generation threads are never starved.
+     */
+    public static int computeOptimalChunkBuilderThreads() {
+        RamTier tier = detectRamTier();
+        int cores = Math.max(2, Runtime.getRuntime().availableProcessors());
+        int halfCores = Math.max(1, cores / 2);
+        return Math.max(1, Math.min(tier.getRecommendedChunkThreads(), halfCores));
+    }
+
+    /**
+     * Recommends safe JVM -Xmx heap allocation (in MB) for 3GB–8GB+ devices, preserving enough
+     * physical RAM headroom for Android/OS kernel, OpenGL/ANGLE drivers, and off-heap DirectByteBuffers.
+     */
+    public static int getRecommendedJvmHeapMb(int physicalDeviceRamMb) {
+        if (physicalDeviceRamMb <= 3456) {
+            return 1408; // 3GB device: leave ~1.6GB for OS + OpenGL driver + DirectByteBuffers
+        }
+        if (physicalDeviceRamMb <= 4608) {
+            return 2048; // 4GB device: 2.0GB heap
+        }
+        if (physicalDeviceRamMb <= 6656) {
+            return 3072; // 6GB device: 3.0GB heap
+        }
+        return 4096;     // 8GB+ device: 4.0GB heap avoids G1GC humongous region stalls
+    }
+
     public static void setSimulatedRamForTesting(int simulatedHeapMb, int simulatedPhysicalMb) {
         testOverrideMaxHeapMb = simulatedHeapMb;
         testOverridePhysicalRamMb = simulatedPhysicalMb;
@@ -191,23 +228,31 @@ public final class MemoryOptimizer {
         }
 
         boolean hasWorld = client != null && client.world != null;
+        Object currentDimKey = hasWorld ? client.world.getRegistryKey() : null;
+        boolean dimensionChanged = hasWorld && hadWorldLastTick
+                && lastWorldDimensionKey != null && currentDimKey != null
+                && !lastWorldDimensionKey.equals(currentDimKey);
         boolean pastStartupGrace = (now - BOOT_TIME_MS) > STARTUP_GRACE_MS;
         int pausedCleanupThreshold = detectRamTier().getHighPressurePercent();
 
         if (pastStartupGrace) {
-            if (hadWorldLastTick && !hasWorld && usagePercent >= 58 && (now - lastCleanupMs) > 15_000L) {
-                // Reclaim discarded ClientWorld chunk & entity references right after leaving a world
+            if (hadWorldLastTick && !hasWorld && usagePercent >= 55 && (now - lastCleanupMs) > 15_000L) {
+                // Reclaim discarded ClientWorld & IntegratedServer chunk/entity graphs right after leaving a world
+                triggerSafeCleanup(now);
+            } else if (dimensionChanged && usagePercent >= 65 && (now - lastCleanupMs) > 20_000L) {
+                // Reclaim unloaded dimension chunk sections cleanly during portal transition screen
                 triggerSafeCleanup(now);
             } else if (aggressiveOptimization
                     && usagePercent >= pausedCleanupThreshold
                     && client != null
                     && client.currentScreen != null
-                    && (now - lastCleanupMs) > 45_000L) {
+                    && (now - lastCleanupMs) > 40_000L) {
                 // Only advise GC when paused in a GUI screen under high heap pressure — never mid-combat!
                 triggerSafeCleanup(now);
             }
         }
         hadWorldLastTick = hasWorld;
+        lastWorldDimensionKey = currentDimKey;
     }
 
     public static void requestManualTrim() {

@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# AZYRON CLIENT (Minecraft 1.21.11 Fabric) - Verified Dependency Downloader
-# Downloads all 9 required/optimization 1.21.11 Fabric mods into ./mods/ and verifies SHA-512 hashes.
+# AZYRON CLIENT v1.0.2 (Minecraft 1.21.11 Fabric) - Verified Dependency Downloader
+# Downloads all 8 universal PC + Android/PojavLauncher verified 1.21.11 Fabric mods into ./mods/ and verifies SHA-512 hashes.
+# Pass --desktop-immediatelyfast ONLY on desktop Windows/Linux/macOS GPUs (excluded by default for Android/PojavLauncher safety).
 set -euo pipefail
 mkdir -p mods
-echo '=== Downloading AZYRON CLIENT 1.21.11 Optimization Mod Stack ==='
+echo '=== Downloading AZYRON CLIENT v1.0.2 (1.21.11 Fabric) Verified Optimization Stack ==='
 echo ' -> Fabric API (fabric-api-0.141.6+1.21.11.jar)'
 curl -fSL 'https://cdn.modrinth.com/data/P7dR8mSH/versions/6qAuTtLR/fabric-api-0.141.6%2B1.21.11.jar' -o 'mods/fabric-api-0.141.6+1.21.11.jar'
 echo '852d3682c4f353fd0ca86546af8578513e8bcf628377fa9d49c556bc59c5024c69ab56c92fc6dfba11fed19e4316a3f5636e7e07fd3d96f7043b531aef59b637  mods/fabric-api-0.141.6+1.21.11.jar' | sha512sum -c -
@@ -28,7 +29,12 @@ echo '8f455489d4b71069e998568cf4e1450116f4360a4eb481cd89117f629c6883164886cf63ca
 echo ' -> Dynamic FPS (dynamic-fps-3.11.6+minecraft-1.21.11-fabric.jar)'
 curl -fSL 'https://cdn.modrinth.com/data/LQ3K71Q1/versions/Fab7e5Th/dynamic-fps-3.11.6%2Bminecraft-1.21.11-fabric.jar' -o 'mods/dynamic-fps-3.11.6+minecraft-1.21.11-fabric.jar'
 echo 'c45652252e2176cb8e2c44dfd9032c617135a100dcf161b9e6e6717803c14d1359d0f940fa10dc1aa6ad80669983f4b9c5636c0c2953d3314e06f893f0cdc736  mods/dynamic-fps-3.11.6+minecraft-1.21.11-fabric.jar' | sha512sum -c -
-echo ' -> ImmediatelyFast (ImmediatelyFast-Fabric-1.14.3+1.21.11.jar)'
-curl -fSL 'https://cdn.modrinth.com/data/5ZwdcRci/versions/4EwhsTu7/ImmediatelyFast-Fabric-1.14.3%2B1.21.11.jar' -o 'mods/ImmediatelyFast-Fabric-1.14.3+1.21.11.jar'
-echo '2564cb28259352c3aa5759aceca62667de08a7860a40910dad40a043af851a074b2d75cef50b9fa6f1971febb3a5ecebe4067cbd4b60e63ef711b85f4bc21407  mods/ImmediatelyFast-Fabric-1.14.3+1.21.11.jar' | sha512sum -c -
-echo '=== All 1.21.11 dependencies downloaded and SHA-512 verified! ==='
+
+if [[ "${1:-}" == "--desktop-immediatelyfast" ]]; then
+  echo ' -> [Desktop Only] ImmediatelyFast (ImmediatelyFast-Fabric-1.14.3+1.21.11.jar)'
+  curl -fSL 'https://cdn.modrinth.com/data/5ZwdcRci/versions/4EwhsTu7/ImmediatelyFast-Fabric-1.14.3%2B1.21.11.jar' -o 'mods/ImmediatelyFast-Fabric-1.14.3+1.21.11.jar'
+  echo '2564cb28259352c3aa5759aceca62667de08a7860a40910dad40a043af851a074b2d75cef50b9fa6f1971febb3a5ecebe4067cbd4b60e63ef711b85f4bc21407  mods/ImmediatelyFast-Fabric-1.14.3+1.21.11.jar' | sha512sum -c -
+else
+  echo ' [Info] Skipping ImmediatelyFast by default (incompatible with Android/PojavLauncher OpenGL translation layers; pass --desktop-immediatelyfast on desktop PC if desired).'
+fi
+echo '=== All verified 1.21.11 dependencies downloaded and SHA-512 verified! ==='

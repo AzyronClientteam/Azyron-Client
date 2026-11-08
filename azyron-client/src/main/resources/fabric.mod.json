@@ -35,7 +35,6 @@
     "ferritecore": "*",
     "entityculling": "*",
     "moreculling": "*",
-    "dynamic_fps": "*",
-    "immediatelyfast": "*"
+    "dynamic_fps": "*"
   }
 }

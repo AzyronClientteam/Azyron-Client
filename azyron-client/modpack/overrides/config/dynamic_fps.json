@@ -3,6 +3,9 @@
     "timeout": 180,
     "condition": "none"
   },
+  "battery_tracker": {
+    "enabled": false
+  },
   "states": {
     "unfocused": {
       "frame_rate_target": 15,
@@ -11,7 +14,7 @@
       }
     },
     "invisible": {
-      "frame_rate_target": 0,
+      "frame_rate_target": 1,
       "volume_multipliers": {
         "master": 0.0
       }

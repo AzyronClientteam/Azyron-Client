@@ -3,6 +3,10 @@
     "com/jigneshgaming/azyron/mixin/GameMenuScreenMixin": {
       "initWidgets": "Lnet/minecraft/class_433;method_20543()V"
     },
+    "com/jigneshgaming/azyron/mixin/GameOptionsMixin": {
+      "update": "Lnet/minecraft/class_315;method_1626(Lnet/minecraft/class_2487;)Lnet/minecraft/class_2487;",
+      "load": "Lnet/minecraft/class_315;method_1636()V"
+    },
     "com/jigneshgaming/azyron/mixin/GameRendererMixin": {
       "getFov": "Lnet/minecraft/class_757;method_3196(Lnet/minecraft/class_4184;FZ)F"
     },
@@ -10,6 +14,10 @@
       "renderCrosshair": "Lnet/minecraft/class_329;method_1736(Lnet/minecraft/class_332;Lnet/minecraft/class_9779;)V",
       "renderStatusEffectOverlay": "Lnet/minecraft/class_329;method_1765(Lnet/minecraft/class_332;Lnet/minecraft/class_9779;)V",
       "render": "Lnet/minecraft/class_329;method_1753(Lnet/minecraft/class_332;Lnet/minecraft/class_9779;)V"
+    },
+    "com/jigneshgaming/azyron/mixin/IntegratedServerMixin": {
+      "syncChunkWrites": "Lnet/minecraft/class_1132;method_27051()Z",
+      "tick": "Lnet/minecraft/class_1132;method_3748(Ljava/util/function/BooleanSupplier;)V"
     },
     "com/jigneshgaming/azyron/mixin/MinecraftClientMixin": {
       "setScreen": "Lnet/minecraft/class_310;method_1507(Lnet/minecraft/class_437;)V",
@@ -22,8 +30,21 @@
       "onMouseScroll": "Lnet/minecraft/class_312;method_1598(JDD)V",
       "onMouseScroll(JDD)V": "Lnet/minecraft/class_312;method_1598(JDD)V"
     },
+    "com/jigneshgaming/azyron/mixin/NarratorManagerMixin": {
+      "<init>": "Lnet/minecraft/class_333;<init>(Lnet/minecraft/class_310;)V",
+      "Lcom/mojang/text2speech/Narrator;getNarrator()Lcom/mojang/text2speech/Narrator;": "Lcom/mojang/text2speech/Narrator;getNarrator()Lcom/mojang/text2speech/Narrator;",
+      "checkNarratorLibrary": "Lnet/minecraft/class_333;method_52183(Z)V"
+    },
     "com/jigneshgaming/azyron/mixin/ParticleManagerMixin": {
       "addParticle(Lnet/minecraft/particle/ParticleEffect;DDDDDD)Lnet/minecraft/client/particle/Particle;": "Lnet/minecraft/class_702;method_3056(Lnet/minecraft/class_2394;DDDDDD)Lnet/minecraft/class_703;"
+    },
+    "com/jigneshgaming/azyron/mixin/PersistentStateManagerMixin": {
+      "readFromFile": "Lnet/minecraft/class_26;method_120(Lnet/minecraft/class_10741;)Lnet/minecraft/class_18;",
+      "Lnet/minecraft/world/PersistentStateManager;readNbt(Ljava/lang/String;Lnet/minecraft/datafixer/DataFixTypes;I)Lnet/minecraft/nbt/NbtCompound;": "Lnet/minecraft/class_26;method_17923(Ljava/lang/String;Lnet/minecraft/class_4284;I)Lnet/minecraft/class_2487;",
+      "save(Lnet/minecraft/world/PersistentStateType;Lnet/minecraft/nbt/NbtCompound;)V": "Lnet/minecraft/class_26;method_65963(Lnet/minecraft/class_10741;Lnet/minecraft/class_2487;)V"
+    },
+    "com/jigneshgaming/azyron/mixin/RealmsAvailabilityMixin": {
+      "checkInternal": "Lnet/minecraft/class_8647;method_52626()Ljava/util/concurrent/CompletableFuture;"
     },
     "com/jigneshgaming/azyron/mixin/SplashOverlayMixin": {
       "render": "Lnet/minecraft/class_425;method_25394(Lnet/minecraft/class_332;IIF)V"
@@ -34,6 +55,10 @@
       "com/jigneshgaming/azyron/mixin/GameMenuScreenMixin": {
         "initWidgets": "Lnet/minecraft/class_433;method_20543()V"
       },
+      "com/jigneshgaming/azyron/mixin/GameOptionsMixin": {
+        "update": "Lnet/minecraft/class_315;method_1626(Lnet/minecraft/class_2487;)Lnet/minecraft/class_2487;",
+        "load": "Lnet/minecraft/class_315;method_1636()V"
+      },
       "com/jigneshgaming/azyron/mixin/GameRendererMixin": {
         "getFov": "Lnet/minecraft/class_757;method_3196(Lnet/minecraft/class_4184;FZ)F"
       },
@@ -41,6 +66,10 @@
         "renderCrosshair": "Lnet/minecraft/class_329;method_1736(Lnet/minecraft/class_332;Lnet/minecraft/class_9779;)V",
         "renderStatusEffectOverlay": "Lnet/minecraft/class_329;method_1765(Lnet/minecraft/class_332;Lnet/minecraft/class_9779;)V",
         "render": "Lnet/minecraft/class_329;method_1753(Lnet/minecraft/class_332;Lnet/minecraft/class_9779;)V"
+      },
+      "com/jigneshgaming/azyron/mixin/IntegratedServerMixin": {
+        "syncChunkWrites": "Lnet/minecraft/class_1132;method_27051()Z",
+        "tick": "Lnet/minecraft/class_1132;method_3748(Ljava/util/function/BooleanSupplier;)V"
       },
       "com/jigneshgaming/azyron/mixin/MinecraftClientMixin": {
         "setScreen": "Lnet/minecraft/class_310;method_1507(Lnet/minecraft/class_437;)V",
@@ -53,8 +82,21 @@
         "onMouseScroll": "Lnet/minecraft/class_312;method_1598(JDD)V",
         "onMouseScroll(JDD)V": "Lnet/minecraft/class_312;method_1598(JDD)V"
       },
+      "com/jigneshgaming/azyron/mixin/NarratorManagerMixin": {
+        "<init>": "Lnet/minecraft/class_333;<init>(Lnet/minecraft/class_310;)V",
+        "Lcom/mojang/text2speech/Narrator;getNarrator()Lcom/mojang/text2speech/Narrator;": "Lcom/mojang/text2speech/Narrator;getNarrator()Lcom/mojang/text2speech/Narrator;",
+        "checkNarratorLibrary": "Lnet/minecraft/class_333;method_52183(Z)V"
+      },
       "com/jigneshgaming/azyron/mixin/ParticleManagerMixin": {
         "addParticle(Lnet/minecraft/particle/ParticleEffect;DDDDDD)Lnet/minecraft/client/particle/Particle;": "Lnet/minecraft/class_702;method_3056(Lnet/minecraft/class_2394;DDDDDD)Lnet/minecraft/class_703;"
+      },
+      "com/jigneshgaming/azyron/mixin/PersistentStateManagerMixin": {
+        "readFromFile": "Lnet/minecraft/class_26;method_120(Lnet/minecraft/class_10741;)Lnet/minecraft/class_18;",
+        "Lnet/minecraft/world/PersistentStateManager;readNbt(Ljava/lang/String;Lnet/minecraft/datafixer/DataFixTypes;I)Lnet/minecraft/nbt/NbtCompound;": "Lnet/minecraft/class_26;method_17923(Ljava/lang/String;Lnet/minecraft/class_4284;I)Lnet/minecraft/class_2487;",
+        "save(Lnet/minecraft/world/PersistentStateType;Lnet/minecraft/nbt/NbtCompound;)V": "Lnet/minecraft/class_26;method_65963(Lnet/minecraft/class_10741;Lnet/minecraft/class_2487;)V"
+      },
+      "com/jigneshgaming/azyron/mixin/RealmsAvailabilityMixin": {
+        "checkInternal": "Lnet/minecraft/class_8647;method_52626()Ljava/util/concurrent/CompletableFuture;"
       },
       "com/jigneshgaming/azyron/mixin/SplashOverlayMixin": {
         "render": "Lnet/minecraft/class_425;method_25394(Lnet/minecraft/class_332;IIF)V"

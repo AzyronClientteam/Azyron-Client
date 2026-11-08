@@ -58,7 +58,7 @@ public abstract class Setting<T> {
         @Override
         public void deserialize(String raw) {
             if (raw != null) {
-                this.value = Boolean.parseBoolean(raw.trim());
+                this.value = com.jigneshgaming.azyron.util.OptionsConfigSanitizer.parseNormalizedBoolean(raw, defaultValue);
             }
         }
     }
@@ -105,7 +105,7 @@ public abstract class Setting<T> {
 
         @Override
         public void setValue(Double val) {
-            if (val != null && !val.isNaN()) {
+            if (val != null && Double.isFinite(val)) {
                 this.value = Math.max(min, Math.min(max, val));
             }
         }

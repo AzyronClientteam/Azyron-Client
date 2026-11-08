@@ -17,10 +17,10 @@
 
 | Asset | Description |
 | :--- | :--- |
-| `releases/Azyron-Client-1.0.jar` | Production Minecraft `1.21.11` Fabric client JAR (`intermediary` remapped + Mixin refmap) |
-| `releases/Azyron-Modpack-1.0.mrpack` | Modrinth Modpack containing `Azyron-Client-1.0.jar` + all 9 verified `1.21.11` optimization mods + pre-tuned configs |
-| `releases/Azyron-Client-1.0.zip` | Source code archive (`.zip`) |
-| `releases/Azyron-Client-1.0.tar.gz` | Source code archive (`.tar.gz`) |
+| `releases/Azyron-Client-1.0.2.jar` | Production Minecraft `1.21.11` Fabric client JAR (`intermediary` remapped + 12 Mixin refmaps) |
+| `releases/Azyron-Modpack-1.0.2.mrpack` | Universal PC + Android/PojavLauncher Modrinth Modpack containing `Azyron-Client-1.0.2.jar` + all 8 verified universal `1.21.11` optimization mods + pre-tuned configs |
+| `releases/Azyron-Client-Source-v1.0.2.zip` | Complete Java 21 source code archive (`.zip`) |
+| `releases/Azyron-Client-Source-v1.0.2.tar.gz` | Complete Java 21 source code archive (`.tar.gz`) |
 | `releases/SHA256SUMS.txt` | Verified SHA-256 checksums for all release assets |
 
 ---
