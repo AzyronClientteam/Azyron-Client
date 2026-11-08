@@ -29,7 +29,7 @@
 - **Fixed Version Metadata (`1.0.2`):** Replaced unexpanded literal `"${version}"` placeholders with **`"1.0.2"`** across `fabric.mod.json`, Gradle build configuration, UI footers, and Modrinth modpack manifests.
 - **Fixed Cold-Boot Shader Error (`minecraft:core/rendertype_text`):** Added `ShaderLoader` readiness gating (`UiRenderUtils.isCoreTextShaderReady`) and a `RenderPipelines.GUI` 5×7 pixel-matrix boot renderer during initial `SplashOverlay` reload so `VERTEX` and `FRAGMENT` core text shaders are never queried before shader compilation finishes.
 - **Verified `1.21.11` Fabric Optimization Stack & PojavLauncher Tuning:** Verified all **9** companion Fabric `1.21.11` mods (**Fabric API `0.141.6+1.21.11`**, **Sodium `0.8.14`**, **Lithium `0.21.4`**, **FerriteCore `8.2.0`**, **EntityCulling `1.11.3`**, **More Culling `1.6.2`**, **Cloth Config `21.11.153`**, **Dynamic FPS `3.11.6`**, and **ImmediatelyFast `1.14.3`**) with zero duplicate JARs and mobile OpenGL ES–safe defaults (`use_no_error_g_l_context: false`, `font_atlas_resizing: false`, `fast_buffer_upload: false`).
-- **Removed Legacy Builds:** Removed all `1.0` / `1.0.1` client and modpack artifacts in favor of clean `1.0.2` builds.
+- **Clean `1.0.2` Artifact Set:** Packaged fresh, verified `1.0.2` client JAR, Modrinth `v1` modpack, and Java 21 source code archives.
 
 ---
 
