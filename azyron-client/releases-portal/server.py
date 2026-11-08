@@ -54,8 +54,8 @@ ASSET_DEFINITIONS = [
         "show_sha256": True,
     },
     {
-        "slug": "Source-code.zip",
-        "display_name": "Source code (zip)",
+        "slug": "Source-code-v1.0.2.zip",
+        "display_name": "Source code v1.0.2 (zip)",
         "download_filename": "Azyron-Client-Source-v1.0.2.zip",
         "disk_filename": "Azyron-Client-Source-v1.0.2.zip",
         "content_type": "application/zip",
@@ -63,8 +63,8 @@ ASSET_DEFINITIONS = [
         "show_sha256": False,
     },
     {
-        "slug": "Source-code.tar.gz",
-        "display_name": "Source code (tar.gz)",
+        "slug": "Source-code-v1.0.2.tar.gz",
+        "display_name": "Source code v1.0.2 (tar.gz)",
         "download_filename": "Azyron-Client-Source-v1.0.2.tar.gz",
         "disk_filename": "Azyron-Client-Source-v1.0.2.tar.gz",
         "content_type": "application/gzip",
@@ -237,7 +237,7 @@ def render_release_body_html(assets):
       <div class="markdown-body">
         <blockquote>
           <p><strong>AZYRON CLIENT — PERFORMANCE. SMOOTHNESS. STYLE.</strong><br>
-          <strong>AZYRON CLIENT <code>v1.0.2</code> (DRAFT — Private Staging)</strong>, crafted by <strong>JIGNESH GAMING</strong> exclusively for <strong>Minecraft Java Edition <code>1.21.11</code> (Fabric Loader <code>0.20.1</code>)</strong>. Includes complete <code>MouseMixin</code> <code>1.21.11</code> crash repair, cold-boot <code>rendertype_text</code> shader fix, expanded <code>1.0.2</code> metadata, and PojavLauncher GLES hardening.</p>
+          <strong>AZYRON CLIENT <code>v1.0.2</code> PRE-RELEASE (Draft Pre-release)</strong>, crafted by <strong>JIGNESH GAMING</strong> exclusively for <strong>Minecraft Java Edition <code>1.21.11</code> with Fabric</strong>. Includes complete <code>MouseMixin</code> <code>1.21.11</code> crash repair, cold-boot <code>rendertype_text</code> shader fix, verified <code>1.0.2</code> metadata, and PojavLauncher GLES hardening.</p>
         </blockquote>
 
         <table>
@@ -245,9 +245,9 @@ def render_release_body_html(assets):
             <tr><th>Specification</th><th>Details</th></tr>
           </thead>
           <tbody>
-            <tr><td><strong>Release Version</strong></td><td><code>AZYRON CLIENT v1.0.2</code> (<code>v1.0.2</code> — <strong>Draft</strong>)</td></tr>
-            <tr><td><strong>Release Status</strong></td><td><code>Draft</code> <em>(Private Staging — Waiting for User Approval Before Publishing)</em></td></tr>
-            <tr><td><strong>Minecraft Version</strong></td><td><strong>Java Edition <code>1.21.11</code> — Fabric</strong> <em>(Strictly <code>1.21.11</code>)</em></td></tr>
+            <tr><td><strong>Release Version</strong></td><td><code>AZYRON CLIENT v1.0.2 PRE-RELEASE</code> (<code>1.0.2</code>)</td></tr>
+            <tr><td><strong>Release Status</strong></td><td><code>Draft Pre-release</code> <em>(Unpublished — Waiting for User Approval)</em></td></tr>
+            <tr><td><strong>Minecraft Compatibility</strong></td><td><strong>Java Edition <code>1.21.11</code> with Fabric</strong> <em>(Strictly <code>1.21.11</code>)</em></td></tr>
             <tr><td><strong>Fabric Requirements</strong></td><td>Fabric Loader <code>0.20.1</code> <em>(min <code>&gt;=0.17.3</code>)</em> + Fabric API <code>0.141.6+1.21.11</code></td></tr>
             <tr><td><strong>Java Runtime</strong></td><td><strong>Java 21 LTS</strong> <em>(64-bit OpenJDK 21)</em></td></tr>
             <tr><td><strong>Developer</strong></td><td><strong>JIGNESH GAMING</strong></td></tr>
@@ -421,8 +421,8 @@ def render_page(view_mode: str, assets):
             <div class="Box release-card">
               <div class="release-card-body">
                 <div class="release-title-row">
-                  <h1 class="release-title"><a href="/releases/tag/v1.0.2" class="release-title-link">AZYRON CLIENT v1.0.2 (Minecraft 1.21.11 Fabric)</a></h1>
-                  <span class="Label Label--draft" title="Unpublished draft release — kept private until approved">Draft</span>
+                  <h1 class="release-title"><a href="/releases/tag/v0.1.0-pre" class="release-title-link">AZYRON CLIENT v1.0.2 PRE-RELEASE</a></h1>
+                  <span class="Label Label--draft" title="Draft Pre-release — not published as stable">Draft Pre-release</span>
                 </div>
                 {body_html}
                 {assets_section}
@@ -442,17 +442,17 @@ def render_page(view_mode: str, assets):
           <div class="Box release-card">
             <div class="release-card-body">
               <div class="release-title-row">
-                <h1 class="release-title">AZYRON CLIENT v1.0.2 (Minecraft 1.21.11 Fabric)</h1>
-                <span class="Label Label--draft" title="Unpublished draft release — kept private until approved">Draft</span>
+                <h1 class="release-title">AZYRON CLIENT v1.0.2 PRE-RELEASE</h1>
+                <span class="Label Label--draft" title="Draft Pre-release — not published as stable">Draft Pre-release</span>
               </div>
               <div class="release-meta-bar">
                 <span class="avatar-circle">JG</span>
                 <strong class="author-name">JIGNESH GAMING</strong>
-                <span>created this draft release <relative-time datetime="{upload_iso}" title="{upload_full}">{upload_short}</relative-time></span>
+                <span>updated this draft pre-release <relative-time datetime="{upload_iso}" title="{upload_full}">{upload_short}</relative-time></span>
                 <span class="meta-dot">·</span>
-                <span class="meta-inline">{OCTICONS['tag']} <span class="mono">v1.0.2</span></span>
+                <span class="meta-inline">{OCTICONS['tag']} <span class="mono">v0.1.0-pre</span></span>
                 <span class="meta-dot">·</span>
-                <span class="meta-inline">{OCTICONS['commit']} <span class="mono">54017b8</span></span>
+                <span class="meta-inline">Client <span class="mono">v1.0.2</span></span>
               </div>
               <div class="release-divider"></div>
               {body_html}
@@ -466,7 +466,7 @@ def render_page(view_mode: str, assets):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Release AZYRON CLIENT v1.0.2 · AzyronClientteam/Azyron-Client</title>
+  <title>Release AZYRON CLIENT v1.0.2 PRE-RELEASE · AzyronClientteam/Azyron-Client</title>
   <style>
     :root {{
       --bg-canvas: #0d1117;
@@ -1016,14 +1016,9 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
 
         assets = load_live_assets()
         by_slug = {a["slug"]: a for a in assets}
-        if "Azyron-Client-1.0.2.jar" in by_slug:
-            by_slug["Azyron-Client-1.0.1.jar"] = by_slug["Azyron-Client-1.0.2.jar"]
-            by_slug["Azyron-Client-1.0.jar"] = by_slug["Azyron-Client-1.0.2.jar"]
-        if "Azyron-Modpack-1.0.2.mrpack" in by_slug:
-            by_slug["Azyron-Modpack-1.0.mrpack"] = by_slug["Azyron-Modpack-1.0.2.mrpack"]
 
         if (
-            path in ("/", "/releases/tag/v1.0.2", "/releases/tag/v0.1.0-pre", "/releases/tag/v1.0")
+            path in ("/", "/releases/tag/v0.1.0-pre", "/releases/tag/v1.0.2")
             or path.startswith("/releases/tag/untagged-")
             or path.startswith("/releases/edit/untagged-")
         ):
@@ -1048,13 +1043,14 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                 self.wfile.write(html)
             return
 
-        if path in ("/api/releases/v1.0.2", "/api/releases/v0.1.0-pre", "/api/releases/v1.0"):
+        if path in ("/api/releases/v0.1.0-pre", "/api/releases/v1.0.2"):
             payload = json.dumps({
-                "id": 438031216,
-                "tag_name": "v1.0.2",
-                "name": "AZYRON CLIENT v1.0.2 (Minecraft 1.21.11 Fabric)",
+                "id": 437365942,
+                "tag_name": "v0.1.0-pre",
+                "version": "1.0.2",
+                "name": "AZYRON CLIENT v1.0.2 PRE-RELEASE",
                 "draft": True,
-                "prerelease": False,
+                "prerelease": True,
                 "assets": [
                     {
                         "name": a["display_name"],
@@ -1063,7 +1059,7 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                         "size_human": a["size_human"],
                         "digest": f"sha256:{a['sha256']}" if a["show_sha256"] else None,
                         "uploaded_at": a["uploaded_iso"],
-                        "browser_download_url": f"/releases/download/v1.0.2/{a['slug']}",
+                        "browser_download_url": f"/releases/download/v0.1.0-pre/{a['slug']}",
                     }
                     for a in assets
                 ],
@@ -1077,7 +1073,7 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                 self.wfile.write(payload)
             return
 
-        for prefix in ("/releases/download/v1.0.2/", "/releases/download/v0.1.0-pre/", "/releases/download/v1.0/"):
+        for prefix in ("/releases/download/v0.1.0-pre/", "/releases/download/v1.0.2/"):
             if path.startswith(prefix):
                 slug = path[len(prefix):]
                 asset = by_slug.get(slug)
