@@ -12,6 +12,7 @@ import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ConfirmLinkScreen;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.SplashOverlay;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
 import net.minecraft.client.gui.screen.option.OptionsScreen;
@@ -74,8 +75,22 @@ public final class AzyronMainMenuScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        // Skip rendering underneath an opaque cold-boot SplashOverlay before ShaderLoader finishes
+        // compiling minecraft:core/rendertype_text and panorama textures.
+        if (this.client != null && this.client.getOverlay() instanceof SplashOverlay && !AzyronLoadingRenderer.isCoreResourcesReady()) {
+            return;
+        }
+        if (!UiRenderUtils.isCoreTextShaderReady(this.client)) {
+            context.fillGradient(0, 0, this.width, this.height, 0xFF080A16, 0xFF0D1024);
+            return;
+        }
+
         // 1. Live rotating Minecraft 1.21.11 3D Panorama background
-        this.renderPanoramaBackground(context, delta);
+        try {
+            this.renderPanoramaBackground(context, delta);
+        } catch (Throwable ignored) {
+            context.fillGradient(0, 0, this.width, this.height, 0xFF080A16, 0xFF0D1024);
+        }
 
         // 2. Premium dark obsidian + purple/electric-blue vignette overlay
         context.fillGradient(0, 0, this.width, this.height, 0xB8080A16, 0xDC0D1024);
@@ -120,7 +135,7 @@ public final class AzyronMainMenuScreen extends Screen {
         }
 
         // Bottom credits & version footer
-        String leftFooter = "AZYRON CLIENT v1.0.0  •  Minecraft 1.21.11 (Fabric)";
+        String leftFooter = "AZYRON CLIENT v" + AzyronClient.CLIENT_VERSION + "  •  Minecraft 1.21.11 (Fabric)";
         String rightFooter = "Made by JIGNESH GAMING";
         context.drawTextWithShadow(this.textRenderer, leftFooter, 8, this.height - 14, AzyronTheme.TEXT_MUTED);
         int rw = this.textRenderer.getWidth(rightFooter);

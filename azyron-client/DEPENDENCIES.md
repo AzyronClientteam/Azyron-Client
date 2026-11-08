@@ -24,7 +24,7 @@ All dependencies below are strictly verified for **Minecraft Java Edition `1.21.
 
 ## 3. Integrated `1.21.11` Optimization Mod Stack
 
-Included automatically in `releases/AZYRON-CLIENT-1.0.0+mc1.21.11.mrpack` and `releases/download-dependencies.sh` / `.ps1`, with pre-tuned configuration overrides in `config/`:
+Included automatically in `releases/Azyron-Modpack-1.0.2.mrpack` and `releases/download-dependencies.sh` / `.ps1`, with pre-tuned PojavLauncher-safe configuration overrides in `config/`:
 
 | Mod | Version (`1.21.11`) | Optimization Role | SHA-1 | Direct Modrinth CDN URL |
 | :--- | :--- | :--- | :--- | :--- |

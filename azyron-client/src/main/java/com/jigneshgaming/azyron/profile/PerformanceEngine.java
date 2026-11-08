@@ -53,7 +53,10 @@ public final class PerformanceEngine {
                 opts.getViewDistance().setValue(profile.getViewDistance());
                 opts.getSimulationDistance().setValue(profile.getSimulationDistance());
                 opts.getBiomeBlendRadius().setValue(profile.getBiomeBlendRadius());
-                opts.getMipmapLevels().setValue(profile.getMipmapLevels());
+                // Avoid triggering an asynchronous full texture/shader reload mid-world on PojavLauncher
+                if (client.world == null) {
+                    opts.getMipmapLevels().setValue(profile.getMipmapLevels());
+                }
                 opts.getEntityDistanceScaling().setValue(profile.getEntityDistanceScaling());
                 opts.getEntityShadows().setValue(profile.isEntityShadows());
                 opts.ao.setValue(profile.isAmbientOcclusion());
@@ -153,7 +156,7 @@ public final class PerformanceEngine {
                     + "    \"use_entity_culling\": true,\n"
                     + "    \"use_fog_occlusion\": true,\n"
                     + "    \"use_block_face_culling\": true,\n"
-                    + "    \"use_no_error_g_l_context\": true\n"
+                    + "    \"use_no_error_g_l_context\": false\n"
                     + "  }\n"
                     + "}\n"
             );
@@ -209,11 +212,11 @@ public final class PerformanceEngine {
 
             writeIfAbsent(configDir.resolve("immediatelyfast.json"),
                     "{\n"
-                    + "  \"font_atlas_resizing\": true,\n"
+                    + "  \"font_atlas_resizing\": false,\n"
                     + "  \"map_atlas_generation\": true,\n"
                     + "  \"hud_batching\": true,\n"
                     + "  \"fast_text_lookup\": true,\n"
-                    + "  \"fast_buffer_upload\": true\n"
+                    + "  \"fast_buffer_upload\": false\n"
                     + "}\n"
             );
 

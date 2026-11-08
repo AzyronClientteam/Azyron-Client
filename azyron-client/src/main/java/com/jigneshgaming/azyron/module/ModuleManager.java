@@ -108,6 +108,9 @@ public final class ModuleManager {
         if (client == null || client.options == null || client.options.hudHidden) {
             return;
         }
+        if (!UiRenderUtils.isCoreTextShaderReady(client)) {
+            return;
+        }
         if (client.currentScreen instanceof HudEditorScreen) {
             // HudEditorScreen renders widgets directly with selection/snap overlays
             return;

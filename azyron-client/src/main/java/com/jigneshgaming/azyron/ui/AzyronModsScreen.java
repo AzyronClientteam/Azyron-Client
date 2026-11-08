@@ -78,6 +78,12 @@ public final class AzyronModsScreen extends Screen {
         this.scrollOffset = 0.0;
     }
 
+    public void openClientOptionsTab() {
+        this.editingModule = null;
+        this.activeSection = Section.CLIENT_SETTINGS;
+        this.scrollOffset = 0.0;
+    }
+
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         ctx.fillGradient(0, 0, this.width, this.height, 0xCC060812, 0xDC0B0F22);
@@ -416,7 +422,7 @@ public final class AzyronModsScreen extends Screen {
 
         int infoY = y + 118;
         UiRenderUtils.drawRoundedPanel(ctx, x, infoY, w, 58, 0xCC090C18, AzyronTheme.BORDER_SUBTLE);
-        ctx.drawTextWithShadow(this.textRenderer, "AZYRON CLIENT  •  v1.0.0  (Minecraft 1.21.11 Fabric)", x + 10, infoY + 8, AzyronTheme.ACCENT_ELECTRIC_BLUE);
+        ctx.drawTextWithShadow(this.textRenderer, "AZYRON CLIENT  •  v" + AzyronClient.CLIENT_VERSION + "  (Minecraft 1.21.11 Fabric)", x + 10, infoY + 8, AzyronTheme.ACCENT_ELECTRIC_BLUE);
         ctx.drawTextWithShadow(this.textRenderer, "Created by JIGNESH GAMING  |  PojavLauncher & Desktop Ready", x + 10, infoY + 22, AzyronTheme.TEXT_PRIMARY);
         ctx.drawTextWithShadow(this.textRenderer, "Keybinds: [Right Shift] Client Menu  •  [C] Smooth Zoom  •  [H] HUD Editor", x + 10, infoY + 36, AzyronTheme.TEXT_MUTED);
     }

@@ -1,18 +1,18 @@
-# Uploads or stages all 4 verified AZYRON CLIENT v0.1.0-pre release assets on GitHub
-# while keeping the release strictly in DRAFT PRE-RELEASE mode (unpublished).
+# Stages all 4 verified AZYRON CLIENT v1.0.2 release assets on GitHub
+# while keeping the release strictly in DRAFT mode (unpublished).
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ClientRoot = Resolve-Path (Join-Path $ScriptDir "..")
 $ReleasesDir = Join-Path $ClientRoot "releases"
-$NotesFile = Join-Path $ClientRoot "RELEASE_NOTES_v0.1.0-pre.md"
+$NotesFile = Join-Path $ClientRoot "RELEASE_NOTES_v1.0.2.md"
 $Repo = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "AzyronClientteam/Azyron-Client" }
-$Tag = "v0.1.0-pre"
+$Tag = "v1.0.2"
 
-$JarFile = Join-Path $ReleasesDir "Azyron-Client-1.0.1.jar"
-$MrpackFile = Join-Path $ReleasesDir "Azyron-Modpack-1.0.mrpack"
-$SrcZip = Join-Path $ReleasesDir "Azyron-Client-Source-v1.0.1.zip"
-$SrcTgz = Join-Path $ReleasesDir "Azyron-Client-Source-v1.0.1.tar.gz"
+$JarFile = Join-Path $ReleasesDir "Azyron-Client-1.0.2.jar"
+$MrpackFile = Join-Path $ReleasesDir "Azyron-Modpack-1.0.2.mrpack"
+$SrcZip = Join-Path $ReleasesDir "Azyron-Client-Source-v1.0.2.zip"
+$SrcTgz = Join-Path $ReleasesDir "Azyron-Client-Source-v1.0.2.tar.gz"
 
 foreach ($f in @($JarFile, $MrpackFile, $SrcZip, $SrcTgz, $NotesFile)) {
     if (!(Test-Path $f) -or ((Get-Item $f).Length -eq 0)) {
@@ -22,22 +22,23 @@ foreach ($f in @($JarFile, $MrpackFile, $SrcZip, $SrcTgz, $NotesFile)) {
 
 gh release view $Tag -R $Repo *> $null
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "Uploading source archives to existing Draft Pre-Release $Tag on $Repo..."
+    Write-Host "Uploading assets to existing Draft Release $Tag on $Repo..."
     gh release upload $Tag `
-        "$SrcZip#Azyron-Client-Source-v1.0.1.zip" `
-        "$SrcTgz#Azyron-Client-Source-v1.0.1.tar.gz" `
+        "$JarFile#Azyron-Client-1.0.2.jar" `
+        "$MrpackFile#Azyron-Modpack-1.0.2.mrpack" `
+        "$SrcZip#Azyron-Client-Source-v1.0.2.zip" `
+        "$SrcTgz#Azyron-Client-Source-v1.0.2.tar.gz" `
         --clobber `
         -R $Repo
 } else {
-    Write-Host "Creating UNPUBLISHED Draft Pre-Release $Tag on $Repo (--draft --prerelease)..."
+    Write-Host "Creating UNPUBLISHED Draft Release $Tag on $Repo (--draft)..."
     gh release create $Tag `
-        "$JarFile#Azyron-Client-1.0.1.jar" `
-        "$MrpackFile#Azyron-Modpack-1.0.mrpack" `
-        "$SrcZip#Azyron-Client-Source-v1.0.1.zip" `
-        "$SrcTgz#Azyron-Client-Source-v1.0.1.tar.gz" `
+        "$JarFile#Azyron-Client-1.0.2.jar" `
+        "$MrpackFile#Azyron-Modpack-1.0.2.mrpack" `
+        "$SrcZip#Azyron-Client-Source-v1.0.2.zip" `
+        "$SrcTgz#Azyron-Client-Source-v1.0.2.tar.gz" `
         --draft `
-        --prerelease `
-        --title "AZYRON CLIENT v0.1.0 PRE-RELEASE" `
+        --title "AZYRON CLIENT v1.0.2 (Minecraft 1.21.11 Fabric)" `
         --notes-file $NotesFile `
         -R $Repo
 }

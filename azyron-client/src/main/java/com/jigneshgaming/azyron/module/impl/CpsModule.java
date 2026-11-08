@@ -28,7 +28,14 @@ public final class CpsModule extends HudModule {
     @Override
     public void onTick(MinecraftClient client) {
         if (client != null && client.options != null && client.currentScreen == null) {
-            CpsTracker.pollKeybindEdges(client.options.attackKey.isPressed(), client.options.useKey.isPressed());
+            boolean mouseLeft = client.mouse != null && client.mouse.wasLeftButtonClicked();
+            boolean mouseRight = client.mouse != null && client.mouse.wasRightButtonClicked();
+            CpsTracker.pollFallbackInputs(
+                    mouseLeft,
+                    mouseRight,
+                    client.options.attackKey.isPressed(),
+                    client.options.useKey.isPressed()
+            );
         }
     }
 

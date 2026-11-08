@@ -81,7 +81,7 @@ cd azyron-client
 ./gradlew clean build
 ```
 
-Compiled artifacts are output to `build/libs/azyron-client-1.0.0+mc1.21.11.jar`.
+Compiled artifacts are output to `build/libs/azyron-client-1.0.2.jar` and `releases/Azyron-Client-1.0.2.jar`.
 
 ---
 

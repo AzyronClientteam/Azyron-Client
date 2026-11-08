@@ -35,7 +35,7 @@ public final class AzyronConfig {
     }
 
     public static final class ConfigData {
-        public String configVersion = "1.0.0";
+        public String configVersion = "1.0.2";
         public String activeProfile = PerformanceProfile.BALANCED.name();
         public boolean customMainMenuEnabled = true;
         public boolean customLoadingScreenEnabled = true;

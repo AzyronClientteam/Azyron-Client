@@ -2,6 +2,7 @@ package com.jigneshgaming.azyron.mixin;
 
 import com.jigneshgaming.azyron.AzyronClient;
 import com.jigneshgaming.azyron.ui.AzyronLoadingRenderer;
+import com.jigneshgaming.azyron.util.UiRenderUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.SplashOverlay;
@@ -15,7 +16,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Renders the custom AZYRON CLIENT loading screen ("Welcome to AZYRON CLIENT")
- * at @At("TAIL") so vanilla resource reload completion and Dynamic-FPS remain 100% compatible.
+ * at @At("TAIL") while strictly respecting cold-boot ShaderLoader readiness so
+ * minecraft:core/rendertype_text is never queried before ResourceReload completes.
  */
 @Mixin(SplashOverlay.class)
 public abstract class SplashOverlayMixin {
@@ -29,11 +31,18 @@ public abstract class SplashOverlayMixin {
     @Shadow
     private long reloadCompleteTime;
 
+    @Shadow
+    @Final
+    private boolean reloading;
+
     @Unique
     private long azyron$fadeStartMs = -1L;
 
-    @Inject(method = "render", at = @At("TAIL"))
+    @Inject(method = "render", at = @At("TAIL"), require = 0)
     private void azyron$renderLoadingOverlay(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        boolean reloadFinished = this.reloading || (this.reloadCompleteTime != -1L);
+        AzyronLoadingRenderer.setCoreResourcesReady(reloadFinished);
+
         AzyronClient inst = AzyronClient.getInstance();
         if (inst != null && inst.getConfig() != null && !inst.getConfig().isCustomLoadingScreenEnabled()) {
             return;
@@ -51,6 +60,7 @@ public abstract class SplashOverlayMixin {
             fadeAlpha = Math.max(0.0f, 1.0f - (elapsed / (float) fadeDuration));
         }
 
-        AzyronLoadingRenderer.render(context, this.client, this.progress, fadeAlpha);
+        boolean textShaderReady = reloadFinished && UiRenderUtils.isCoreTextShaderReady(this.client);
+        AzyronLoadingRenderer.render(context, this.client, this.progress, fadeAlpha, textShaderReady);
     }
 }

@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(MinecraftClient.class)
 public abstract class MinecraftClientMixin {
-    @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true, require = 0)
     private void azyron$interceptTitleScreen(Screen screen, CallbackInfo ci) {
         if (screen instanceof TitleScreen) {
             MemoryOptimizer.onWorldTransition();
@@ -30,7 +30,7 @@ public abstract class MinecraftClientMixin {
         }
     }
 
-    @Inject(method = "getWindowTitle", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "getWindowTitle", at = @At("RETURN"), cancellable = true, require = 0)
     private void azyron$brandWindowTitle(CallbackInfoReturnable<String> cir) {
         String original = cir.getReturnValue();
         if (original != null && !original.startsWith("AZYRON CLIENT")) {

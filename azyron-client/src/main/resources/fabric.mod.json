@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "azyron-client",
-  "version": "${version}",
+  "version": "1.0.2",
   "name": "AZYRON CLIENT",
   "description": "AZYRON CLIENT – PERFORMANCE. SMOOTHNESS. STYLE. Premium Minecraft 1.21.11 Fabric Client featuring FPS Optimization, Performance Profiles, Right-Shift Mods Menu, HUD Editor, Keystrokes, CPS, Zoom, Custom Crosshair & Cosmetics. Made by JIGNESH GAMING.",
   "authors": [

@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 public final class AzyronClient implements ClientModInitializer {
     public static final String MOD_ID = "azyron-client";
     public static final String CLIENT_NAME = "AZYRON CLIENT";
-    public static final String CLIENT_VERSION = "1.0.0";
+    public static final String CLIENT_VERSION = "1.0.2";
     public static final String TARGET_MC_VERSION = "1.21.11";
     public static final String DEVELOPER = "JIGNESH GAMING";
 

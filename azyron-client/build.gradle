@@ -35,6 +35,13 @@ processResources {
 	filesMatching("fabric.mod.json") {
 		expand "version": inputs.properties.version
 	}
+
+	doLast {
+		def fmj = file("${destinationDir}/fabric.mod.json")
+		if (fmj.exists() && fmj.text.contains('${')) {
+			throw new GradleException("Unexpanded placeholder remaining in fabric.mod.json")
+		}
+	}
 }
 
 tasks.withType(JavaCompile).configureEach {

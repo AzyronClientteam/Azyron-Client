@@ -4,6 +4,7 @@ import com.jigneshgaming.azyron.AzyronClient;
 import com.jigneshgaming.azyron.module.ModuleManager;
 import com.jigneshgaming.azyron.module.impl.CrosshairModule;
 import com.jigneshgaming.azyron.module.impl.PotionHudModule;
+import com.jigneshgaming.azyron.util.UiRenderUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
@@ -21,7 +22,7 @@ public abstract class InGameHudMixin {
     @Final
     private MinecraftClient client;
 
-    @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true, require = 0)
     private void azyron$renderCustomCrosshair(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
         AzyronClient inst = AzyronClient.getInstance();
         if (inst == null || inst.getModuleManager() == null || this.client.options.hudHidden) {
@@ -34,7 +35,7 @@ public abstract class InGameHudMixin {
         }
     }
 
-    @Inject(method = "renderStatusEffectOverlay", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "renderStatusEffectOverlay", at = @At("HEAD"), cancellable = true, require = 0)
     private void azyron$hideVanillaEffectsIfConfigured(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
         AzyronClient inst = AzyronClient.getInstance();
         if (inst != null && inst.getModuleManager() != null) {
@@ -45,8 +46,11 @@ public abstract class InGameHudMixin {
         }
     }
 
-    @Inject(method = "render", at = @At("TAIL"))
+    @Inject(method = "render", at = @At("TAIL"), require = 0)
     private void azyron$renderClientHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
+        if (!UiRenderUtils.isCoreTextShaderReady(this.client)) {
+            return;
+        }
         AzyronClient inst = AzyronClient.getInstance();
         if (inst != null) {
             ModuleManager mm = inst.getModuleManager();

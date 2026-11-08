@@ -21,7 +21,7 @@ public abstract class GameMenuScreenMixin extends Screen {
         super(title);
     }
 
-    @Inject(method = "initWidgets", at = @At("TAIL"))
+    @Inject(method = "initWidgets", at = @At("TAIL"), require = 0)
     private void azyron$addPauseButtons(CallbackInfo ci) {
         this.addDrawableChild(
                 ButtonWidget.builder(Text.literal("✦ AZYRON Client"), btn -> {

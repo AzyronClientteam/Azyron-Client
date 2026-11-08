@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
-    @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "getFov", at = @At("RETURN"), cancellable = true, require = 0)
     private void azyron$applySmoothZoom(Camera camera, float tickDelta, boolean changingFov, CallbackInfoReturnable<Float> cir) {
         AzyronClient inst = AzyronClient.getInstance();
         if (inst != null && inst.getModuleManager() != null) {

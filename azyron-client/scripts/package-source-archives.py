@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-AZYRON CLIENT — Complete Source Archive Builder & Verifier (v1.0.1)
+AZYRON CLIENT — Complete Source Archive Builder & Verifier (v1.0.2)
 Generates:
-  1. releases/Azyron-Client-Source-v1.0.1.zip
-  2. releases/Azyron-Client-Source-v1.0.1.tar.gz
+  1. releases/Azyron-Client-Source-v1.0.2.zip
+  2. releases/Azyron-Client-Source-v1.0.2.tar.gz
 
 Includes:
   - Complete Java 21 client & test source code (src/main/java, src/test/java)
@@ -15,7 +15,7 @@ Includes:
 
 Performs:
   - Strict secret/credential scan across every included file before packaging
-  - Deterministic archive creation under root prefix Azyron-Client-Source-v1.0.1/
+  - Deterministic archive creation under root prefix Azyron-Client-Source-v1.0.2/
   - Full extraction + byte-for-byte verification of both .zip and .tar.gz archives
   - SHA-256 checksum calculation and SHA256SUMS.txt update
 """
@@ -34,7 +34,7 @@ import zipfile
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CLIENT_ROOT = os.path.dirname(SCRIPT_DIR)
 RELEASES_DIR = os.path.join(CLIENT_ROOT, "releases")
-ARCHIVE_PREFIX = "Azyron-Client-Source-v1.0.1"
+ARCHIVE_PREFIX = "Azyron-Client-Source-v1.0.2"
 
 OUT_ZIP = os.path.join(RELEASES_DIR, f"{ARCHIVE_PREFIX}.zip")
 OUT_TGZ = os.path.join(RELEASES_DIR, f"{ARCHIVE_PREFIX}.tar.gz")
@@ -249,10 +249,10 @@ def main() -> None:
 
     # Update SHA256SUMS.txt for all release assets
     release_assets = [
-        "Azyron-Client-1.0.1.jar",
-        "Azyron-Modpack-1.0.mrpack",
-        "Azyron-Client-Source-v1.0.1.zip",
-        "Azyron-Client-Source-v1.0.1.tar.gz",
+        "Azyron-Client-1.0.2.jar",
+        "Azyron-Modpack-1.0.2.mrpack",
+        "Azyron-Client-Source-v1.0.2.zip",
+        "Azyron-Client-Source-v1.0.2.tar.gz",
     ]
     sums_lines = []
     for fname in release_assets:

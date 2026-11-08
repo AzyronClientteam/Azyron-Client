@@ -8,15 +8,36 @@ import net.minecraft.client.gui.DrawContext;
 
 /**
  * Lightweight, hardware-safe AZYRON CLIENT loading screen renderer.
- * Displays "Welcome to AZYRON CLIENT" with smooth animated progress and dual purple/electric-blue accents.
+ * During cold-boot SplashOverlay (before ShaderLoader compiles minecraft:core/rendertype_text),
+ * renders crisp pixel-matrix vector text via RenderPipelines.GUI (ctx.fill) so zero shader errors occur,
+ * and seamlessly transitions to native TextRenderer once core shaders finish loading.
  */
 public final class AzyronLoadingRenderer {
     private static float smoothedProgress = 0.0f;
+    private static volatile boolean coreResourcesReady = true;
 
     private AzyronLoadingRenderer() {
     }
 
+    public static boolean isCoreResourcesReady() {
+        return coreResourcesReady;
+    }
+
+    public static void setCoreResourcesReady(boolean ready) {
+        coreResourcesReady = ready;
+    }
+
     public static void render(DrawContext ctx, MinecraftClient client, float rawProgress, float fadeOutAlpha) {
+        render(ctx, client, rawProgress, fadeOutAlpha, UiRenderUtils.isCoreTextShaderReady(client));
+    }
+
+    public static void render(
+            DrawContext ctx,
+            MinecraftClient client,
+            float rawProgress,
+            float fadeOutAlpha,
+            boolean textShaderReady
+    ) {
         int a = Math.max(0, Math.min(255, Math.round(fadeOutAlpha * 255.0f)));
         if (a <= 4) {
             return;
@@ -62,23 +83,6 @@ public final class AzyronLoadingRenderer {
         // Center AZYRON Lightning Crest
         UiRenderUtils.drawAzyronEmblem(ctx, cx, cy - 36, 22, a);
 
-        TextRenderer font = (client != null) ? client.textRenderer : null;
-        if (font != null) {
-            // Welcome message + Brand Header
-            UiRenderUtils.drawScaledText(
-                    ctx, font, "AZYRON CLIENT", cx, cy - 4, 1.45f,
-                    AzyronTheme.withAlpha(AzyronTheme.TEXT_PRIMARY, a), true
-            );
-            ctx.drawCenteredTextWithShadow(
-                    font, "Welcome to AZYRON CLIENT", cx, cy + 14,
-                    AzyronTheme.withAlpha(AzyronTheme.ACCENT_ELECTRIC_BLUE, a)
-            );
-            ctx.drawCenteredTextWithShadow(
-                    font, getStageDescription(smoothedProgress), cx, cy + 28,
-                    AzyronTheme.withAlpha(AzyronTheme.TEXT_MUTED, a)
-            );
-        }
-
         // Sleek progress bar
         int barW = Math.min(260, Math.max(140, w / 2));
         int barH = 6;
@@ -101,8 +105,22 @@ public final class AzyronLoadingRenderer {
             ctx.fill(travel, barY, travel + pulseW, barY + barH, AzyronTheme.withAlpha(0xFFFFFF, a / 3));
         }
 
+        int pct = Math.min(100, Math.round(smoothedProgress * 100.0f));
+        TextRenderer font = (textShaderReady && client != null) ? client.textRenderer : null;
+
         if (font != null) {
-            int pct = Math.min(100, Math.round(smoothedProgress * 100.0f));
+            UiRenderUtils.drawScaledText(
+                    ctx, font, "AZYRON CLIENT", cx, cy - 4, 1.45f,
+                    AzyronTheme.withAlpha(AzyronTheme.TEXT_PRIMARY, a), true
+            );
+            ctx.drawCenteredTextWithShadow(
+                    font, "Welcome to AZYRON CLIENT", cx, cy + 14,
+                    AzyronTheme.withAlpha(AzyronTheme.ACCENT_ELECTRIC_BLUE, a)
+            );
+            ctx.drawCenteredTextWithShadow(
+                    font, getStageDescription(smoothedProgress), cx, cy + 28,
+                    AzyronTheme.withAlpha(AzyronTheme.TEXT_MUTED, a)
+            );
             ctx.drawCenteredTextWithShadow(
                     font, pct + "%", cx, barY + 11,
                     AzyronTheme.withAlpha(AzyronTheme.TEXT_SECONDARY, a)
@@ -110,6 +128,28 @@ public final class AzyronLoadingRenderer {
             ctx.drawCenteredTextWithShadow(
                     font, "PERFORMANCE • SMOOTHNESS • STYLE  |  Made by JIGNESH GAMING",
                     cx, h - 16, AzyronTheme.withAlpha(AzyronTheme.TEXT_MUTED, a)
+            );
+        } else {
+            // Cold-boot shader-safe GUI quad text (never invokes minecraft:core/rendertype_text prematurely)
+            UiRenderUtils.drawCenteredBootPixelText(
+                    ctx, "AZYRON CLIENT", cx, cy - 4, 2,
+                    AzyronTheme.withAlpha(AzyronTheme.TEXT_PRIMARY, a)
+            );
+            UiRenderUtils.drawCenteredBootPixelText(
+                    ctx, "WELCOME TO AZYRON CLIENT", cx, cy + 16, 1,
+                    AzyronTheme.withAlpha(AzyronTheme.ACCENT_ELECTRIC_BLUE, a)
+            );
+            UiRenderUtils.drawCenteredBootPixelText(
+                    ctx, getStageDescription(smoothedProgress), cx, cy + 28, 1,
+                    AzyronTheme.withAlpha(AzyronTheme.TEXT_MUTED, a)
+            );
+            UiRenderUtils.drawCenteredBootPixelText(
+                    ctx, pct + "%", cx, barY + 11, 1,
+                    AzyronTheme.withAlpha(AzyronTheme.TEXT_SECONDARY, a)
+            );
+            UiRenderUtils.drawCenteredBootPixelText(
+                    ctx, "PERFORMANCE • SMOOTHNESS • STYLE | JIGNESH GAMING",
+                    cx, h - 16, 1, AzyronTheme.withAlpha(AzyronTheme.TEXT_MUTED, a)
             );
         }
     }
