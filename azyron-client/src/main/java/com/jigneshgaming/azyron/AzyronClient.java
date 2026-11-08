@@ -33,6 +33,9 @@ public final class AzyronClient implements ClientModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger(CLIENT_NAME);
 
     private static AzyronClient instance;
+    private static KeyBinding.Category controlsCategory;
+    private static boolean keyBindingsRegistered = false;
+    private static boolean tickCallbackRegistered = false;
 
     private AzyronConfig config;
     private CosmeticsManager cosmeticsManager;
@@ -89,37 +92,54 @@ public final class AzyronClient implements ClientModInitializer {
     }
 
     private void registerKeyBindings() {
-        KeyBinding.Category category = KeyBinding.Category.create(Identifier.of("azyron", "controls"));
+        if (keyBindingsRegistered) {
+            return;
+        }
+        try {
+            if (controlsCategory == null) {
+                controlsCategory = KeyBinding.Category.create(Identifier.of("azyron", "controls"));
+            }
 
-        this.openMenuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.azyron.open_menu",
-                GLFW.GLFW_KEY_RIGHT_SHIFT,
-                category
-        ));
-        this.hudEditorKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.azyron.hud_editor",
-                GLFW.GLFW_KEY_H,
-                category
-        ));
-        this.zoomKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.azyron.zoom",
-                GLFW.GLFW_KEY_C,
-                category
-        ));
-        this.cycleProfileKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.azyron.cycle_profile",
-                GLFW.GLFW_KEY_F8,
-                category
-        ));
-        this.toggleSprintKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.azyron.toggle_sprint",
-                GLFW.GLFW_KEY_I,
-                category
-        ));
+            this.openMenuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                    "key.azyron.open_menu",
+                    GLFW.GLFW_KEY_RIGHT_SHIFT,
+                    controlsCategory
+            ));
+            this.hudEditorKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                    "key.azyron.hud_editor",
+                    GLFW.GLFW_KEY_H,
+                    controlsCategory
+            ));
+            this.zoomKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                    "key.azyron.zoom",
+                    GLFW.GLFW_KEY_C,
+                    controlsCategory
+            ));
+            this.cycleProfileKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                    "key.azyron.cycle_profile",
+                    GLFW.GLFW_KEY_F8,
+                    controlsCategory
+            ));
+            this.toggleSprintKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                    "key.azyron.toggle_sprint",
+                    GLFW.GLFW_KEY_I,
+                    controlsCategory
+            ));
+            keyBindingsRegistered = true;
+        } catch (Throwable t) {
+            LOGGER.warn("[AZYRON] Non-fatal warning registering keybindings: {}", t.getMessage());
+        }
     }
 
     private void registerLifecycleCallbacks() {
-        ClientTickEvents.END_CLIENT_TICK.register(this::onEndClientTick);
+        if (tickCallbackRegistered) {
+            return;
+        }
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            AzyronClient active = instance != null ? instance : this;
+            active.onEndClientTick(client);
+        });
+        tickCallbackRegistered = true;
     }
 
     public void onEndClientTick(MinecraftClient client) {
@@ -127,44 +147,48 @@ public final class AzyronClient implements ClientModInitializer {
             return;
         }
 
-        if (this.performanceEngine != null) {
-            this.performanceEngine.onClientTick(client);
-        }
-
-        if (this.moduleManager != null) {
-            ZoomModule zoom = this.moduleManager.getZoomModule();
-            if (zoom != null && this.zoomKey != null) {
-                zoom.setZooming(client.currentScreen == null && this.zoomKey.isPressed());
-            }
-            this.moduleManager.onTick(client);
-        }
-
-        while (this.openMenuKey != null && this.openMenuKey.wasPressed()) {
-            if (!(client.currentScreen instanceof AzyronModsScreen)) {
-                client.setScreen(new AzyronModsScreen(client.currentScreen));
-            }
-        }
-
-        while (this.hudEditorKey != null && this.hudEditorKey.wasPressed()) {
-            if (!(client.currentScreen instanceof HudEditorScreen)) {
-                client.setScreen(new HudEditorScreen(client.currentScreen));
-            }
-        }
-
-        while (this.cycleProfileKey != null && this.cycleProfileKey.wasPressed()) {
+        try {
             if (this.performanceEngine != null) {
-                PerformanceProfile next = this.performanceEngine.getActiveProfile().next();
-                this.performanceEngine.applyProfile(next, client, true);
+                this.performanceEngine.onClientTick(client);
             }
-        }
 
-        while (this.toggleSprintKey != null && this.toggleSprintKey.wasPressed()) {
             if (this.moduleManager != null) {
-                ToggleSprintModule ts = this.moduleManager.getToggleSprintModule();
-                if (ts != null) {
-                    ts.toggleSprintState();
+                ZoomModule zoom = this.moduleManager.getZoomModule();
+                if (zoom != null && this.zoomKey != null) {
+                    zoom.setZooming(client.currentScreen == null && this.zoomKey.isPressed());
+                }
+                this.moduleManager.onTick(client);
+            }
+
+            while (this.openMenuKey != null && this.openMenuKey.wasPressed()) {
+                if (!(client.currentScreen instanceof AzyronModsScreen)) {
+                    client.setScreen(new AzyronModsScreen(client.currentScreen));
                 }
             }
+
+            while (this.hudEditorKey != null && this.hudEditorKey.wasPressed()) {
+                if (!(client.currentScreen instanceof HudEditorScreen)) {
+                    client.setScreen(new HudEditorScreen(client.currentScreen));
+                }
+            }
+
+            while (this.cycleProfileKey != null && this.cycleProfileKey.wasPressed()) {
+                if (this.performanceEngine != null) {
+                    PerformanceProfile next = this.performanceEngine.getActiveProfile().next();
+                    this.performanceEngine.applyProfile(next, client, true);
+                }
+            }
+
+            while (this.toggleSprintKey != null && this.toggleSprintKey.wasPressed()) {
+                if (this.moduleManager != null) {
+                    ToggleSprintModule ts = this.moduleManager.getToggleSprintModule();
+                    if (ts != null) {
+                        ts.toggleSprintState();
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            LOGGER.debug("[AZYRON] Guarded tick error: {}", t.getMessage());
         }
     }
 

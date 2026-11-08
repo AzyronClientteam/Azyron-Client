@@ -1,5 +1,7 @@
 {
+  "key.category.azyron.controls": "AZYRON CLIENT",
   "key.category.azyron.client": "AZYRON CLIENT",
+  "category.azyron.controls": "AZYRON CLIENT",
   "key.azyron.open_menu": "Open AZYRON Mods Menu",
   "key.azyron.hud_editor": "Open HUD Editor",
   "key.azyron.zoom": "Zoom",

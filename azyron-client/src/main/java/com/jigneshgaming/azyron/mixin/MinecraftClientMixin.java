@@ -14,27 +14,49 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(MinecraftClient.class)
 public abstract class MinecraftClientMixin {
+    @org.spongepowered.asm.mixin.Unique
+    private static boolean azyron$redirectingTitle = false;
+
     @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true, require = 0)
     private void azyron$interceptTitleScreen(Screen screen, CallbackInfo ci) {
-        if (screen instanceof TitleScreen) {
-            MemoryOptimizer.onWorldTransition();
-            if (AzyronMainMenuScreen.bypassRedirectOnce) {
-                AzyronMainMenuScreen.bypassRedirectOnce = false;
-                return;
+        if (azyron$redirectingTitle) {
+            return;
+        }
+        try {
+            if (screen instanceof TitleScreen && !(screen instanceof AzyronMainMenuScreen)) {
+                MinecraftClient mc = (MinecraftClient) (Object) this;
+                if (mc.world != null) {
+                    MemoryOptimizer.onWorldTransition();
+                }
+                if (AzyronMainMenuScreen.bypassRedirectOnce) {
+                    AzyronMainMenuScreen.bypassRedirectOnce = false;
+                    return;
+                }
+                AzyronClient inst = AzyronClient.getInstance();
+                if (inst != null && inst.getConfig() != null && inst.getConfig().isCustomMainMenuEnabled()) {
+                    azyron$redirectingTitle = true;
+                    try {
+                        mc.setScreen(new AzyronMainMenuScreen());
+                        ci.cancel();
+                    } finally {
+                        azyron$redirectingTitle = false;
+                    }
+                }
             }
-            AzyronClient inst = AzyronClient.getInstance();
-            if (inst != null && inst.getConfig() != null && inst.getConfig().isCustomMainMenuEnabled()) {
-                ((MinecraftClient) (Object) this).setScreen(new AzyronMainMenuScreen());
-                ci.cancel();
-            }
+        } catch (Throwable t) {
+            azyron$redirectingTitle = false;
+            AzyronClient.LOGGER.warn("[AZYRON] Fallback to vanilla TitleScreen due to error: {}", t.getMessage());
         }
     }
 
     @Inject(method = "getWindowTitle", at = @At("RETURN"), cancellable = true, require = 0)
     private void azyron$brandWindowTitle(CallbackInfoReturnable<String> cir) {
-        String original = cir.getReturnValue();
-        if (original != null && !original.startsWith("AZYRON CLIENT")) {
-            cir.setReturnValue("AZYRON CLIENT 1.21.11  |  " + original);
+        try {
+            String original = cir.getReturnValue();
+            if (original != null && !original.startsWith("AZYRON CLIENT")) {
+                cir.setReturnValue("AZYRON CLIENT 1.21.11  |  " + original);
+            }
+        } catch (Throwable ignored) {
         }
     }
 }

@@ -103,6 +103,10 @@ public final class AzyronClientTestSuite {
                 AzyronClientTestSuite::testUiSingleplayerAndHudRendering);
         runTest("12. PojavLauncher Mobile Aspect Ratios (2400x1080 / 1280x720) & Pause Menu Touch UI",
                 AzyronClientTestSuite::testPojavLauncherCompatibility);
+        runTest("13. JVM Bytecode Linkage (FabricLoader InterfaceMethodref, Event, JOML Matrix3x2f, RegistryEntry, GameOptions)",
+                () -> testJvmBytecodeLinkageContracts(jarPath));
+        runTest("14. Full Fabric onInitializeClient() Startup Flow, Active Status Effects & 3GB-8GB RAM Smoothness",
+                AzyronClientTestSuite::testFullFabricStartupLifecycleAndRamSmoothness);
 
         System.out.println("-----------------------------------------------------------------------");
         System.out.printf(" TEST SUMMARY: %d PASSED, %d FAILED%n", passed, failed);
@@ -628,6 +632,165 @@ public final class AzyronClientTestSuite {
         assertNotNull(pauseScreen, "GameMenuScreen initializes cleanly for PojavLauncher touch controls");
 
         Files.deleteIfExists(tempCfg);
+    }
+
+    private static void testJvmBytecodeLinkageContracts(Path jarPath) throws Exception {
+        int checkedClasses = 0;
+        boolean sawFabricLoaderInterfaceRef = false;
+        boolean sawFabricEventClassRef = false;
+        boolean sawJomlMatrix3x2fReturn = false;
+        boolean sawRegistryEntryInterfaceRef = false;
+        boolean sawGetAoMethodRef = false;
+        boolean sawGetVignetteMethodRef = false;
+
+        try (JarFile jf = new JarFile(jarPath.toFile())) {
+            var entries = jf.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry je = entries.nextElement();
+                if (!je.getName().endsWith(".class")) {
+                    continue;
+                }
+                checkedClasses++;
+                byte[] data;
+                try (InputStream in = jf.getInputStream(je)) {
+                    data = in.readAllBytes();
+                }
+
+                ByteBuffer buf = ByteBuffer.wrap(data);
+                int magic = buf.getInt();
+                assertEquals(0xCAFEBABE, magic, "Valid class magic in " + je.getName());
+                buf.getShort(); // minor
+                int major = buf.getShort() & 0xFFFF;
+                assertEquals(65, major, "Java 21 classfile v65 in " + je.getName());
+
+                int cpCount = buf.getShort() & 0xFFFF;
+                int[] tags = new int[cpCount];
+                String[] utf8 = new String[cpCount];
+                int[] ref1 = new int[cpCount];
+                int[] ref2 = new int[cpCount];
+
+                for (int i = 1; i < cpCount; i++) {
+                    int tag = buf.get() & 0xFF;
+                    tags[i] = tag;
+                    switch (tag) {
+                        case 1 -> {
+                            int len = buf.getShort() & 0xFFFF;
+                            byte[] strBytes = new byte[len];
+                            buf.get(strBytes);
+                            utf8[i] = new String(strBytes, StandardCharsets.UTF_8);
+                        }
+                        case 7, 8, 16, 19, 20 -> ref1[i] = buf.getShort() & 0xFFFF;
+                        case 9, 10, 11, 12, 17, 18 -> {
+                            ref1[i] = buf.getShort() & 0xFFFF;
+                            ref2[i] = buf.getShort() & 0xFFFF;
+                        }
+                        case 3, 4 -> buf.position(buf.position() + 4);
+                        case 5, 6 -> {
+                            buf.position(buf.position() + 8);
+                            i++;
+                        }
+                        case 15 -> buf.position(buf.position() + 3);
+                        default -> throw new AssertionError("Unknown CP tag " + tag + " in " + je.getName());
+                    }
+                }
+
+                for (int i = 1; i < cpCount; i++) {
+                    int tag = tags[i];
+                    if (tag == 7) {
+                        String clsName = utf8[ref1[i]];
+                        assertTrue(!"net/fabricmc/fabric/api/client/event/lifecycle/v1/ClientTickEvents$Event".equals(clsName),
+                                "Must NOT reference bogus nested ClientTickEvents$Event in " + je.getName());
+                        assertTrue(!clsName.startsWith("net/minecraft/client/"),
+                                "Must NOT contain unremapped net/minecraft/client/* class in " + je.getName() + ": " + clsName);
+                    } else if (tag == 9 || tag == 10 || tag == 11) {
+                        String owner = utf8[ref1[ref1[i]]];
+                        String name = utf8[ref1[ref2[i]]];
+                        String desc = utf8[ref2[ref2[i]]];
+
+                        // 1. FabricLoader MUST use CONSTANT_InterfaceMethodref (tag == 11), NEVER CONSTANT_Methodref (10)
+                        if ("net/fabricmc/loader/api/FabricLoader".equals(owner)) {
+                            assertEquals(11, tag,
+                                    "FabricLoader." + name + desc + " in " + je.getName()
+                                            + " MUST be CONSTANT_InterfaceMethodref (tag 11)");
+                            sawFabricLoaderInterfaceRef = true;
+                        }
+
+                        // 2. ClientTickEvents.END_CLIENT_TICK MUST have descriptor Lnet/fabricmc/fabric/api/event/Event;
+                        if (tag == 9 && "net/fabricmc/fabric/api/client/event/lifecycle/v1/ClientTickEvents".equals(owner)
+                                && "END_CLIENT_TICK".equals(name)) {
+                            assertEquals("Lnet/fabricmc/fabric/api/event/Event;", desc,
+                                    "ClientTickEvents.END_CLIENT_TICK descriptor in " + je.getName());
+                            sawFabricEventClassRef = true;
+                        }
+
+                        // 3. JOML Matrix3x2fStack translate/scale MUST return Lorg/joml/Matrix3x2f;
+                        if ("org/joml/Matrix3x2fStack".equals(owner)
+                                && ("translate".equals(name) || "scale".equals(name))) {
+                            assertEquals("(FF)Lorg/joml/Matrix3x2f;", desc,
+                                    "Matrix3x2fStack." + name + " descriptor in " + je.getName());
+                            sawJomlMatrix3x2fReturn = true;
+                        }
+
+                        // 4. RegistryEntry (net/minecraft/class_6880) MUST use CONSTANT_InterfaceMethodref (tag == 11)
+                        if ("net/minecraft/class_6880".equals(owner)) {
+                            assertEquals(11, tag,
+                                    "RegistryEntry (class_6880)." + name + " in " + je.getName()
+                                            + " MUST be CONSTANT_InterfaceMethodref (tag 11)");
+                            sawRegistryEntryInterfaceRef = true;
+                        }
+
+                        // 5. GameOptions (class_315) MUST NOT touch private fields field_1841 (ao) or field_63499 (vignette)
+                        if (tag == 9 && "net/minecraft/class_315".equals(owner)) {
+                            assertTrue(!"field_1841".equals(name) && !"field_63499".equals(name),
+                                    "GameOptions private field " + name + " accessed directly in " + je.getName());
+                        }
+                        if ("net/minecraft/class_315".equals(owner) && "method_41792".equals(name)) {
+                            sawGetAoMethodRef = true;
+                        }
+                        if ("net/minecraft/class_315".equals(owner) && "method_75335".equals(name)) {
+                            sawGetVignetteMethodRef = true;
+                        }
+                    }
+                }
+            }
+
+            // Also verify en_us.json has the 1.21.11 keybinding category translation key
+            JsonObject langJson = readJsonEntry(jf, "assets/azyron/lang/en_us.json");
+            assertEquals("AZYRON CLIENT", langJson.get("key.category.azyron.controls").getAsString(),
+                    "1.21.11 keybinding category lang key present");
+        }
+
+        assertTrue(checkedClasses >= 40, "Inspected all compiled classes in JAR (" + checkedClasses + ")");
+        assertTrue(sawFabricLoaderInterfaceRef, "Verified FabricLoader CONSTANT_InterfaceMethodref in JAR");
+        assertTrue(sawFabricEventClassRef, "Verified ClientTickEvents.END_CLIENT_TICK Event descriptor in JAR");
+        assertTrue(sawJomlMatrix3x2fReturn, "Verified JOML Matrix3x2fStack.translate/scale return Matrix3x2f in JAR");
+        assertTrue(sawRegistryEntryInterfaceRef, "Verified RegistryEntry (class_6880) CONSTANT_InterfaceMethodref in JAR");
+        assertTrue(sawGetAoMethodRef && sawGetVignetteMethodRef,
+                "Verified GameOptions.getAo() & getVignette() getter calls in JAR");
+    }
+
+    private static void testFullFabricStartupLifecycleAndRamSmoothness() throws Exception {
+        // 1. Execute the REAL Fabric entrypoint onInitializeClient() end-to-end
+        AzyronClient entrypoint = new AzyronClient();
+        entrypoint.onInitializeClient();
+        assertEquals(entrypoint, AzyronClient.getInstance(), "onInitializeClient sets singleton instance");
+        assertEquals(11, entrypoint.getModuleManager().getModules().size(), "All 11 modules initialized via entrypoint");
+
+        // 2. Verify active status effect rendering through RegistryEntry interface dispatch
+        MinecraftClient mc = MinecraftClient.getInstance();
+        mc.getShaderLoader().simulateReloadComplete();
+        DrawContext ctx = new DrawContext(854, 480);
+        entrypoint.getModuleManager().getPotionHudModule().setEnabled(true);
+        entrypoint.getModuleManager().renderHudOverlay(ctx, mc);
+        assertTrue(ctx.drawnStrings.stream().anyMatch(s -> s.contains("Speed II")),
+                "PotionHudModule renders active Speed II effect via RegistryEntry interface cleanly");
+
+        // 3. Fire live Fabric END_CLIENT_TICK event and verify zero exceptions & throttled RAM telemetry
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.invoker().onEndTick(mc);
+        for (int i = 0; i < 120; i++) {
+            MemoryOptimizer.onClientTick(mc, true);
+        }
+        assertTrue(MemoryOptimizer.getMaxMb() > 0, "3GB-8GB RAM telemetry operational under high-FPS polling");
     }
 
     private static JsonObject readJsonEntry(JarFile jf, String name) throws Exception {

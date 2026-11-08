@@ -21,6 +21,7 @@ public final class PerformanceEngine {
     private int culledParticlesCount = 0;
     private String activeBannerMessage = "";
     private long bannerExpireTimeMs = 0L;
+    private boolean companionConfigsSeeded = false;
 
     public PerformanceEngine(PerformanceProfile initialProfile) {
         this.activeProfile = initialProfile != null ? initialProfile : PerformanceProfile.BALANCED;
@@ -59,8 +60,8 @@ public final class PerformanceEngine {
                 }
                 opts.getEntityDistanceScaling().setValue(profile.getEntityDistanceScaling());
                 opts.getEntityShadows().setValue(profile.isEntityShadows());
-                opts.ao.setValue(profile.isAmbientOcclusion());
-                opts.vignette.setValue(profile.isVignette());
+                opts.getAo().setValue(profile.isAmbientOcclusion());
+                opts.getVignette().setValue(profile.isVignette());
                 opts.getEnableVsync().setValue(profile.isVsync());
                 opts.getMaxFps().setValue(profile.getMaxFps());
                 opts.write();
@@ -69,7 +70,9 @@ public final class PerformanceEngine {
             }
         }
 
-        seedCompanionModConfigsIfMissing();
+        if (!this.companionConfigsSeeded) {
+            seedCompanionModConfigsIfMissing();
+        }
 
         if (AzyronClient.getInstance() != null && AzyronClient.getInstance().getConfig() != null) {
             AzyronClient.getInstance().getConfig().setActiveProfile(profile);
@@ -138,6 +141,7 @@ public final class PerformanceEngine {
      * Dynamic FPS, and ImmediatelyFast if the user does not already have custom configs.
      */
     public void seedCompanionModConfigsIfMissing() {
+        this.companionConfigsSeeded = true;
         try {
             Path configDir = FabricLoader.getInstance().getConfigDir();
             Files.createDirectories(configDir);
