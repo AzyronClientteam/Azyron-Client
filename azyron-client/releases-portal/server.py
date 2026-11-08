@@ -18,37 +18,37 @@ PORT = int(os.environ.get("PORT", "8080"))
 
 ASSET_DEFINITIONS = [
     {
-        "slug": "Azyron-Client-1.0.1.jar",
-        "display_name": "Azyron-Client-1.0.1.jar",
-        "download_filename": "Azyron-Client-1.0.1.jar",
-        "disk_filename": "Azyron-Client-1.0.1.jar",
+        "slug": "Azyron-Client-1.0.2.jar",
+        "display_name": "Azyron-Client-1.0.2.jar",
+        "download_filename": "Azyron-Client-1.0.2.jar",
+        "disk_filename": "Azyron-Client-1.0.2.jar",
         "content_type": "application/java-archive",
         "icon": "package",
         "show_sha256": True,
     },
     {
-        "slug": "Azyron-Modpack-1.0.mrpack",
-        "display_name": "Azyron-Modpack-1.0.mrpack",
-        "download_filename": "Azyron-Modpack-1.0.mrpack",
-        "disk_filename": "Azyron-Modpack-1.0.mrpack",
+        "slug": "Azyron-Modpack-1.0.2.mrpack",
+        "display_name": "Azyron-Modpack-1.0.2.mrpack",
+        "download_filename": "Azyron-Modpack-1.0.2.mrpack",
+        "disk_filename": "Azyron-Modpack-1.0.2.mrpack",
         "content_type": "application/octet-stream",
         "icon": "package",
         "show_sha256": True,
     },
     {
-        "slug": "Azyron-Client-Source-v1.0.1.zip",
-        "display_name": "Azyron-Client-Source-v1.0.1.zip",
-        "download_filename": "Azyron-Client-Source-v1.0.1.zip",
-        "disk_filename": "Azyron-Client-Source-v1.0.1.zip",
+        "slug": "Azyron-Client-Source-v1.0.2.zip",
+        "display_name": "Azyron-Client-Source-v1.0.2.zip",
+        "download_filename": "Azyron-Client-Source-v1.0.2.zip",
+        "disk_filename": "Azyron-Client-Source-v1.0.2.zip",
         "content_type": "application/zip",
         "icon": "package",
         "show_sha256": True,
     },
     {
-        "slug": "Azyron-Client-Source-v1.0.1.tar.gz",
-        "display_name": "Azyron-Client-Source-v1.0.1.tar.gz",
-        "download_filename": "Azyron-Client-Source-v1.0.1.tar.gz",
-        "disk_filename": "Azyron-Client-Source-v1.0.1.tar.gz",
+        "slug": "Azyron-Client-Source-v1.0.2.tar.gz",
+        "display_name": "Azyron-Client-Source-v1.0.2.tar.gz",
+        "download_filename": "Azyron-Client-Source-v1.0.2.tar.gz",
+        "disk_filename": "Azyron-Client-Source-v1.0.2.tar.gz",
         "content_type": "application/gzip",
         "icon": "package",
         "show_sha256": True,
@@ -56,8 +56,8 @@ ASSET_DEFINITIONS = [
     {
         "slug": "Source-code.zip",
         "display_name": "Source code (zip)",
-        "download_filename": "Azyron-Client-Source-v1.0.1.zip",
-        "disk_filename": "Azyron-Client-Source-v1.0.1.zip",
+        "download_filename": "Azyron-Client-Source-v1.0.2.zip",
+        "disk_filename": "Azyron-Client-Source-v1.0.2.zip",
         "content_type": "application/zip",
         "icon": "zip",
         "show_sha256": False,
@@ -65,8 +65,8 @@ ASSET_DEFINITIONS = [
     {
         "slug": "Source-code.tar.gz",
         "display_name": "Source code (tar.gz)",
-        "download_filename": "Azyron-Client-Source-v1.0.1.tar.gz",
-        "disk_filename": "Azyron-Client-Source-v1.0.1.tar.gz",
+        "download_filename": "Azyron-Client-Source-v1.0.2.tar.gz",
+        "disk_filename": "Azyron-Client-Source-v1.0.2.tar.gz",
         "content_type": "application/gzip",
         "icon": "zip",
         "show_sha256": False,
@@ -180,7 +180,7 @@ def render_assets_box(assets):
     rows_html = []
     for a in assets:
         icon_svg = OCTICONS["package"] if a["icon"] == "package" else OCTICONS["zip"]
-        href = f"/releases/download/v0.1.0-pre/{a['slug']}"
+        href = f"/releases/download/v1.0.2/{a['slug']}"
         if a["show_sha256"]:
             full_sha = f"sha256:{a['sha256']}"
             short_sha = f"sha256:{a['sha256'][:8]}…"
@@ -227,12 +227,17 @@ def render_assets_box(assets):
     """
 
 
-def render_release_body_html():
-    return """
+def render_release_body_html(assets):
+    sha_rows = "".join(
+        f'<tr><td><code>{a["display_name"]}</code></td><td><code>{a["size_bytes"]:,} B</code> (<code>{a["size_human"]}</code>)</td><td><code>{a["sha256"]}</code></td></tr>'
+        for a in assets
+        if a["show_sha256"]
+    )
+    return f"""
       <div class="markdown-body">
         <blockquote>
           <p><strong>AZYRON CLIENT — PERFORMANCE. SMOOTHNESS. STYLE.</strong><br>
-          Welcome to the official <strong>v0.1.0 Pre-Release</strong> of <strong>AZYRON CLIENT</strong>, crafted by <strong>JIGNESH GAMING</strong> exclusively for <strong>Minecraft Java Edition <code>1.21.11</code> (Fabric)</strong>. Thank you for testing our early-access foundation build engineered for ultra-clean visuals, rock-solid frame pacing, and effortless compatibility across desktop launchers and <strong>PojavLauncher</strong>.</p>
+          <strong>AZYRON CLIENT <code>v1.0.2</code> (DRAFT — Private Staging)</strong>, crafted by <strong>JIGNESH GAMING</strong> exclusively for <strong>Minecraft Java Edition <code>1.21.11</code> (Fabric Loader <code>0.20.1</code>)</strong>. Includes complete <code>MouseMixin</code> <code>1.21.11</code> crash repair, cold-boot <code>rendertype_text</code> shader fix, expanded <code>1.0.2</code> metadata, and PojavLauncher GLES hardening.</p>
         </blockquote>
 
         <table>
@@ -240,8 +245,8 @@ def render_release_body_html():
             <tr><th>Specification</th><th>Details</th></tr>
           </thead>
           <tbody>
-            <tr><td><strong>Release Version</strong></td><td><code>AZYRON CLIENT v0.1.0 PRE-RELEASE</code> (<code>v0.1.0-pre</code>)</td></tr>
-            <tr><td><strong>Release Channel</strong></td><td><code>Pre-release</code> <em>(Early Testing &amp; Performance Validation)</em></td></tr>
+            <tr><td><strong>Release Version</strong></td><td><code>AZYRON CLIENT v1.0.2</code> (<code>v1.0.2</code> — <strong>Draft</strong>)</td></tr>
+            <tr><td><strong>Release Status</strong></td><td><code>Draft</code> <em>(Private Staging — Waiting for User Approval Before Publishing)</em></td></tr>
             <tr><td><strong>Minecraft Version</strong></td><td><strong>Java Edition <code>1.21.11</code> — Fabric</strong> <em>(Strictly <code>1.21.11</code>)</em></td></tr>
             <tr><td><strong>Fabric Requirements</strong></td><td>Fabric Loader <code>0.20.1</code> <em>(min <code>&gt;=0.17.3</code>)</em> + Fabric API <code>0.141.6+1.21.11</code></td></tr>
             <tr><td><strong>Java Runtime</strong></td><td><strong>Java 21 LTS</strong> <em>(64-bit OpenJDK 21)</em></td></tr>
@@ -325,19 +330,19 @@ def render_release_body_html():
         <hr>
 
         <h2>Installation Instructions</h2>
-        <h3>Option A — Full Modpack (<code>Azyron-Modpack-1.0.mrpack</code>) <em>(Recommended for Maximum FPS)</em></h3>
+        <h3>Option A — Full Modpack (<code>Azyron-Modpack-1.0.2.mrpack</code>) <em>(Recommended for PojavLauncher, Prism &amp; Modrinth App)</em></h3>
         <ol>
-          <li>Open <strong>Modrinth App</strong> or <strong>Prism Launcher</strong>.</li>
-          <li>Click <strong>Add Instance</strong> &rarr; <strong>Import from file</strong> and select <strong><code>Azyron-Modpack-1.0.mrpack</code></strong>.</li>
-          <li>The launcher will automatically fetch Minecraft <code>1.21.11</code>, Fabric Loader <code>0.20.1</code>, all <strong>9 verified optimization dependencies</strong>, and install AZYRON CLIENT with pre-tuned configs.</li>
-          <li>Launch the instance and press <kbd>Right Shift</kbd> in-game to customize modules.</li>
+          <li>Open <strong>PojavLauncher</strong>, <strong>Modrinth App</strong>, or <strong>Prism Launcher</strong>.</li>
+          <li>Click <strong>Add Instance / Create Profile</strong> &rarr; <strong>Import Modpack</strong> and select <strong><code>Azyron-Modpack-1.0.2.mrpack</code></strong>.</li>
+          <li>The launcher will automatically fetch Minecraft <code>1.21.11</code>, Fabric Loader <code>0.20.1</code>, all <strong>9 verified 1.21.11 optimization dependencies</strong>, and install <code>Azyron-Client-1.0.2.jar</code> with PojavLauncher-safe configs.</li>
+          <li>Launch the instance and press <kbd>Right Shift</kbd> (or Pause &rarr; <strong><code>✦ AZYRON Client</code></strong> on touch) to customize modules.</li>
         </ol>
 
-        <h3>Option B — Standalone Mod JAR (<code>Azyron-Client-1.0.1.jar</code>) <em>(PojavLauncher &amp; Official Launcher)</em></h3>
+        <h3>Option B — Standalone Mod JAR (<code>Azyron-Client-1.0.2.jar</code>) <em>(PojavLauncher &amp; Official Launcher)</em></h3>
         <ol>
           <li>Install <strong>Minecraft <code>1.21.11</code></strong> and <strong>Fabric Loader <code>0.20.1</code></strong> in your launcher and select a <strong>Java 21</strong> runtime.</li>
-          <li>Download <strong><code>Azyron-Client-1.0.1.jar</code></strong> from the <strong>Assets</strong> section below and download <strong><code>fabric-api-0.141.6+1.21.11.jar</code></strong>.</li>
-          <li>Copy both <code>.jar</code> files into your <code>.minecraft/mods/</code> directory <em>(recommended RAM: <code>1536 MB – 2048 MB</code> on PojavLauncher, <code>2048 MB – 4096 MB</code> on Desktop)</em>.</li>
+          <li>Download <strong><code>Azyron-Client-1.0.2.jar</code></strong> from the <strong>Assets</strong> section below and download <strong><code>fabric-api-0.141.6+1.21.11.jar</code></strong>.</li>
+          <li>Copy both <code>.jar</code> files into your <code>.minecraft/mods/</code> directory <em>(remove any older <code>Azyron-Client-1.0*.jar</code> first)</em>.</li>
           <li>Launch the <code>fabric-loader-0.20.1-1.21.11</code> profile.</li>
         </ol>
 
@@ -357,23 +362,12 @@ def render_release_body_html():
 
         <hr>
 
-        <h2>Known Issues (<code>v0.1.0-pre</code>)</h2>
+        <h2>Changelog &amp; Repairs in <code>v1.0.2</code></h2>
         <ul>
-          <li><strong>Pre-Release Build:</strong> Early <code>v0.1.0-pre</code> validation release; configuration keys in <code>config/azyron-client.json</code> may evolve prior to <code>v0.1.0</code> stable.</li>
-          <li><strong>PojavLauncher Legacy Renderers:</strong> On older Android GPUs using legacy <code>GL4ES</code> renderers with <code>&lt;1.5 GB</code> RAM allocated, cycling profiles inside densely populated worlds may briefly pause for <code>1–2s</code> while chunk meshes reload <em>(ANGLE/Zink/LTW with Java 21 is recommended)</em>.</li>
-          <li><strong>External Shader Packs:</strong> Heavy third-party ray-traced shader packs are not bundled and may override <code>Potato Mode</code> / <code>Smooth FPS Mode</code> frame-rate targets.</li>
-          <li><strong>Ultra-Wide Aspect Ratios:</strong> HUD snap-grid guides on <code>21:9</code> and <code>32:9</code> displays are scheduled for further polish in the next milestone.</li>
-        </ul>
-
-        <hr>
-
-        <h2>Changelog (<code>v0.1.0-pre</code>)</h2>
-        <ul>
-          <li><strong>Added:</strong> Initial <code>1.21.11</code> Fabric client core (<code>AzyronClient</code>), JSON persistence (<code>AzyronConfig</code>), and headless test bootstrap (<code>8/8</code> automated test suites passing).</li>
-          <li><strong>Added:</strong> Custom branded <strong>AZYRON Main Menu</strong>, <strong>Splash Loading Overlay</strong>, <strong>Mods &amp; Settings Screen</strong>, <strong>Cosmetics Screen</strong>, and <strong>Draggable HUD Editor</strong>.</li>
-          <li><strong>Added:</strong> <strong>11 client modules</strong> (<code>FPS</code>, <code>CPS</code>, <code>Ping</code>, <code>Coordinates</code>, <code>Keystrokes</code>, <code>Armor HUD</code>, <code>Potion HUD</code>, <code>Memory HUD</code>, <code>Crosshair</code>, <code>ToggleSprint</code>, <code>Zoom</code>).</li>
-          <li><strong>Added:</strong> <strong>3 one-click Performance Profiles</strong> (<code>Potato Mode</code>, <code>Balanced Mode</code>, <code>Smooth FPS Mode</code>) with particle budget culling (<code>ParticleManagerMixin</code>) and companion mod config seeding.</li>
-          <li><strong>Packaged:</strong> Verified <code>Azyron-Client-1.0.1.jar</code> (<code>150.47 KB</code>) and Modrinth v1 modpack <code>Azyron-Modpack-1.0.mrpack</code> (<code>148.02 KB</code>) pinning <code>9</code> SHA-512-verified <code>1.21.11</code> Fabric optimization mods.</li>
+          <li><strong>Fixed Critical Startup Crash (<code>MouseMixin</code>):</strong> Updated target injection to Minecraft <code>1.21.11</code>'s exact <code>Mouse.onMouseButton(long, MouseInput, int)</code> (<code>Lnet/minecraft/class_312;method_1601(JLnet/minecraft/class_11910;I)V</code>) with <code>@Surrogate</code> fallback handlers, <code>require = 0</code>, and non-duplicating <code>CpsTracker</code> polling fallback.</li>
+          <li><strong>Fixed Mod Version Metadata:</strong> Replaced literal <code>"${{version}}"</code> with <code>"1.0.2"</code> across <code>fabric.mod.json</code>, build pipeline, UI footers, and config files.</li>
+          <li><strong>Fixed Cold-Boot Text Shader Errors (<code>minecraft:core/rendertype_text</code>):</strong> Added <code>ShaderLoader</code> readiness gating (<code>UiRenderUtils.isCoreTextShaderReady</code>) and a <code>RenderPipelines.GUI</code> 5x7 boot pixel-font renderer during initial <code>SplashOverlay</code> reload so <code>VERTEX</code> / <code>FRAGMENT</code> shader errors never occur.</li>
+          <li><strong>Verified <code>1.21.11</code> Performance Mods &amp; PojavLauncher Safety:</strong> Verified all 9 bundled <code>1.21.11</code> Fabric optimization mods with zero duplicates and mobile GLES-safe config defaults (<code>use_no_error_g_l_context: false</code>, <code>font_atlas_resizing: false</code>, <code>fast_buffer_upload: false</code>).</li>
         </ul>
 
         <hr>
@@ -384,8 +378,7 @@ def render_release_body_html():
             <tr><th>Asset Filename</th><th>Size</th><th>SHA-256 Checksum</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>Azyron-Client-1.0.1.jar</code></td><td><code>154,079 B</code> (<code>150 KB</code>)</td><td><code>4f4edc88561e55d27a1f027ddbe9b5558c7b0b0c965e55b89beafe70ba9d0834</code></td></tr>
-            <tr><td><code>Azyron-Modpack-1.0.mrpack</code></td><td><code>151,573 B</code> (<code>148 KB</code>)</td><td><code>4cb083e369222c032837bf6eee456ccdd820939c3a5623f17a255db7d679b14a</code></td></tr>
+            {sha_rows}
           </tbody>
         </table>
 
@@ -405,7 +398,7 @@ def render_page(view_mode: str, assets):
     upload_full = assets[0]["uploaded_full"]
     upload_iso = assets[0]["uploaded_iso"]
     assets_section = render_assets_box(assets)
-    body_html = render_release_body_html()
+    body_html = render_release_body_html(assets)
 
     if view_mode == "index":
         breadcrumb = """
@@ -414,7 +407,7 @@ def render_page(view_mode: str, assets):
               <span class="subnav-pill is-active">Releases</span>
               <span class="subnav-pill">Tags</span>
             </div>
-            <span class="private-draft-note">Private staging • Auto-publish disabled</span>
+            <span class="private-draft-note">Private staging • Draft only (unpublished)</span>
           </div>
         """
         main_content = f"""
@@ -422,15 +415,14 @@ def render_page(view_mode: str, assets):
             <div class="releases-rail">
               <div class="rail-date"><relative-time datetime="{upload_iso}" title="{upload_full}">{upload_short}</relative-time></div>
               <div class="rail-item">{OCTICONS['lock']} <span>JIGNESH GAMING</span></div>
-              <div class="rail-item">{OCTICONS['tag']} <span class="mono">v0.1.0-pre</span></div>
-              <div class="rail-item">{OCTICONS['commit']} <span class="mono">97dc3e5</span></div>
+              <div class="rail-item">{OCTICONS['tag']} <span class="mono">v1.0.2</span></div>
+              <div class="rail-item">{OCTICONS['commit']} <span class="mono">54017b8</span></div>
             </div>
             <div class="Box release-card">
               <div class="release-card-body">
                 <div class="release-title-row">
-                  <h1 class="release-title"><a href="/releases/tag/v0.1.0-pre" class="release-title-link">AZYRON CLIENT v0.1.0 PRE-RELEASE</a></h1>
+                  <h1 class="release-title"><a href="/releases/tag/v1.0.2" class="release-title-link">AZYRON CLIENT v1.0.2 (Minecraft 1.21.11 Fabric)</a></h1>
                   <span class="Label Label--draft" title="Unpublished draft release — kept private until approved">Draft</span>
-                  <span class="Label Label--prerelease" title="This release is labeled as non-production ready">Pre-release</span>
                 </div>
                 {body_html}
                 {assets_section}
@@ -443,25 +435,24 @@ def render_page(view_mode: str, assets):
           <nav class="release-breadcrumb" aria-label="Breadcrumb">
             <a href="/releases" class="breadcrumb-link">Releases</a>
             <span class="breadcrumb-sep">/</span>
-            <span class="breadcrumb-current">v0.1.0-pre</span>
+            <span class="breadcrumb-current">v1.0.2</span>
           </nav>
         """
         main_content = f"""
           <div class="Box release-card">
             <div class="release-card-body">
               <div class="release-title-row">
-                <h1 class="release-title">AZYRON CLIENT v0.1.0 PRE-RELEASE</h1>
+                <h1 class="release-title">AZYRON CLIENT v1.0.2 (Minecraft 1.21.11 Fabric)</h1>
                 <span class="Label Label--draft" title="Unpublished draft release — kept private until approved">Draft</span>
-                <span class="Label Label--prerelease" title="This release is labeled as non-production ready">Pre-release</span>
               </div>
               <div class="release-meta-bar">
                 <span class="avatar-circle">JG</span>
                 <strong class="author-name">JIGNESH GAMING</strong>
-                <span>created this draft pre-release <relative-time datetime="{upload_iso}" title="{upload_full}">{upload_short}</relative-time></span>
+                <span>created this draft release <relative-time datetime="{upload_iso}" title="{upload_full}">{upload_short}</relative-time></span>
                 <span class="meta-dot">·</span>
-                <span class="meta-inline">{OCTICONS['tag']} <span class="mono">v0.1.0-pre</span></span>
+                <span class="meta-inline">{OCTICONS['tag']} <span class="mono">v1.0.2</span></span>
                 <span class="meta-dot">·</span>
-                <span class="meta-inline">{OCTICONS['commit']} <span class="mono">97dc3e5</span></span>
+                <span class="meta-inline">{OCTICONS['commit']} <span class="mono">54017b8</span></span>
               </div>
               <div class="release-divider"></div>
               {body_html}
@@ -475,7 +466,7 @@ def render_page(view_mode: str, assets):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Release AZYRON CLIENT v0.1.0 PRE-RELEASE · AzyronClientteam/Azyron-Client</title>
+  <title>Release AZYRON CLIENT v1.0.2 · AzyronClientteam/Azyron-Client</title>
   <style>
     :root {{
       --bg-canvas: #0d1117;
@@ -958,13 +949,13 @@ def render_page(view_mode: str, assets):
         {OCTICONS['lock']}
         <span class="repo-owner">AzyronClientteam</span>
         <span class="repo-slash">/</span>
-        <a href="/releases/tag/v0.1.0-pre" class="repo-name">Azyron-Client</a>
+        <a href="/releases/tag/v1.0.2" class="repo-name">Azyron-Client</a>
         <span class="Label">Private</span>
       </div>
       <button type="button" class="theme-toggle" id="themeToggle">Light / Dark</button>
     </div>
     <nav class="repo-nav" aria-label="Repository">
-      <a href="/releases/tag/v0.1.0-pre" class="repo-nav-item is-selected">{OCTICONS['code']} <span>Code &amp; Releases</span></a>
+      <a href="/releases/tag/v1.0.2" class="repo-nav-item is-selected">{OCTICONS['code']} <span>Code &amp; Releases</span></a>
     </nav>
   </header>
 
@@ -1025,11 +1016,14 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
 
         assets = load_live_assets()
         by_slug = {a["slug"]: a for a in assets}
-        if "Azyron-Client-1.0.1.jar" in by_slug:
-            by_slug["Azyron-Client-1.0.jar"] = by_slug["Azyron-Client-1.0.1.jar"]
+        if "Azyron-Client-1.0.2.jar" in by_slug:
+            by_slug["Azyron-Client-1.0.1.jar"] = by_slug["Azyron-Client-1.0.2.jar"]
+            by_slug["Azyron-Client-1.0.jar"] = by_slug["Azyron-Client-1.0.2.jar"]
+        if "Azyron-Modpack-1.0.2.mrpack" in by_slug:
+            by_slug["Azyron-Modpack-1.0.mrpack"] = by_slug["Azyron-Modpack-1.0.2.mrpack"]
 
         if (
-            path in ("/", "/releases/tag/v0.1.0-pre", "/releases/tag/v1.0")
+            path in ("/", "/releases/tag/v1.0.2", "/releases/tag/v0.1.0-pre", "/releases/tag/v1.0")
             or path.startswith("/releases/tag/untagged-")
             or path.startswith("/releases/edit/untagged-")
         ):
@@ -1054,13 +1048,13 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                 self.wfile.write(html)
             return
 
-        if path in ("/api/releases/v0.1.0-pre", "/api/releases/v1.0"):
+        if path in ("/api/releases/v1.0.2", "/api/releases/v0.1.0-pre", "/api/releases/v1.0"):
             payload = json.dumps({
-                "id": 437365942,
-                "tag_name": "v0.1.0-pre",
-                "name": "AZYRON CLIENT v0.1.0 PRE-RELEASE",
+                "id": 438031216,
+                "tag_name": "v1.0.2",
+                "name": "AZYRON CLIENT v1.0.2 (Minecraft 1.21.11 Fabric)",
                 "draft": True,
-                "prerelease": True,
+                "prerelease": False,
                 "assets": [
                     {
                         "name": a["display_name"],
@@ -1069,7 +1063,7 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                         "size_human": a["size_human"],
                         "digest": f"sha256:{a['sha256']}" if a["show_sha256"] else None,
                         "uploaded_at": a["uploaded_iso"],
-                        "browser_download_url": f"/releases/download/v0.1.0-pre/{a['slug']}",
+                        "browser_download_url": f"/releases/download/v1.0.2/{a['slug']}",
                     }
                     for a in assets
                 ],
@@ -1083,7 +1077,7 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                 self.wfile.write(payload)
             return
 
-        for prefix in ("/releases/download/v0.1.0-pre/", "/releases/download/v1.0/"):
+        for prefix in ("/releases/download/v1.0.2/", "/releases/download/v0.1.0-pre/", "/releases/download/v1.0/"):
             if path.startswith(prefix):
                 slug = path[len(prefix):]
                 asset = by_slug.get(slug)
