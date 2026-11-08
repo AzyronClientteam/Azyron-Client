@@ -23,19 +23,22 @@ public abstract class GameMenuScreenMixin extends Screen {
 
     @Inject(method = "initWidgets", at = @At("TAIL"), require = 0)
     private void azyron$addPauseButtons(CallbackInfo ci) {
-        this.addDrawableChild(
-                ButtonWidget.builder(Text.literal("✦ AZYRON Client"), btn -> {
-                    if (this.client != null) {
-                        this.client.setScreen(new AzyronModsScreen((GameMenuScreen) (Object) this));
-                    }
-                }).dimensions(8, 8, 108, 20).build()
-        );
-        this.addDrawableChild(
-                ButtonWidget.builder(Text.literal("✦ HUD Editor"), btn -> {
-                    if (this.client != null) {
-                        this.client.setScreen(new HudEditorScreen((GameMenuScreen) (Object) this));
-                    }
-                }).dimensions(120, 8, 88, 20).build()
-        );
+        try {
+            this.addDrawableChild(
+                    ButtonWidget.builder(Text.literal("✦ AZYRON Client"), btn -> {
+                        if (this.client != null) {
+                            this.client.setScreen(new AzyronModsScreen((GameMenuScreen) (Object) this));
+                        }
+                    }).dimensions(8, 8, 108, 20).build()
+            );
+            this.addDrawableChild(
+                    ButtonWidget.builder(Text.literal("✦ HUD Editor"), btn -> {
+                        if (this.client != null) {
+                            this.client.setScreen(new HudEditorScreen((GameMenuScreen) (Object) this));
+                        }
+                    }).dimensions(120, 8, 88, 20).build()
+            );
+        } catch (Throwable ignored) {
+        }
     }
 }

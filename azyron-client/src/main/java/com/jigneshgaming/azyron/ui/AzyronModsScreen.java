@@ -62,6 +62,21 @@ public final class AzyronModsScreen extends Screen {
     private double scrollOffset = 0.0;
     private int maxScroll = 0;
 
+    private ModuleCategory lastFilteredCategory = null;
+    private String lastFilteredSearch = null;
+    private List<AzyronModule> cachedFilteredModules = List.of();
+    private static final java.util.Map<String, Boolean> MOD_LOADED_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private List<AzyronModule> getFilteredModulesCached() {
+        ModuleCategory cat = activeSection.category;
+        if (cat != lastFilteredCategory || !searchQuery.equals(lastFilteredSearch)) {
+            lastFilteredCategory = cat;
+            lastFilteredSearch = searchQuery;
+            cachedFilteredModules = AzyronClient.getInstance().getModuleManager().filterModules(cat, searchQuery);
+        }
+        return cachedFilteredModules;
+    }
+
     public AzyronModsScreen(Screen parent) {
         super(Text.literal("AZYRON CLIENT Menu"));
         this.parent = parent;
@@ -189,7 +204,7 @@ public final class AzyronModsScreen extends Screen {
     }
 
     private void renderModuleGrid(DrawContext ctx, int x, int y, int w, int h, int mx, int my) {
-        List<AzyronModule> mods = AzyronClient.getInstance().getModuleManager().filterModules(activeSection.category, searchQuery);
+        List<AzyronModule> mods = getFilteredModulesCached();
         int cols = w >= 290 ? 2 : 1;
         int gap = 6;
         int cardW = (w - gap * (cols - 1)) / cols;
@@ -323,9 +338,10 @@ public final class AzyronModsScreen extends Screen {
         int low1 = FrameTimeTracker.getOnePercentLowFps(fps);
         String telemetry = String.format(
                 Locale.ROOT,
-                "FPS: %d (1%% Low: %d)  |  Pacing: %s  |  RAM: %d%% (%d/%dMB)",
+                "FPS: %d (1%%: %d)  |  %s  |  RAM: %d%% (%d/%dMB • %s)",
                 fps, low1, FrameTimeTracker.getStabilityRating(),
-                MemoryOptimizer.getUsagePercent(), MemoryOptimizer.getUsedMb(), MemoryOptimizer.getMaxMb()
+                MemoryOptimizer.getUsagePercent(), MemoryOptimizer.getUsedMb(), MemoryOptimizer.getMaxMb(),
+                MemoryOptimizer.detectRamTier().getLabel()
         );
         ctx.drawTextWithShadow(this.textRenderer, this.textRenderer.trimToWidth(telemetry, w - 92), x + 8, y + 10, AzyronTheme.TEXT_PRIMARY);
 
@@ -428,12 +444,14 @@ public final class AzyronModsScreen extends Screen {
     }
 
     private static boolean isModLoaded(String modId) {
-        try {
-            return FabricLoader.getInstance().isModLoaded(modId)
-                    || ("dynamic_fps".equals(modId) && FabricLoader.getInstance().isModLoaded("dynamicfps"));
-        } catch (Throwable ignored) {
-            return false;
-        }
+        return MOD_LOADED_CACHE.computeIfAbsent(modId, id -> {
+            try {
+                return FabricLoader.getInstance().isModLoaded(id)
+                        || ("dynamic_fps".equals(id) && FabricLoader.getInstance().isModLoaded("dynamicfps"));
+            } catch (Throwable ignored) {
+                return false;
+            }
+        });
     }
 
     @Override
@@ -516,7 +534,7 @@ public final class AzyronModsScreen extends Screen {
     }
 
     private boolean handleModuleGridClick(double mx, double my, int btn, int x, int y, int w) {
-        List<AzyronModule> mods = AzyronClient.getInstance().getModuleManager().filterModules(activeSection.category, searchQuery);
+        List<AzyronModule> mods = getFilteredModulesCached();
         int cols = w >= 290 ? 2 : 1;
         int gap = 6;
         int cardW = (w - gap * (cols - 1)) / cols;
@@ -582,7 +600,6 @@ public final class AzyronModsScreen extends Screen {
                         sliderTrackX = barX;
                         sliderTrackW = barW;
                         ns.setFromNormalized((float) ((mx - barX) / barW));
-                        AzyronClient.getInstance().getConfig().save();
                         return true;
                     }
                 }

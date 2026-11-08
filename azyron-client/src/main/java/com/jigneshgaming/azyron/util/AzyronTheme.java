@@ -1,7 +1,7 @@
 package com.jigneshgaming.azyron.util;
 
 /**
- * Color palette and interpolation utilities for AZYRON CLIENT.
+ * Color palette and zero-allocation LUT interpolation utilities for AZYRON CLIENT.
  * Uses explicit ARGB colors with full alpha channels required by Minecraft 1.21.11 DrawContext.
  */
 public final class AzyronTheme {
@@ -36,6 +36,18 @@ public final class AzyronTheme {
     public static final int BORDER_SUBTLE = 0x55475569;
     public static final int BORDER_GLOW = 0xAA8B5CF6;
 
+    // Precomputed 256-step sine-wave lookup table eliminating per-frame Math.sin() across HUD widgets
+    private static final int LUT_SIZE = 256;
+    private static final int[] CHROMA_LUT = new int[LUT_SIZE];
+
+    static {
+        for (int i = 0; i < LUT_SIZE; i++) {
+            double phase = (double) i / LUT_SIZE;
+            float wave = (float) (0.5 + 0.5 * Math.sin(phase * Math.PI * 2.0));
+            CHROMA_LUT[i] = lerpColor(ACCENT_PURPLE_BRIGHT, ACCENT_ELECTRIC_BLUE, wave);
+        }
+    }
+
     private AzyronTheme() {
     }
 
@@ -68,27 +80,41 @@ public final class AzyronTheme {
     }
 
     /**
-     * Animated dual-tone accent cycling smoothly between Electric Purple and Electric Blue.
+     * Animated dual-tone accent cycling smoothly between Electric Purple and Electric Blue
+     * via O(1) precomputed LUT lookup (zero per-frame Math.sin calls).
      */
     public static int getAnimatedAccent(float phaseOffset) {
-        double now = (System.currentTimeMillis() % 4000L) / 4000.0;
-        float wave = (float) (0.5 + 0.5 * Math.sin((now + phaseOffset) * Math.PI * 2.0));
-        return lerpColor(ACCENT_PURPLE_BRIGHT, ACCENT_ELECTRIC_BLUE, wave);
+        int baseIdx = (int) (((System.currentTimeMillis() & 0xFFF) * LUT_SIZE) >>> 12);
+        int offsetIdx = Math.round(phaseOffset * LUT_SIZE);
+        return CHROMA_LUT[(baseIdx + offsetIdx) & (LUT_SIZE - 1)];
     }
 
+    /**
+     * Zero-allocation preset color resolver (avoids String.toUpperCase() heap allocations on every HUD frame).
+     */
     public static int resolvePresetColor(String presetName) {
-        if (presetName == null) {
+        if (presetName == null || presetName.isEmpty()) {
             return ACCENT_ELECTRIC_BLUE;
         }
-        return switch (presetName.toUpperCase()) {
-            case "PURPLE" -> ACCENT_PURPLE_BRIGHT;
-            case "ELECTRIC BLUE", "CYAN" -> ACCENT_ELECTRIC_BLUE;
-            case "CHROMA", "DYNAMIC" -> getAnimatedAccent(0.0f);
-            case "EMERALD", "GREEN" -> STATUS_GOOD;
-            case "CRIMSON", "RED" -> STATUS_DANGER;
-            case "WHITE" -> TEXT_PRIMARY;
-            default -> ACCENT_ELECTRIC_BLUE;
-        };
+        if ("Chroma".equalsIgnoreCase(presetName) || "Dynamic".equalsIgnoreCase(presetName)) {
+            return getAnimatedAccent(0.0f);
+        }
+        if ("Electric Blue".equalsIgnoreCase(presetName) || "Cyan".equalsIgnoreCase(presetName)) {
+            return ACCENT_ELECTRIC_BLUE;
+        }
+        if ("Purple".equalsIgnoreCase(presetName)) {
+            return ACCENT_PURPLE_BRIGHT;
+        }
+        if ("Emerald".equalsIgnoreCase(presetName) || "Green".equalsIgnoreCase(presetName)) {
+            return STATUS_GOOD;
+        }
+        if ("Crimson".equalsIgnoreCase(presetName) || "Red".equalsIgnoreCase(presetName)) {
+            return STATUS_DANGER;
+        }
+        if ("White".equalsIgnoreCase(presetName)) {
+            return TEXT_PRIMARY;
+        }
+        return ACCENT_ELECTRIC_BLUE;
     }
 
     public static float clamp01(float v) {

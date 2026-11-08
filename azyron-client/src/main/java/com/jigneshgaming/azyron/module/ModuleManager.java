@@ -138,25 +138,34 @@ public final class ModuleManager {
         }
     }
 
+    private com.jigneshgaming.azyron.profile.PerformanceProfile cachedWatermarkProfile = null;
+    private CosmeticsManager.BadgeStyle cachedWatermarkBadge = null;
+    private String cachedWatermarkLabel = "";
+    private int cachedWatermarkWidth = 0;
+
     private void renderClientWatermark(DrawContext context, MinecraftClient client) {
         AzyronClient inst = AzyronClient.getInstance();
-        String badge = "";
-        if (inst != null && inst.getCosmeticsManager() != null) {
-            CosmeticsManager.BadgeStyle bs = inst.getCosmeticsManager().getActiveBadge();
-            if (bs != CosmeticsManager.BadgeStyle.NONE) {
-                badge = " " + bs.getTag();
-            }
+        CosmeticsManager.BadgeStyle bs = (inst != null && inst.getCosmeticsManager() != null)
+                ? inst.getCosmeticsManager().getActiveBadge()
+                : CosmeticsManager.BadgeStyle.NONE;
+        com.jigneshgaming.azyron.profile.PerformanceProfile prof = (inst != null && inst.getPerformanceEngine() != null)
+                ? inst.getPerformanceEngine().getActiveProfile()
+                : com.jigneshgaming.azyron.profile.PerformanceProfile.BALANCED;
+
+        if (prof != cachedWatermarkProfile || bs != cachedWatermarkBadge || cachedWatermarkWidth <= 0) {
+            cachedWatermarkProfile = prof;
+            cachedWatermarkBadge = bs;
+            String badge = (bs != null && bs != CosmeticsManager.BadgeStyle.NONE) ? (" " + bs.getTag()) : "";
+            cachedWatermarkLabel = "AZYRON 1.21.11 • " + prof.name() + badge;
+            cachedWatermarkWidth = client.textRenderer.getWidth(cachedWatermarkLabel) + 14;
         }
-        String profileTag = inst != null && inst.getPerformanceEngine() != null
-                ? inst.getPerformanceEngine().getActiveProfile().name()
-                : "BALANCED";
-        String label = "AZYRON 1.21.11 • " + profileTag + badge;
-        int w = client.textRenderer.getWidth(label) + 14;
+
+        int w = cachedWatermarkWidth;
         int x = context.getScaledWindowWidth() - w - 6;
         int y = 6;
         UiRenderUtils.drawRoundedPanel(context, x, y, w, 16, 0xB80B0D1A, AzyronTheme.getAnimatedAccent(0.15f));
         UiRenderUtils.drawHorizontalGradient(context, x + 2, y, w - 4, 2, AzyronTheme.ACCENT_PURPLE_BRIGHT, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-        context.drawTextWithShadow(client.textRenderer, label, x + 7, y + 4, AzyronTheme.TEXT_PRIMARY);
+        context.drawTextWithShadow(client.textRenderer, cachedWatermarkLabel, x + 7, y + 4, AzyronTheme.TEXT_PRIMARY);
     }
 
     public void resetAllHudPositions() {

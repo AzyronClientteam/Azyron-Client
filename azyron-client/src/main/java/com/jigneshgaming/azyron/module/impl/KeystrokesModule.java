@@ -10,9 +10,18 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.option.GameOptions;
 
 /**
- * Animated Keystrokes HUD (WASD + LMB/RMB with CPS + Spacebar) with smooth press-glow interpolation.
+ * Animated Keystrokes HUD (WASD + LMB/RMB with CPS + Spacebar) with smooth press-glow interpolation
+ * and precomputed zero-allocation CPS sub-labels.
  */
 public final class KeystrokesModule extends HudModule {
+    private static final String[] CPS_LABELS = new String[64];
+
+    static {
+        for (int i = 0; i < CPS_LABELS.length; i++) {
+            CPS_LABELS[i] = i + " CPS";
+        }
+    }
+
     private final Setting.BooleanSetting showMouseButtons;
     private final Setting.BooleanSetting showMouseCps;
     private final Setting.BooleanSetting showSpacebar;
@@ -30,6 +39,13 @@ public final class KeystrokesModule extends HudModule {
         this.showSpacebar = addSetting(new Setting.BooleanSetting(
                 "show_space", "Show Spacebar", "Render jump bar beneath movement keys", true
         ));
+    }
+
+    private static String cpsLabel(int cps) {
+        if (cps >= 0 && cps < CPS_LABELS.length) {
+            return CPS_LABELS[cps];
+        }
+        return cps + " CPS";
     }
 
     @Override
@@ -76,9 +92,16 @@ public final class KeystrokesModule extends HudModule {
         // Row 3: LMB & RMB
         if (showMouseButtons.getValue()) {
             int halfW = (totalW - gap) / 2;
-            int tileH = showMouseCps.getValue() ? 22 : 18;
-            String lSub = showMouseCps.getValue() ? ((editorPreview && CpsTracker.getLeftCps() == 0 ? 12 : CpsTracker.getLeftCps()) + " CPS") : null;
-            String rSub = showMouseCps.getValue() ? ((editorPreview && CpsTracker.getRightCps() == 0 ? 8 : CpsTracker.getRightCps()) + " CPS") : null;
+            boolean showCps = showMouseCps.getValue();
+            int tileH = showCps ? 22 : 18;
+            String lSub = null;
+            String rSub = null;
+            if (showCps) {
+                int lc = CpsTracker.getLeftCps();
+                int rc = CpsTracker.getRightCps();
+                lSub = cpsLabel((editorPreview && lc == 0) ? 12 : lc);
+                rSub = cpsLabel((editorPreview && rc == 0) ? 8 : rc);
+            }
             drawKeyTile(context, client, 0, curY, halfW, tileH, "LMB", lSub, lmbFade);
             drawKeyTile(context, client, halfW + gap, curY, totalW - halfW - gap, tileH, "RMB", rSub, rmbFade);
             curY += tileH + gap;

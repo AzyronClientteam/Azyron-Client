@@ -22,12 +22,15 @@ public abstract class ParticleManagerMixin {
             double velocityX, double velocityY, double velocityZ,
             CallbackInfoReturnable<Particle> cir
     ) {
-        AzyronClient inst = AzyronClient.getInstance();
-        if (inst != null) {
-            PerformanceEngine engine = inst.getPerformanceEngine();
-            if (engine != null && !engine.shouldAllowParticle(x, y, z)) {
-                cir.setReturnValue(null);
+        try {
+            AzyronClient inst = AzyronClient.getInstance();
+            if (inst != null) {
+                PerformanceEngine engine = inst.getPerformanceEngine();
+                if (engine != null && !engine.shouldAllowParticle(x, y, z)) {
+                    cir.setReturnValue(null);
+                }
             }
+        } catch (Throwable ignored) {
         }
     }
 }

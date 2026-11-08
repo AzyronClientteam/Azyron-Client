@@ -8,20 +8,31 @@ import java.nio.file.Path;
 import java.util.concurrent.ThreadLocalRandom;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.option.GameOptions;
+import net.minecraft.client.option.GraphicsMode;
 import net.minecraft.entity.Entity;
+import net.minecraft.particle.ParticlesMode;
 
 /**
- * Coordinates AZYRON CLIENT performance profiles, live GameOptions tuning,
- * adaptive particle/frame-spike throttling, and companion mod optimization presets.
+ * Coordinates AZYRON CLIENT performance profiles, automatic 3GB–8GB RAM hardware calibration,
+ * live frame-spike & heap-pressure dynamic throttling, unfocused background power saving,
+ * and companion mod optimization presets.
  */
 public final class PerformanceEngine {
+    private static final int UNFOCUSED_FPS_CAP = 15;
+
     private PerformanceProfile activeProfile = PerformanceProfile.BALANCED;
     private int particlesSpawnedThisTick = 0;
     private int culledParticlesCount = 0;
     private String activeBannerMessage = "";
     private long bannerExpireTimeMs = 0L;
     private boolean companionConfigsSeeded = false;
+    private boolean initialRamCalibrationApplied = false;
+
+    private boolean windowFocused = true;
+    private int savedFocusedMaxFps = -1;
+    private Boolean dynamicFpsModInstalled = null;
 
     public PerformanceEngine(PerformanceProfile initialProfile) {
         this.activeProfile = initialProfile != null ? initialProfile : PerformanceProfile.BALANCED;
@@ -31,9 +42,134 @@ public final class PerformanceEngine {
         return activeProfile;
     }
 
+    public boolean isWindowFocused() {
+        return windowFocused;
+    }
+
     public void onClientTick(MinecraftClient client) {
         particlesSpawnedThisTick = 0;
-        MemoryOptimizer.onClientTick(client, activeProfile != PerformanceProfile.BALANCED);
+        boolean autoMem = AzyronClient.getInstance() == null
+                || AzyronClient.getInstance().getConfig() == null
+                || AzyronClient.getInstance().getConfig().isAutoMemoryOptimization();
+        MemoryOptimizer.onClientTick(client, autoMem || activeProfile != PerformanceProfile.BALANCED);
+
+        if (!initialRamCalibrationApplied && client != null && client.options != null) {
+            initialRamCalibrationApplied = true;
+            if (autoMem) {
+                applyAutoRamCalibration(client);
+            }
+        }
+    }
+
+    /**
+     * Automatically clamps excessive vanilla render/simulation/biome/entity settings to safe bounds
+     * for the detected 3GB–8GB RAM tier so low-memory PCs and PojavLauncher phones never OOM
+     * or stutter on chunk loading, while preserving any tighter user settings.
+     */
+    public void applyAutoRamCalibration(MinecraftClient client) {
+        if (client == null || client.options == null) {
+            return;
+        }
+        MemoryOptimizer.RamTier tier = MemoryOptimizer.detectRamTier();
+        GameOptions opts = client.options;
+        boolean changed = false;
+
+        try {
+            int curView = opts.getViewDistance().getValue();
+            if (curView > tier.getMaxSafeViewDistance()) {
+                opts.getViewDistance().setValue(tier.getMaxSafeViewDistance());
+                changed = true;
+            }
+
+            int curSim = opts.getSimulationDistance().getValue();
+            if (curSim > tier.getMaxSafeSimDistance()) {
+                opts.getSimulationDistance().setValue(tier.getMaxSafeSimDistance());
+                changed = true;
+            }
+
+            int curBlend = opts.getBiomeBlendRadius().getValue();
+            if (curBlend > tier.getMaxSafeBiomeBlend()) {
+                opts.getBiomeBlendRadius().setValue(tier.getMaxSafeBiomeBlend());
+                changed = true;
+            }
+
+            if (client.world == null) {
+                int curMip = opts.getMipmapLevels().getValue();
+                if (curMip > tier.getMaxSafeMipmap()) {
+                    opts.getMipmapLevels().setValue(tier.getMaxSafeMipmap());
+                    changed = true;
+                }
+            }
+
+            double curEntScale = opts.getEntityDistanceScaling().getValue();
+            if (curEntScale > tier.getMaxSafeEntityScale()) {
+                opts.getEntityDistanceScaling().setValue(tier.getMaxSafeEntityScale());
+                changed = true;
+            }
+
+            if (tier == MemoryOptimizer.RamTier.TIER_3GB) {
+                opts.applyGraphicsMode(GraphicsMode.FAST);
+                opts.getCloudRenderMode().setValue(CloudRenderMode.OFF);
+                opts.getParticles().setValue(ParticlesMode.MINIMAL);
+                opts.getEntityShadows().setValue(false);
+                opts.getAo().setValue(false);
+                opts.getVignette().setValue(false);
+                changed = true;
+            } else if (tier == MemoryOptimizer.RamTier.TIER_4GB) {
+                opts.applyGraphicsMode(GraphicsMode.FAST);
+                opts.getEntityShadows().setValue(false);
+                opts.getVignette().setValue(false);
+                changed = true;
+            }
+
+            if (changed) {
+                AzyronClient.LOGGER.info("[AZYRON] Auto-calibrated settings for {} (Max Heap: {} MB)",
+                        tier.getLabel(), MemoryOptimizer.getMaxMb());
+            }
+        } catch (Throwable t) {
+            AzyronClient.LOGGER.debug("[AZYRON] Non-fatal warning in auto RAM calibration: {}", t.getMessage());
+        }
+    }
+
+    /**
+     * Automatically throttles background FPS and GPU load when the Minecraft window loses focus
+     * (unless Dynamic FPS is already handling window focus states).
+     */
+    public void onWindowFocusChanged(MinecraftClient client, boolean focused) {
+        if (this.windowFocused == focused) {
+            return;
+        }
+        this.windowFocused = focused;
+
+        if (client == null || client.options == null || isDynamicFpsLoaded()) {
+            return;
+        }
+
+        try {
+            if (!focused) {
+                int currentMax = client.options.getMaxFps().getValue();
+                if (currentMax > UNFOCUSED_FPS_CAP) {
+                    this.savedFocusedMaxFps = currentMax;
+                    client.options.getMaxFps().setValue(UNFOCUSED_FPS_CAP);
+                }
+            } else if (this.savedFocusedMaxFps > 0) {
+                client.options.getMaxFps().setValue(this.savedFocusedMaxFps);
+                this.savedFocusedMaxFps = -1;
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private boolean isDynamicFpsLoaded() {
+        if (dynamicFpsModInstalled == null) {
+            try {
+                FabricLoader loader = FabricLoader.getInstance();
+                dynamicFpsModInstalled = loader.isModLoaded("dynamic_fps") || loader.isModLoaded("dynamicfps");
+            } catch (Throwable ignored) {
+                dynamicFpsModInstalled = false;
+            }
+        }
+        return dynamicFpsModInstalled;
     }
 
     /**
@@ -44,6 +180,8 @@ public final class PerformanceEngine {
             return;
         }
         this.activeProfile = profile;
+        this.initialRamCalibrationApplied = true;
+        this.savedFocusedMaxFps = -1;
 
         if (client != null && client.options != null) {
             GameOptions opts = client.options;
@@ -86,16 +224,25 @@ public final class PerformanceEngine {
     }
 
     /**
-     * Fast-path particle gate called by ParticleManagerMixin.
-     * Prevents particle storms from tanking FPS on low-end PCs and PojavLauncher mobile GPUs.
+     * Fast-path O(1) particle gate called by ParticleManagerMixin.
+     * Dynamically tightens particle budgets during frame spikes, high RAM pressure, or unfocused windows.
      */
     public boolean shouldAllowParticle(double x, double y, double z) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        int budget = activeProfile.getMaxParticlesPerTick();
+        if (!windowFocused) {
+            culledParticlesCount++;
+            return false;
+        }
 
-        // Smooth FPS Mode dynamically tightens particle budget during frame-time spikes
-        if (activeProfile == PerformanceProfile.SMOOTH_FPS && FrameTimeTracker.isExperiencingFrameSpike()) {
+        int budget = activeProfile.getMaxParticlesPerTick();
+        double maxDist = activeProfile.getMaxParticleDistanceBlocks();
+
+        // Dynamically tighten particle load during live frame-time spikes or high 3GB–8GB RAM pressure
+        if (FrameTimeTracker.isExperiencingFrameSpike()) {
             budget = Math.max(16, budget / 3);
+            maxDist = Math.min(maxDist, 16.0);
+        } else if (activeProfile != PerformanceProfile.POTATO && MemoryOptimizer.isHighMemoryPressure()) {
+            budget = Math.min(budget, MemoryOptimizer.detectRamTier().getDynamicParticleCap());
+            maxDist = Math.min(maxDist, 24.0);
         }
 
         if (particlesSpawnedThisTick >= budget) {
@@ -103,13 +250,13 @@ public final class PerformanceEngine {
             return false;
         }
 
+        MinecraftClient client = MinecraftClient.getInstance();
         if (client != null && client.player != null) {
             Entity p = client.player;
             double dx = x - p.getX();
             double dy = y - p.getY();
             double dz = z - p.getZ();
             double distSq = dx * dx + dy * dy + dz * dz;
-            double maxDist = activeProfile.getMaxParticleDistanceBlocks();
             if (distSq > maxDist * maxDist) {
                 culledParticlesCount++;
                 return false;
@@ -130,14 +277,18 @@ public final class PerformanceEngine {
     }
 
     public String getActiveBannerMessage() {
+        if (activeBannerMessage.isEmpty()) {
+            return "";
+        }
         if (System.currentTimeMillis() > bannerExpireTimeMs) {
+            activeBannerMessage = "";
             return "";
         }
         return activeBannerMessage;
     }
 
     /**
-     * Seeds compatible default config files for Sodium, Lithium, EntityCulling, MoreCulling,
+     * Seeds RAM-tier-calibrated default config files for Sodium, Lithium, EntityCulling, MoreCulling,
      * Dynamic FPS, and ImmediatelyFast if the user does not already have custom configs.
      */
     public void seedCompanionModConfigsIfMissing() {
@@ -145,6 +296,11 @@ public final class PerformanceEngine {
         try {
             Path configDir = FabricLoader.getInstance().getConfigDir();
             Files.createDirectories(configDir);
+
+            MemoryOptimizer.RamTier tier = MemoryOptimizer.detectRamTier();
+            int chunkThreads = tier.getRecommendedChunkThreads();
+            int cpuAheadLimit = (tier == MemoryOptimizer.RamTier.TIER_3GB || tier == MemoryOptimizer.RamTier.TIER_4GB) ? 2 : 3;
+            int tracingDist = (tier == MemoryOptimizer.RamTier.TIER_3GB) ? 64 : 96;
 
             writeIfAbsent(configDir.resolve("sodium-options.json"),
                     "{\n"
@@ -154,8 +310,9 @@ public final class PerformanceEngine {
                     + "    \"enable_vignette\": false\n"
                     + "  },\n"
                     + "  \"performance\": {\n"
-                    + "    \"chunk_builder_threads\": 0,\n"
+                    + "    \"chunk_builder_threads\": " + chunkThreads + ",\n"
                     + "    \"chunk_build_defer_mode\": \"NEARBY\",\n"
+                    + "    \"cpu_render_ahead_limit\": " + cpuAheadLimit + ",\n"
                     + "    \"animate_only_visible_textures\": true,\n"
                     + "    \"use_entity_culling\": true,\n"
                     + "    \"use_fog_occlusion\": true,\n"
@@ -169,7 +326,7 @@ public final class PerformanceEngine {
                     "{\n"
                     + "  \"configVersion\": 9,\n"
                     + "  \"renderNametagsThroughWalls\": true,\n"
-                    + "  \"tracingDistance\": 96,\n"
+                    + "  \"tracingDistance\": " + tracingDist + ",\n"
                     + "  \"debugMode\": false,\n"
                     + "  \"sleepDelay\": 10,\n"
                     + "  \"hitboxLimit\": 50,\n"

@@ -40,27 +40,30 @@ public abstract class SplashOverlayMixin {
 
     @Inject(method = "render", at = @At("TAIL"), require = 0)
     private void azyron$renderLoadingOverlay(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        boolean reloadFinished = this.reloading || (this.reloadCompleteTime != -1L);
-        AzyronLoadingRenderer.setCoreResourcesReady(reloadFinished);
+        try {
+            boolean reloadFinished = this.reloading || (this.reloadCompleteTime != -1L);
+            AzyronLoadingRenderer.setCoreResourcesReady(reloadFinished);
 
-        AzyronClient inst = AzyronClient.getInstance();
-        if (inst != null && inst.getConfig() != null && !inst.getConfig().isCustomLoadingScreenEnabled()) {
-            return;
-        }
-
-        float fadeAlpha = 1.0f;
-        if (this.reloadCompleteTime == -1L) {
-            this.azyron$fadeStartMs = -1L;
-        } else {
-            if (this.azyron$fadeStartMs == -1L) {
-                this.azyron$fadeStartMs = System.currentTimeMillis();
+            AzyronClient inst = AzyronClient.getInstance();
+            if (inst != null && inst.getConfig() != null && !inst.getConfig().isCustomLoadingScreenEnabled()) {
+                return;
             }
-            long fadeDuration = (inst != null && inst.getConfig() != null && inst.getConfig().isFastLoadingFade()) ? 450L : 850L;
-            long elapsed = Math.max(0L, System.currentTimeMillis() - this.azyron$fadeStartMs);
-            fadeAlpha = Math.max(0.0f, 1.0f - (elapsed / (float) fadeDuration));
-        }
 
-        boolean textShaderReady = reloadFinished && UiRenderUtils.isCoreTextShaderReady(this.client);
-        AzyronLoadingRenderer.render(context, this.client, this.progress, fadeAlpha, textShaderReady);
+            float fadeAlpha = 1.0f;
+            if (this.reloadCompleteTime == -1L) {
+                this.azyron$fadeStartMs = -1L;
+            } else {
+                if (this.azyron$fadeStartMs == -1L) {
+                    this.azyron$fadeStartMs = System.currentTimeMillis();
+                }
+                long fadeDuration = (inst != null && inst.getConfig() != null && inst.getConfig().isFastLoadingFade()) ? 450L : 850L;
+                long elapsed = Math.max(0L, System.currentTimeMillis() - this.azyron$fadeStartMs);
+                fadeAlpha = Math.max(0.0f, 1.0f - (elapsed / (float) fadeDuration));
+            }
+
+            boolean textShaderReady = reloadFinished && UiRenderUtils.isCoreTextShaderReady(this.client);
+            AzyronLoadingRenderer.render(context, this.client, this.progress, fadeAlpha, textShaderReady);
+        } catch (Throwable ignored) {
+        }
     }
 }

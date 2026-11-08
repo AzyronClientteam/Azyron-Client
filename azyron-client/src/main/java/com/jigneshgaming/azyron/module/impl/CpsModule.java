@@ -10,10 +10,17 @@ import net.minecraft.client.gui.DrawContext;
 
 /**
  * Real-time CPS (Clicks Per Second) HUD for Left & Right Mouse / PojavLauncher Touch inputs.
+ * Caches formatted strings and text widths when click counts are unchanged.
  */
 public final class CpsModule extends HudModule {
     private final Setting.BooleanSetting showRightCps;
     private final Setting.BooleanSetting showBurstBar;
+
+    private int lastLmb = -1;
+    private int lastRmb = -1;
+    private boolean lastShowRmb = true;
+    private String cachedText = "0 | 0 CPS";
+    private int cachedWidth = 66;
 
     public CpsModule() {
         super("cps_counter", "CPS Counter", "Tracks Left & Right Clicks Per Second accurately", true, 0.012f, 0.072f);
@@ -47,16 +54,21 @@ public final class CpsModule extends HudModule {
             lmb = 12;
             rmb = 8;
         }
-        String text = showRightCps.getValue()
-                ? (lmb + " | " + rmb + " CPS")
-                : (lmb + " CPS");
+        boolean showRmb = showRightCps.getValue();
+        if (lmb != lastLmb || rmb != lastRmb || showRmb != lastShowRmb) {
+            lastLmb = lmb;
+            lastRmb = rmb;
+            lastShowRmb = showRmb;
+            cachedText = showRmb ? (lmb + " | " + rmb + " CPS") : (lmb + " CPS");
+            cachedWidth = Math.max(66, client.textRenderer.getWidth(cachedText) + 14);
+        }
 
-        this.width = Math.max(66, client.textRenderer.getWidth(text) + 14);
+        this.width = cachedWidth;
         this.height = showBurstBar.getValue() ? 21 : 18;
 
         int accent = resolveAccentColor();
         UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), accent);
-        context.drawTextWithShadow(client.textRenderer, text, 7, 4, AzyronTheme.TEXT_PRIMARY);
+        context.drawTextWithShadow(client.textRenderer, cachedText, 7, 4, AzyronTheme.TEXT_PRIMARY);
 
         if (showBurstBar.getValue()) {
             float ratio = Math.min(1.0f, Math.max(lmb, rmb) / 20.0f);

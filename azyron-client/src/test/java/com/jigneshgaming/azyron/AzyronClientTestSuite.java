@@ -107,6 +107,8 @@ public final class AzyronClientTestSuite {
                 () -> testJvmBytecodeLinkageContracts(jarPath));
         runTest("14. Full Fabric onInitializeClient() Startup Flow, Active Status Effects & 3GB-8GB RAM Smoothness",
                 AzyronClientTestSuite::testFullFabricStartupLifecycleAndRamSmoothness);
+        runTest("15. Automatic 3GB-8GB RAM Tier Scaling, Unfocused Background Throttle & 10,000-Frame HUD Stress Test",
+                AzyronClientTestSuite::testAutoRamScalingBackgroundThrottleAndHudBenchmark);
 
         System.out.println("-----------------------------------------------------------------------");
         System.out.printf(" TEST SUMMARY: %d PASSED, %d FAILED%n", passed, failed);
@@ -791,6 +793,100 @@ public final class AzyronClientTestSuite {
             MemoryOptimizer.onClientTick(mc, true);
         }
         assertTrue(MemoryOptimizer.getMaxMb() > 0, "3GB-8GB RAM telemetry operational under high-FPS polling");
+    }
+
+    private static void testAutoRamScalingBackgroundThrottleAndHudBenchmark() throws Exception {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        ClientWorld prevWorld = mc.world;
+
+        try {
+            // 1. Simulate 3GB RAM device (1536MB JVM heap / 3072MB physical RAM)
+            MemoryOptimizer.setSimulatedRamForTesting(1536, 3072);
+            assertEquals(MemoryOptimizer.RamTier.TIER_3GB, MemoryOptimizer.detectRamTier(), "3GB device classified as TIER_3GB");
+            assertEquals(PerformanceProfile.POTATO, MemoryOptimizer.getRecommendedProfileForHardware(),
+                    "3GB RAM device auto-selects Potato Mode on first boot");
+
+            Path cfg3gb = Files.createTempFile("azyron-3gb-", ".json");
+            Files.deleteIfExists(cfg3gb);
+            AzyronClient c3 = AzyronClient.bootstrapHeadlessForTests(cfg3gb);
+            assertEquals(PerformanceProfile.POTATO, c3.getConfig().getActiveProfile(),
+                    "First-launch config persists auto-detected POTATO profile on 3GB RAM");
+
+            // Set inflated vanilla options (16 view, 12 sim, FANCY, 4 mipmaps) and let auto-calibration clamp them
+            mc.world = null;
+            mc.options.getViewDistance().setValue(16);
+            mc.options.getSimulationDistance().setValue(12);
+            mc.options.getMipmapLevels().setValue(4);
+            mc.options.getEntityDistanceScaling().setValue(1.25);
+            mc.options.applyGraphicsMode(GraphicsMode.FANCY);
+            c3.getPerformanceEngine().onClientTick(mc);
+
+            assertEquals(6, mc.options.getViewDistance().getValue(), "3GB RAM auto-clamps view distance to 6");
+            assertEquals(5, mc.options.getSimulationDistance().getValue(), "3GB RAM auto-clamps simulation distance to 5");
+            assertEquals(0, mc.options.getMipmapLevels().getValue(), "3GB RAM auto-clamps mipmaps to 0");
+            assertEquals(GraphicsMode.FAST, mc.options.getPreset().getValue(), "3GB RAM auto-switches to FAST graphics");
+            Files.deleteIfExists(cfg3gb);
+
+            // 2. Simulate 4GB RAM device (2048MB JVM heap / 4096MB physical RAM)
+            MemoryOptimizer.setSimulatedRamForTesting(2048, 4096);
+            assertEquals(MemoryOptimizer.RamTier.TIER_4GB, MemoryOptimizer.detectRamTier(), "4GB device classified as TIER_4GB");
+            assertEquals(PerformanceProfile.SMOOTH_FPS, MemoryOptimizer.getRecommendedProfileForHardware(),
+                    "4GB RAM device auto-selects Smooth FPS Mode");
+            mc.options.getViewDistance().setValue(14);
+            mc.options.getSimulationDistance().setValue(10);
+            c3.getPerformanceEngine().applyAutoRamCalibration(mc);
+            assertEquals(7, mc.options.getViewDistance().getValue(), "4GB RAM auto-clamps view distance to 7");
+            assertEquals(6, mc.options.getSimulationDistance().getValue(), "4GB RAM auto-clamps simulation distance to 6");
+
+            // 3. Simulate 6GB RAM device (3072MB JVM heap / 6144MB physical RAM) & 8GB RAM device (4096MB / 8192MB)
+            MemoryOptimizer.setSimulatedRamForTesting(3072, 6144);
+            assertEquals(MemoryOptimizer.RamTier.TIER_6GB, MemoryOptimizer.detectRamTier(), "6GB device classified as TIER_6GB");
+            assertEquals(PerformanceProfile.BALANCED, MemoryOptimizer.getRecommendedProfileForHardware(),
+                    "6GB RAM device auto-selects Balanced Mode");
+
+            MemoryOptimizer.setSimulatedRamForTesting(4096, 8192);
+            assertEquals(MemoryOptimizer.RamTier.TIER_8GB, MemoryOptimizer.detectRamTier(), "8GB device classified as TIER_8GB");
+            assertEquals(PerformanceProfile.BALANCED, MemoryOptimizer.getRecommendedProfileForHardware(),
+                    "8GB RAM device auto-selects Balanced Mode");
+
+            // 4. Verify unfocused window background FPS & particle throttling
+            PerformanceEngine engine = c3.getPerformanceEngine();
+            engine.applyProfile(PerformanceProfile.BALANCED, mc, false);
+            assertEquals(260, mc.options.getMaxFps().getValue(), "Focused Balanced maxFps == 260");
+            engine.onWindowFocusChanged(mc, false);
+            assertEquals(15, mc.options.getMaxFps().getValue(), "Unfocused window throttles background FPS to 15");
+            assertTrue(!engine.shouldAllowParticle(mc.player.getX(), mc.player.getY(), mc.player.getZ()),
+                    "Unfocused window culls background particles");
+            engine.onWindowFocusChanged(mc, true);
+            assertEquals(260, mc.options.getMaxFps().getValue(), "Refocused window restores maxFps to 260 immediately");
+
+            // 5. 10,000-frame zero-allocation HUD render & primitive CpsTracker stress benchmark
+            mc.world = prevWorld != null ? prevWorld : new ClientWorld();
+            mc.setOverlay(null);
+            mc.getShaderLoader().simulateReloadComplete();
+            AzyronLoadingRenderer.setCoreResourcesReady(true);
+            c3.getModuleManager().getMemoryHudModule().setEnabled(true);
+            CpsTracker.reset();
+            for (int c = 0; c < 35; c++) {
+                CpsTracker.recordLeftClick();
+            }
+            assertEquals(35, CpsTracker.getLeftCps(), "Primitive ring-buffer CpsTracker records 35 rapid clicks");
+
+            DrawContext benchCtx = new DrawContext(1920, 1080);
+            long t0 = System.nanoTime();
+            for (int frame = 0; frame < 10_000; frame++) {
+                benchCtx.drawnStrings.clear();
+                c3.getModuleManager().renderHudOverlay(benchCtx, mc);
+            }
+            long elapsedMs = (System.nanoTime() - t0) / 1_000_000L;
+            assertTrue(elapsedMs < 4_000L, "10,000 full HUD frames rendered smoothly in " + elapsedMs + "ms");
+            assertTrue(benchCtx.drawnStrings.stream().anyMatch(s -> s.contains("35 |")),
+                    "Cached CPS HUD renders 35 LMB CPS accurately across 10,000 frames");
+        } finally {
+            MemoryOptimizer.setSimulatedRamForTesting(-1, -1);
+            FrameTimeTracker.resetForTesting();
+            mc.world = prevWorld;
+        }
     }
 
     private static JsonObject readJsonEntry(JarFile jf, String name) throws Exception {

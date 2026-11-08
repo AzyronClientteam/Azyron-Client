@@ -4,19 +4,38 @@ import com.jigneshgaming.azyron.module.HudModule;
 import com.jigneshgaming.azyron.module.Setting;
 import com.jigneshgaming.azyron.util.AzyronTheme;
 import com.jigneshgaming.azyron.util.UiRenderUtils;
-import java.util.Locale;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.Entity;
 
 /**
  * Rich Coordinates HUD showing X/Y/Z, Cardinal & Axis Facing, Chunk XY, and Nether/Overworld conversion.
+ * Caches formatted strings & text widths whenever the player remains within the same integer block & facing octant.
  */
 public final class CoordinatesModule extends HudModule {
     private final Setting.BooleanSetting showDirection;
     private final Setting.BooleanSetting showChunkCoords;
     private final Setting.BooleanSetting showNetherCoords;
     private final Setting.ModeSetting layoutMode;
+
+    private int lastBx = Integer.MIN_VALUE;
+    private int lastBy = Integer.MIN_VALUE;
+    private int lastBz = Integer.MIN_VALUE;
+    private String lastFacing = "";
+    private boolean lastInNether = false;
+    private boolean lastShowDir = true;
+    private boolean lastShowChunk = true;
+    private boolean lastShowNether = false;
+    private boolean lastCompact = false;
+
+    private String cachedCompact = "";
+    private String cachedLineX = "";
+    private String cachedLineY = "";
+    private String cachedLineZ = "";
+    private String cachedLineChunk = "";
+    private String cachedLineDim = "";
+    private int cachedWidth = 114;
+    private int cachedHeight = 41;
 
     public CoordinatesModule() {
         super("coordinates_hud", "Coordinates HUD", "Displays XYZ, facing direction, chunk & Nether coords", true, 0.012f, 0.178f);
@@ -56,52 +75,78 @@ public final class CoordinatesModule extends HudModule {
         int by = (int) Math.floor(y);
         int bz = (int) Math.floor(z);
         String facing = formatFacing(yaw);
+        boolean showDir = showDirection.getValue();
+        boolean showChunk = showChunkCoords.getValue();
+        boolean showNether = showNetherCoords.getValue();
+        boolean compact = "Compact".equalsIgnoreCase(layoutMode.getValue());
 
-        if ("Compact".equalsIgnoreCase(layoutMode.getValue())) {
-            String line = String.format(Locale.ROOT, "XYZ: %d, %d, %d", bx, by, bz)
-                    + (showDirection.getValue() ? ("  [" + facing + "]") : "");
-            this.width = Math.max(120, client.textRenderer.getWidth(line) + 14);
-            this.height = 18;
-            UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), resolveAccentColor());
-            context.drawTextWithShadow(client.textRenderer, line, 7, 5, AzyronTheme.TEXT_PRIMARY);
-            return;
+        if (bx != lastBx || by != lastBy || bz != lastBz || !facing.equals(lastFacing)
+                || inNether != lastInNether || showDir != lastShowDir
+                || showChunk != lastShowChunk || showNether != lastShowNether
+                || compact != lastCompact) {
+            lastBx = bx;
+            lastBy = by;
+            lastBz = bz;
+            lastFacing = facing;
+            lastInNether = inNether;
+            lastShowDir = showDir;
+            lastShowChunk = showChunk;
+            lastShowNether = showNether;
+            lastCompact = compact;
+
+            if (compact) {
+                StringBuilder sb = new StringBuilder(36);
+                sb.append("XYZ: ").append(bx).append(", ").append(by).append(", ").append(bz);
+                if (showDir) {
+                    sb.append("  [").append(facing).append(']');
+                }
+                cachedCompact = sb.toString();
+                cachedWidth = Math.max(120, client.textRenderer.getWidth(cachedCompact) + 14);
+                cachedHeight = 18;
+            } else {
+                int lines = 3 + (showChunk ? 1 : 0) + (showNether ? 1 : 0);
+                cachedLineX = showDir ? ("X: " + bx + "   " + facing) : ("X: " + bx);
+                cachedLineY = "Y: " + by;
+                cachedLineZ = "Z: " + bz;
+                int maxW = Math.max(client.textRenderer.getWidth(cachedLineX), client.textRenderer.getWidth(cachedLineZ));
+                if (showChunk) {
+                    cachedLineChunk = "Chunk: " + (bx >> 4) + ", " + (bz >> 4);
+                    maxW = Math.max(maxW, client.textRenderer.getWidth(cachedLineChunk));
+                }
+                if (showNether) {
+                    cachedLineDim = inNether
+                            ? ("OW: " + (bx * 8) + ", " + (bz * 8))
+                            : ("Nether: " + (bx / 8) + ", " + (bz / 8));
+                    maxW = Math.max(maxW, client.textRenderer.getWidth(cachedLineDim));
+                }
+                cachedWidth = Math.max(114, maxW + 16);
+                cachedHeight = 8 + lines * 11;
+            }
         }
 
-        int lines = 3;
-        if (showChunkCoords.getValue()) lines++;
-        if (showNetherCoords.getValue()) lines++;
-
-        String lineX = "X: " + bx + (showDirection.getValue() ? ("   " + facing) : "");
-        String lineY = "Y: " + by;
-        String lineZ = "Z: " + bz;
-        String lineChunk = "Chunk: " + (bx >> 4) + ", " + (bz >> 4);
-        String lineDim = inNether
-                ? ("OW: " + (bx * 8) + ", " + (bz * 8))
-                : ("Nether: " + (bx / 8) + ", " + (bz / 8));
-
-        int maxW = Math.max(client.textRenderer.getWidth(lineX), client.textRenderer.getWidth(lineZ));
-        if (showChunkCoords.getValue()) maxW = Math.max(maxW, client.textRenderer.getWidth(lineChunk));
-        if (showNetherCoords.getValue()) maxW = Math.max(maxW, client.textRenderer.getWidth(lineDim));
-
-        this.width = Math.max(114, maxW + 16);
-        this.height = 8 + lines * 11;
-
+        this.width = cachedWidth;
+        this.height = cachedHeight;
         int accent = resolveAccentColor();
         UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), accent);
 
+        if (compact) {
+            context.drawTextWithShadow(client.textRenderer, cachedCompact, 7, 5, AzyronTheme.TEXT_PRIMARY);
+            return;
+        }
+
         int ty = 5;
-        context.drawTextWithShadow(client.textRenderer, lineX, 7, ty, AzyronTheme.TEXT_PRIMARY);
+        context.drawTextWithShadow(client.textRenderer, cachedLineX, 7, ty, AzyronTheme.TEXT_PRIMARY);
         ty += 11;
-        context.drawTextWithShadow(client.textRenderer, lineY, 7, ty, AzyronTheme.TEXT_PRIMARY);
+        context.drawTextWithShadow(client.textRenderer, cachedLineY, 7, ty, AzyronTheme.TEXT_PRIMARY);
         ty += 11;
-        context.drawTextWithShadow(client.textRenderer, lineZ, 7, ty, AzyronTheme.TEXT_PRIMARY);
+        context.drawTextWithShadow(client.textRenderer, cachedLineZ, 7, ty, AzyronTheme.TEXT_PRIMARY);
         ty += 11;
-        if (showChunkCoords.getValue()) {
-            context.drawTextWithShadow(client.textRenderer, lineChunk, 7, ty, AzyronTheme.TEXT_SECONDARY);
+        if (showChunk) {
+            context.drawTextWithShadow(client.textRenderer, cachedLineChunk, 7, ty, AzyronTheme.TEXT_SECONDARY);
             ty += 11;
         }
-        if (showNetherCoords.getValue()) {
-            context.drawTextWithShadow(client.textRenderer, lineDim, 7, ty, AzyronTheme.ACCENT_ELECTRIC_BLUE);
+        if (showNether) {
+            context.drawTextWithShadow(client.textRenderer, cachedLineDim, 7, ty, AzyronTheme.ACCENT_ELECTRIC_BLUE);
         }
     }
 

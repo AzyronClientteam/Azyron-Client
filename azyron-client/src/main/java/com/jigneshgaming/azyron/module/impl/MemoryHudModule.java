@@ -9,10 +9,18 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 
 /**
- * Live JVM Memory Optimization HUD displaying RAM percentage, used MB, and allocation rate.
+ * Live JVM Memory Optimization HUD displaying RAM percentage, used MB, and allocation rate
+ * with zero per-frame String allocations between 250ms sample updates.
  */
 public final class MemoryHudModule extends HudModule {
     private final Setting.BooleanSetting showAllocRate;
+
+    private int lastPct = -1;
+    private int lastUsed = -1;
+    private int lastAlloc = -1;
+    private boolean lastShowAlloc = true;
+    private String cachedText = "RAM: 0% (0MB)";
+    private int cachedWidth = 96;
 
     public MemoryHudModule() {
         super("memory_hud", "Memory HUD", "Shows live JVM RAM usage % and allocation rate", false, 0.86f, 0.06f);
@@ -26,12 +34,22 @@ public final class MemoryHudModule extends HudModule {
         int pct = MemoryOptimizer.getUsagePercent();
         int used = MemoryOptimizer.getUsedMb();
         int alloc = MemoryOptimizer.getAllocationRateMbPerSec();
-        String text = "RAM: " + pct + "% (" + used + "MB)"
-                + (showAllocRate.getValue() ? (" • " + alloc + "MB/s") : "");
+        boolean showAlloc = showAllocRate.getValue();
 
-        this.width = Math.max(96, client.textRenderer.getWidth(text) + 14);
+        if (pct != lastPct || used != lastUsed || alloc != lastAlloc || showAlloc != lastShowAlloc) {
+            lastPct = pct;
+            lastUsed = used;
+            lastAlloc = alloc;
+            lastShowAlloc = showAlloc;
+            cachedText = showAlloc
+                    ? ("RAM: " + pct + "% (" + used + "MB) • " + alloc + "MB/s")
+                    : ("RAM: " + pct + "% (" + used + "MB)");
+            cachedWidth = Math.max(96, client.textRenderer.getWidth(cachedText) + 14);
+        }
+
+        this.width = cachedWidth;
         this.height = 18;
         UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), resolveAccentColor());
-        context.drawTextWithShadow(client.textRenderer, text, 7, 5, AzyronTheme.TEXT_PRIMARY);
+        context.drawTextWithShadow(client.textRenderer, cachedText, 7, 5, AzyronTheme.TEXT_PRIMARY);
     }
 }

@@ -20,26 +20,41 @@ public final class UiRenderUtils {
     public static final Identifier LOGO_TEXTURE = Identifier.of("azyron", "textures/gui/logo.png");
     public static final Identifier CORE_TEXT_SHADER_ID = Identifier.ofVanilla("core/rendertype_text");
 
+    private static ShaderLoader cachedVerifiedShaderLoader = null;
+
     private UiRenderUtils() {
     }
 
     /**
      * Returns true only when Minecraft 1.21.11's ShaderLoader has loaded both VERTEX and FRAGMENT
      * sources for "minecraft:core/rendertype_text" and initial cold-boot SplashOverlay reload has finished.
+     * Caches verified ShaderLoader identity outside SplashOverlay for O(1) zero-overhead in-game HUD checks.
      */
     public static boolean isCoreTextShaderReady(MinecraftClient client) {
         if (client == null || client.textRenderer == null) {
             return false;
         }
         try {
-            if (client.getOverlay() instanceof SplashOverlay && !AzyronLoadingRenderer.isCoreResourcesReady()) {
-                return false;
+            boolean splashActive = client.getOverlay() instanceof SplashOverlay;
+            if (splashActive || !AzyronLoadingRenderer.isCoreResourcesReady()) {
+                cachedVerifiedShaderLoader = null;
+                if (!AzyronLoadingRenderer.isCoreResourcesReady()) {
+                    return false;
+                }
             }
+
             ShaderLoader shaderLoader = client.getShaderLoader();
             if (shaderLoader != null) {
+                if (!splashActive && shaderLoader == cachedVerifiedShaderLoader) {
+                    return true;
+                }
                 String vert = shaderLoader.getSource(CORE_TEXT_SHADER_ID, ShaderType.VERTEX);
                 String frag = shaderLoader.getSource(CORE_TEXT_SHADER_ID, ShaderType.FRAGMENT);
-                return vert != null && !vert.isEmpty() && frag != null && !frag.isEmpty();
+                boolean ready = vert != null && !vert.isEmpty() && frag != null && !frag.isEmpty();
+                if (ready && !splashActive) {
+                    cachedVerifiedShaderLoader = shaderLoader;
+                }
+                return ready;
             }
         } catch (Throwable ignored) {
             return AzyronLoadingRenderer.isCoreResourcesReady();
@@ -99,7 +114,13 @@ public final class UiRenderUtils {
         if (width <= 0 || height <= 0) {
             return;
         }
-        int steps = Math.min(width, 24);
+        if (leftColor == rightColor || width <= 3) {
+            ctx.fill(x, y, x + width, y + height, leftColor);
+            return;
+        }
+        // Use compact quad count (6 segments for thin accent bars, 10 for wider bars) to cut GUI vertex overhead by 75%
+        int maxSegments = height <= 3 ? 6 : 10;
+        int steps = Math.min(width, maxSegments);
         float stepW = (float) width / steps;
         for (int i = 0; i < steps; i++) {
             int sx = x + Math.round(i * stepW);

@@ -4,15 +4,14 @@ import com.jigneshgaming.azyron.module.HudModule;
 import com.jigneshgaming.azyron.module.Setting;
 import com.jigneshgaming.azyron.util.AzyronTheme;
 import com.jigneshgaming.azyron.util.UiRenderUtils;
-import java.util.ArrayList;
-import java.util.List;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
 
 /**
- * Armor & Equipped Item Durability HUD with color-coded health thresholds and HUD Editor preview.
+ * Zero-allocation Armor & Equipped Item Durability HUD with color-coded health thresholds
+ * and reusable fixed-size slot buffers.
  */
 public final class ArmorHudModule extends HudModule {
     private static final EquipmentSlot[] ARMOR_SLOTS = {
@@ -21,10 +20,23 @@ public final class ArmorHudModule extends HudModule {
             EquipmentSlot.LEGS,
             EquipmentSlot.FEET
     };
-    private static final String[] PREVIEW_NAMES = {"Helmet", "Chest", "Legs", "Boots"};
+    private static final String[] PREVIEW_ROWS = {
+            "Helmet 100%",
+            "Chest 100%",
+            "Legs 100%",
+            "Boots 100%"
+    };
 
     private final Setting.ModeSetting durabilityMode;
     private final Setting.BooleanSetting showMainHand;
+
+    private final ItemStack[] activeStacks = new ItemStack[5];
+    private final String[] slotLabels = {"", "", "", "", ""};
+    private final int[] slotWidths = new int[5];
+    private final int[] slotColors = new int[5];
+    private final int[] cachedDamage = {-1, -1, -1, -1, -1};
+    private final int[] cachedMaxDamage = {-1, -1, -1, -1, -1};
+    private String lastMode = "";
 
     public ArmorHudModule() {
         super("armor_hud", "Armor HUD", "Displays equipped armor & weapon durability with low-durability alerts", true, 0.91f, 0.62f);
@@ -39,76 +51,87 @@ public final class ArmorHudModule extends HudModule {
 
     @Override
     protected void renderWidget(DrawContext context, MinecraftClient client, boolean editorPreview) {
-        List<ItemStack> stacks = new ArrayList<>(5);
+        int count = 0;
         if (client != null && client.player != null) {
             if (showMainHand.getValue()) {
                 ItemStack held = client.player.getEquippedStack(EquipmentSlot.MAINHAND);
                 if (held != null && !held.isEmpty()) {
-                    stacks.add(held);
+                    activeStacks[count++] = held;
                 }
             }
             for (EquipmentSlot slot : ARMOR_SLOTS) {
                 ItemStack stack = client.player.getEquippedStack(slot);
                 if (stack != null && !stack.isEmpty()) {
-                    stacks.add(stack);
+                    activeStacks[count++] = stack;
                 }
             }
         }
 
-        if (stacks.isEmpty()) {
+        if (count == 0) {
             if (!editorPreview) {
                 this.width = 76;
                 this.height = 76;
                 return;
             }
-            // Clean HUD Editor preview when player has no armor equipped
             this.width = 84;
             this.height = 4 * 18 + 6;
             UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), resolveAccentColor());
-            for (int i = 0; i < PREVIEW_NAMES.length; i++) {
+            for (int i = 0; i < PREVIEW_ROWS.length; i++) {
                 int ry = 4 + i * 18;
                 UiRenderUtils.drawRoundedPanel(context, 5, ry, 14, 14, 0xFF1E293B, AzyronTheme.ACCENT_PURPLE_BRIGHT);
-                context.drawTextWithShadow(client.textRenderer, PREVIEW_NAMES[i] + " 100%", 23, ry + 3, AzyronTheme.STATUS_GOOD);
+                context.drawTextWithShadow(client.textRenderer, PREVIEW_ROWS[i], 23, ry + 3, AzyronTheme.STATUS_GOOD);
             }
             return;
         }
 
-        boolean showText = !"Bar Only".equalsIgnoreCase(durabilityMode.getValue());
+        String mode = durabilityMode.getValue();
+        boolean modeChanged = !mode.equals(lastMode);
+        if (modeChanged) {
+            lastMode = mode;
+        }
+        boolean showText = !"Bar Only".equalsIgnoreCase(mode);
+        boolean pctMode = "Percentage".equalsIgnoreCase(mode);
         int maxTextW = 0;
-        List<String> labels = new ArrayList<>(stacks.size());
-        List<Integer> colors = new ArrayList<>(stacks.size());
 
-        for (ItemStack stack : stacks) {
+        for (int i = 0; i < count; i++) {
+            ItemStack stack = activeStacks[i];
             if (showText && stack.isDamageable() && stack.getMaxDamage() > 0) {
                 int max = stack.getMaxDamage();
-                int rem = Math.max(0, max - stack.getDamage());
-                int pct = Math.round((rem * 100.0f) / max);
-                String lbl = "Percentage".equalsIgnoreCase(durabilityMode.getValue())
-                        ? (pct + "%")
-                        : (rem + "/" + max);
-                labels.add(lbl);
-                colors.add(durabilityColor(pct));
-                maxTextW = Math.max(maxTextW, client.textRenderer.getWidth(lbl));
+                int dmg = stack.getDamage();
+                if (modeChanged || dmg != cachedDamage[i] || max != cachedMaxDamage[i]) {
+                    cachedDamage[i] = dmg;
+                    cachedMaxDamage[i] = max;
+                    int rem = Math.max(0, max - dmg);
+                    int pct = Math.round((rem * 100.0f) / max);
+                    String lbl = pctMode ? (pct + "%") : (rem + "/" + max);
+                    slotLabels[i] = lbl;
+                    slotWidths[i] = client.textRenderer.getWidth(lbl);
+                    slotColors[i] = durabilityColor(pct);
+                }
+                maxTextW = Math.max(maxTextW, slotWidths[i]);
             } else {
-                labels.add("");
-                colors.add(AzyronTheme.TEXT_PRIMARY);
+                slotLabels[i] = "";
+                slotWidths[i] = 0;
+                slotColors[i] = AzyronTheme.TEXT_PRIMARY;
+                cachedDamage[i] = -2;
             }
         }
 
         this.width = showText ? Math.max(58, 28 + maxTextW) : 26;
-        this.height = stacks.size() * 18 + 6;
+        this.height = count * 18 + 6;
 
         UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), resolveAccentColor());
 
-        for (int i = 0; i < stacks.size(); i++) {
-            ItemStack stack = stacks.get(i);
+        for (int i = 0; i < count; i++) {
+            ItemStack stack = activeStacks[i];
             int ry = 3 + i * 18;
             context.drawItem(stack, 5, ry);
             context.drawItemBar(stack, 5, ry);
-            String lbl = labels.get(i);
+            String lbl = slotLabels[i];
             if (!lbl.isEmpty()) {
-                context.drawTextWithShadow(client.textRenderer, lbl, 24, ry + 4, colors.get(i));
+                context.drawTextWithShadow(client.textRenderer, lbl, 24, ry + 4, slotColors[i]);
             }
+            activeStacks[i] = null;
         }
     }
 

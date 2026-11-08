@@ -10,10 +10,16 @@ import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.PlayerListEntry;
 
 /**
- * Live Server Ping / Latency HUD with connection quality color-coding.
+ * Live Server Ping / Latency HUD with connection quality color-coding and cached label widths.
  */
 public final class PingModule extends HudModule {
     private final Setting.BooleanSetting colorByQuality;
+
+    private int lastPingMs = Integer.MIN_VALUE;
+    private int lastStateKind = -1;
+    private String cachedText = "-- ms";
+    private int cachedLabelWidth = 0;
+    private int cachedCardWidth = 66;
 
     public PingModule() {
         super("ping_display", "Ping Display", "Shows live server latency in milliseconds", true, 0.012f, 0.128f);
@@ -34,20 +40,33 @@ public final class PingModule extends HudModule {
                 }
             }
         }
-        String text;
+
+        int stateKind;
         if (pingMs >= 0) {
-            text = pingMs + " ms";
+            stateKind = 0;
         } else if (editorPreview) {
             pingMs = 24;
-            text = "24 ms";
+            stateKind = 1;
         } else if (client != null && client.isInSingleplayer()) {
             pingMs = 0;
-            text = "0 ms (Local)";
+            stateKind = 2;
         } else {
-            text = "-- ms";
+            stateKind = 3;
         }
 
-        this.width = Math.max(66, client.textRenderer.getWidth("Ping: " + text) + 14);
+        if (pingMs != lastPingMs || stateKind != lastStateKind || cachedLabelWidth <= 0) {
+            lastPingMs = pingMs;
+            lastStateKind = stateKind;
+            cachedText = switch (stateKind) {
+                case 0, 1 -> pingMs + " ms";
+                case 2 -> "0 ms (Local)";
+                default -> "-- ms";
+            };
+            cachedLabelWidth = client.textRenderer.getWidth("Ping: ");
+            cachedCardWidth = Math.max(66, cachedLabelWidth + client.textRenderer.getWidth(cachedText) + 14);
+        }
+
+        this.width = cachedCardWidth;
         this.height = 18;
 
         int accent = resolveAccentColor();
@@ -64,7 +83,6 @@ public final class PingModule extends HudModule {
             }
         }
         context.drawTextWithShadow(client.textRenderer, "Ping: ", 7, 5, AzyronTheme.TEXT_SECONDARY);
-        int labelW = client.textRenderer.getWidth("Ping: ");
-        context.drawTextWithShadow(client.textRenderer, text, 7 + labelW, 5, textColor);
+        context.drawTextWithShadow(client.textRenderer, cachedText, 7 + cachedLabelWidth, 5, textColor);
     }
 }

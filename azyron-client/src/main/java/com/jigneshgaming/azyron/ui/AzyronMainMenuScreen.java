@@ -30,6 +30,16 @@ public final class AzyronMainMenuScreen extends Screen {
 
     private final List<MenuButton> buttons = new ArrayList<>();
 
+    private String lastUsername = "";
+    private CosmeticsManager.BadgeStyle lastBadge = null;
+    private String cachedUserLabel = "";
+    private int cachedUserWidth = 0;
+
+    private int lastStatsFps = -1;
+    private int lastStatsRamPct = -1;
+    private String cachedStatsLabel = "";
+    private int cachedStatsWidth = 0;
+
     public AzyronMainMenuScreen() {
         super(Text.literal("AZYRON CLIENT Main Menu"));
     }
@@ -147,26 +157,35 @@ public final class AzyronMainMenuScreen extends Screen {
                 ? this.client.getSession().getUsername()
                 : "Player";
         AzyronClient inst = AzyronClient.getInstance();
-        String badge = "";
-        if (inst != null && inst.getCosmeticsManager() != null) {
-            CosmeticsManager.BadgeStyle bs = inst.getCosmeticsManager().getActiveBadge();
-            if (bs != CosmeticsManager.BadgeStyle.NONE) {
-                badge = " " + bs.getTag();
-            }
+        CosmeticsManager.BadgeStyle bs = (inst != null && inst.getCosmeticsManager() != null)
+                ? inst.getCosmeticsManager().getActiveBadge()
+                : CosmeticsManager.BadgeStyle.NONE;
+
+        if (!username.equals(lastUsername) || bs != lastBadge || cachedUserWidth <= 0) {
+            lastUsername = username;
+            lastBadge = bs;
+            String badge = (bs != null && bs != CosmeticsManager.BadgeStyle.NONE) ? (" " + bs.getTag()) : "";
+            cachedUserLabel = "● " + username + badge;
+            cachedUserWidth = this.textRenderer.getWidth(cachedUserLabel) + 16;
         }
-        String userLabel = "● " + username + badge;
-        int uw = this.textRenderer.getWidth(userLabel) + 16;
+        int uw = cachedUserWidth;
         UiRenderUtils.drawRoundedPanel(ctx, 8, 8, uw, 18, AzyronTheme.BG_CARD, AzyronTheme.ACCENT_PURPLE_BRIGHT);
-        ctx.drawTextWithShadow(this.textRenderer, userLabel, 16, 13, AzyronTheme.TEXT_PRIMARY);
+        ctx.drawTextWithShadow(this.textRenderer, cachedUserLabel, 16, 13, AzyronTheme.TEXT_PRIMARY);
 
         MemoryOptimizer.onClientTick(this.client, false);
         int fps = (this.client != null) ? this.client.getCurrentFps() : 240;
-        String stats = fps + " FPS  |  RAM " + MemoryOptimizer.getUsagePercent() + "%";
-        int sw = this.textRenderer.getWidth(stats) + 14;
+        int ramPct = MemoryOptimizer.getUsagePercent();
+        if (fps != lastStatsFps || ramPct != lastStatsRamPct || cachedStatsWidth <= 0) {
+            lastStatsFps = fps;
+            lastStatsRamPct = ramPct;
+            cachedStatsLabel = fps + " FPS  |  RAM " + ramPct + "%";
+            cachedStatsWidth = this.textRenderer.getWidth(cachedStatsLabel) + 14;
+        }
+        int sw = cachedStatsWidth;
         int sx = 14 + uw;
         if (sx + sw < this.width - 166) {
             UiRenderUtils.drawRoundedPanel(ctx, sx, 8, sw, 18, AzyronTheme.BG_CARD, AzyronTheme.BORDER_SUBTLE);
-            ctx.drawTextWithShadow(this.textRenderer, stats, sx + 7, 13, AzyronTheme.TEXT_SECONDARY);
+            ctx.drawTextWithShadow(this.textRenderer, cachedStatsLabel, sx + 7, 13, AzyronTheme.TEXT_SECONDARY);
         }
     }
 
@@ -209,8 +228,16 @@ public final class AzyronMainMenuScreen extends Screen {
     }
 
     private void renderAmbientParticles(DrawContext ctx) {
+        AzyronClient inst = AzyronClient.getInstance();
+        if (inst != null && inst.getPerformanceEngine() != null) {
+            if (!inst.getPerformanceEngine().isWindowFocused()
+                    || inst.getPerformanceEngine().getActiveProfile() == PerformanceProfile.POTATO) {
+                return;
+            }
+        }
         long t = System.currentTimeMillis();
-        for (int i = 0; i < 18; i++) {
+        int count = MemoryOptimizer.detectRamTier() == MemoryOptimizer.RamTier.TIER_3GB ? 8 : 14;
+        for (int i = 0; i < count; i++) {
             double speed = 0.012 + (i % 5) * 0.004;
             int px = (int) (((i * 97L) + (long) (t * speed)) % Math.max(1, this.width));
             int py = (int) (((i * 53L) + (long) (t * speed * 0.6)) % Math.max(1, this.height));

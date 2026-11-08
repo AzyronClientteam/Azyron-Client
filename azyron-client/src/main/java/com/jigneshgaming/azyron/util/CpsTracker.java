@@ -1,17 +1,22 @@
 package com.jigneshgaming.azyron.util;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-
 /**
- * Rolling 1000ms CPS (Clicks Per Second) tracker for Left & Right Mouse / PojavLauncher Touch inputs.
- * Supports primary MouseMixin hardware events plus a non-duplicating Mouse/KeyBinding edge fallback
- * if the Mixin target is ever unavailable.
+ * Zero-allocation rolling 1000ms CPS (Clicks Per Second) tracker using primitive long[] ring buffers.
+ * Eliminates Long autoboxing during rapid PvP clicking while supporting both MouseMixin hardware events
+ * and non-duplicating Mouse/KeyBinding edge fallbacks on desktop and PojavLauncher.
  */
 public final class CpsTracker {
     private static final long WINDOW_MS = 1000L;
-    private static final Deque<Long> LEFT_CLICKS = new ArrayDeque<>(64);
-    private static final Deque<Long> RIGHT_CLICKS = new ArrayDeque<>(64);
+    private static final int RING_CAPACITY = 256;
+    private static final int RING_MASK = RING_CAPACITY - 1;
+
+    private static final long[] LEFT_RING = new long[RING_CAPACITY];
+    private static int leftHead = 0;
+    private static int leftTail = 0;
+
+    private static final long[] RIGHT_RING = new long[RING_CAPACITY];
+    private static int rightHead = 0;
+    private static int rightTail = 0;
 
     private static volatile boolean mixinHookActive = false;
     private static boolean prevMouseLeftDown = false;
@@ -35,15 +40,15 @@ public final class CpsTracker {
     public static synchronized void recordLeftClick() {
         long now = System.currentTimeMillis();
         lastHardwareLeftMs = now;
-        prune(LEFT_CLICKS, now);
-        LEFT_CLICKS.addLast(now);
+        pruneLeft(now);
+        pushLeft(now);
     }
 
     public static synchronized void recordRightClick() {
         long now = System.currentTimeMillis();
         lastHardwareRightMs = now;
-        prune(RIGHT_CLICKS, now);
-        RIGHT_CLICKS.addLast(now);
+        pruneRight(now);
+        pushRight(now);
     }
 
     /**
@@ -52,12 +57,12 @@ public final class CpsTracker {
     public static synchronized void pollKeybindEdges(boolean attackDown, boolean useDown) {
         long now = System.currentTimeMillis();
         if (attackDown && !prevAttackKeyDown && (now - lastHardwareLeftMs) > 25L) {
-            prune(LEFT_CLICKS, now);
-            LEFT_CLICKS.addLast(now);
+            pruneLeft(now);
+            pushLeft(now);
         }
         if (useDown && !prevUseKeyDown && (now - lastHardwareRightMs) > 25L) {
-            prune(RIGHT_CLICKS, now);
-            RIGHT_CLICKS.addLast(now);
+            pruneRight(now);
+            pushRight(now);
         }
         prevAttackKeyDown = attackDown;
         prevUseKeyDown = useDown;
@@ -76,13 +81,13 @@ public final class CpsTracker {
             long now = System.currentTimeMillis();
             if (mouseLeftDown && !prevMouseLeftDown && (now - lastHardwareLeftMs) > 25L) {
                 lastHardwareLeftMs = now;
-                prune(LEFT_CLICKS, now);
-                LEFT_CLICKS.addLast(now);
+                pruneLeft(now);
+                pushLeft(now);
             }
             if (mouseRightDown && !prevMouseRightDown && (now - lastHardwareRightMs) > 25L) {
                 lastHardwareRightMs = now;
-                prune(RIGHT_CLICKS, now);
-                RIGHT_CLICKS.addLast(now);
+                pruneRight(now);
+                pushRight(now);
             }
         }
         prevMouseLeftDown = mouseLeftDown;
@@ -91,20 +96,20 @@ public final class CpsTracker {
     }
 
     public static synchronized int getLeftCps() {
-        long now = System.currentTimeMillis();
-        prune(LEFT_CLICKS, now);
-        return LEFT_CLICKS.size();
+        pruneLeft(System.currentTimeMillis());
+        return (leftTail - leftHead) & RING_MASK;
     }
 
     public static synchronized int getRightCps() {
-        long now = System.currentTimeMillis();
-        prune(RIGHT_CLICKS, now);
-        return RIGHT_CLICKS.size();
+        pruneRight(System.currentTimeMillis());
+        return (rightTail - rightHead) & RING_MASK;
     }
 
     public static synchronized void reset() {
-        LEFT_CLICKS.clear();
-        RIGHT_CLICKS.clear();
+        leftHead = 0;
+        leftTail = 0;
+        rightHead = 0;
+        rightTail = 0;
         mixinHookActive = false;
         prevMouseLeftDown = false;
         prevMouseRightDown = false;
@@ -114,9 +119,33 @@ public final class CpsTracker {
         lastHardwareRightMs = 0L;
     }
 
-    private static void prune(Deque<Long> deque, long now) {
-        while (!deque.isEmpty() && (now - deque.peekFirst()) > WINDOW_MS) {
-            deque.pollFirst();
+    private static void pushLeft(long now) {
+        int nextTail = (leftTail + 1) & RING_MASK;
+        if (nextTail == leftHead) {
+            leftHead = (leftHead + 1) & RING_MASK;
+        }
+        LEFT_RING[leftTail] = now;
+        leftTail = nextTail;
+    }
+
+    private static void pushRight(long now) {
+        int nextTail = (rightTail + 1) & RING_MASK;
+        if (nextTail == rightHead) {
+            rightHead = (rightHead + 1) & RING_MASK;
+        }
+        RIGHT_RING[rightTail] = now;
+        rightTail = nextTail;
+    }
+
+    private static void pruneLeft(long now) {
+        while (leftHead != leftTail && (now - LEFT_RING[leftHead]) > WINDOW_MS) {
+            leftHead = (leftHead + 1) & RING_MASK;
+        }
+    }
+
+    private static void pruneRight(long now) {
+        while (rightHead != rightTail && (now - RIGHT_RING[rightHead]) > WINDOW_MS) {
+            rightHead = (rightHead + 1) & RING_MASK;
         }
     }
 }

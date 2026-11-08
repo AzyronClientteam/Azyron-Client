@@ -24,39 +24,45 @@ public abstract class InGameHudMixin {
 
     @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true, require = 0)
     private void azyron$renderCustomCrosshair(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        AzyronClient inst = AzyronClient.getInstance();
-        if (inst == null || inst.getModuleManager() == null || this.client.options.hudHidden) {
-            return;
-        }
-        CrosshairModule crosshair = inst.getModuleManager().getCrosshairModule();
-        if (crosshair != null && crosshair.isEnabled()) {
-            crosshair.renderCrosshair(context, this.client);
-            ci.cancel();
+        try {
+            AzyronClient inst = AzyronClient.getInstance();
+            if (inst == null || inst.getModuleManager() == null || this.client == null || this.client.options == null || this.client.options.hudHidden) {
+                return;
+            }
+            CrosshairModule crosshair = inst.getModuleManager().getCrosshairModule();
+            if (crosshair != null && crosshair.isEnabled()) {
+                crosshair.renderCrosshair(context, this.client);
+                ci.cancel();
+            }
+        } catch (Throwable ignored) {
         }
     }
 
     @Inject(method = "renderStatusEffectOverlay", at = @At("HEAD"), cancellable = true, require = 0)
     private void azyron$hideVanillaEffectsIfConfigured(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        AzyronClient inst = AzyronClient.getInstance();
-        if (inst != null && inst.getModuleManager() != null) {
-            PotionHudModule potionHud = inst.getModuleManager().getPotionHudModule();
-            if (potionHud != null && potionHud.shouldHideVanillaOverlay()) {
-                ci.cancel();
+        try {
+            AzyronClient inst = AzyronClient.getInstance();
+            if (inst != null && inst.getModuleManager() != null) {
+                PotionHudModule potionHud = inst.getModuleManager().getPotionHudModule();
+                if (potionHud != null && potionHud.shouldHideVanillaOverlay()) {
+                    ci.cancel();
+                }
             }
+        } catch (Throwable ignored) {
         }
     }
 
     @Inject(method = "render", at = @At("TAIL"), require = 0)
     private void azyron$renderClientHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        if (!UiRenderUtils.isCoreTextShaderReady(this.client)) {
-            return;
-        }
-        AzyronClient inst = AzyronClient.getInstance();
-        if (inst != null) {
-            ModuleManager mm = inst.getModuleManager();
-            if (mm != null) {
-                mm.renderHudOverlay(context, this.client);
+        try {
+            AzyronClient inst = AzyronClient.getInstance();
+            if (inst != null) {
+                ModuleManager mm = inst.getModuleManager();
+                if (mm != null) {
+                    mm.renderHudOverlay(context, this.client);
+                }
             }
+        } catch (Throwable ignored) {
         }
     }
 }

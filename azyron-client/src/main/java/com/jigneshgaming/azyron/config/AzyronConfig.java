@@ -8,6 +8,7 @@ import com.jigneshgaming.azyron.module.AzyronModule;
 import com.jigneshgaming.azyron.module.HudModule;
 import com.jigneshgaming.azyron.module.ModuleManager;
 import com.jigneshgaming.azyron.module.Setting;
+import com.jigneshgaming.azyron.profile.MemoryOptimizer;
 import com.jigneshgaming.azyron.profile.PerformanceProfile;
 import java.io.IOException;
 import java.io.Reader;
@@ -22,6 +23,8 @@ import net.fabricmc.loader.api.FabricLoader;
 
 /**
  * Persistent JSON configuration for AZYRON CLIENT stored at config/azyron-client.json.
+ * Automatically selects the optimal initial PerformanceProfile for 3GB–8GB RAM devices on first boot
+ * and uses multi-launcher-safe atomic file writes.
  */
 public final class AzyronConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -36,7 +39,7 @@ public final class AzyronConfig {
 
     public static final class ConfigData {
         public String configVersion = "1.0.2";
-        public String activeProfile = PerformanceProfile.BALANCED.name();
+        public String activeProfile = MemoryOptimizer.getRecommendedProfileForHardware().name();
         public boolean customMainMenuEnabled = true;
         public boolean customLoadingScreenEnabled = true;
         public boolean autoMemoryOptimization = true;
@@ -66,6 +69,8 @@ public final class AzyronConfig {
 
     public void load() {
         if (!Files.exists(configFile)) {
+            this.data = new ConfigData();
+            this.data.activeProfile = MemoryOptimizer.getRecommendedProfileForHardware().name();
             save();
             return;
         }
@@ -76,9 +81,12 @@ public final class AzyronConfig {
                 if (this.data.modules == null) {
                     this.data.modules = new LinkedHashMap<>();
                 }
+                if (this.data.activeProfile == null || this.data.activeProfile.isBlank()) {
+                    this.data.activeProfile = MemoryOptimizer.getRecommendedProfileForHardware().name();
+                }
             }
         } catch (Exception e) {
-            AzyronClient.LOGGER.warn("[AZYRON] Failed reading config, restoring clean defaults: {}", e.getMessage());
+            AzyronClient.LOGGER.warn("[AZYRON] Failed reading config, restoring clean hardware-tuned defaults: {}", e.getMessage());
             this.data = new ConfigData();
         }
     }
@@ -120,7 +128,13 @@ public final class AzyronConfig {
         }
         if (moduleManager != null) {
             for (AzyronModule module : moduleManager.getModules()) {
-                ModuleSnapshot snap = new ModuleSnapshot();
+                ModuleSnapshot snap = data.modules.get(module.getId());
+                if (snap == null) {
+                    snap = new ModuleSnapshot();
+                    data.modules.put(module.getId(), snap);
+                } else {
+                    snap.settings.clear();
+                }
                 snap.enabled = module.isEnabled();
                 if (module instanceof HudModule hud) {
                     snap.anchorX = hud.getAnchorX();
@@ -130,7 +144,6 @@ public final class AzyronConfig {
                 for (Setting<?> setting : module.getSettings()) {
                     snap.settings.put(setting.getKey(), setting.serialize());
                 }
-                data.modules.put(module.getId(), snap);
             }
         }
     }
@@ -141,12 +154,27 @@ public final class AzyronConfig {
             if (inst != null) {
                 captureFromManagers(inst.getModuleManager(), inst.getCosmeticsManager());
             }
-            Files.createDirectories(configFile.getParent());
+            Path parent = configFile.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
             Path tmp = configFile.resolveSibling(configFile.getFileName().toString() + ".tmp");
             try (Writer writer = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8)) {
                 GSON.toJson(data, writer);
             }
-            Files.move(tmp, configFile, StandardCopyOption.REPLACE_EXISTING);
+            try {
+                Files.move(tmp, configFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException atomicEx) {
+                try {
+                    Files.move(tmp, configFile, StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException moveEx) {
+                    // Fallback for Windows antivirus or Android FUSE file locks
+                    try (Writer writer = Files.newBufferedWriter(configFile, StandardCharsets.UTF_8)) {
+                        GSON.toJson(data, writer);
+                    }
+                    Files.deleteIfExists(tmp);
+                }
+            }
         } catch (IOException e) {
             AzyronClient.LOGGER.warn("[AZYRON] Could not save config file {}: {}", configFile, e.getMessage());
         }

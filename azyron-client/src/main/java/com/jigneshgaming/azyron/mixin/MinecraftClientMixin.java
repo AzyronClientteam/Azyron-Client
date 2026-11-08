@@ -59,4 +59,15 @@ public abstract class MinecraftClientMixin {
         } catch (Throwable ignored) {
         }
     }
+
+    @Inject(method = "onWindowFocusChanged", at = @At("TAIL"), require = 0)
+    private void azyron$onWindowFocusChanged(boolean focused, CallbackInfo ci) {
+        try {
+            AzyronClient inst = AzyronClient.getInstance();
+            if (inst != null && inst.getPerformanceEngine() != null) {
+                inst.getPerformanceEngine().onWindowFocusChanged((MinecraftClient) (Object) this, focused);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
 }

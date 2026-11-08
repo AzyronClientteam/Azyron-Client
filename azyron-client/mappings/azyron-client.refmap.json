@@ -13,7 +13,8 @@
     },
     "com/jigneshgaming/azyron/mixin/MinecraftClientMixin": {
       "setScreen": "Lnet/minecraft/class_310;method_1507(Lnet/minecraft/class_437;)V",
-      "getWindowTitle": "Lnet/minecraft/class_310;method_24287()Ljava/lang/String;"
+      "getWindowTitle": "Lnet/minecraft/class_310;method_24287()Ljava/lang/String;",
+      "onWindowFocusChanged": "Lnet/minecraft/class_310;method_15995(Z)V"
     },
     "com/jigneshgaming/azyron/mixin/MouseMixin": {
       "onMouseButton": "Lnet/minecraft/class_312;method_1601(JLnet/minecraft/class_11910;I)V",
@@ -43,7 +44,8 @@
       },
       "com/jigneshgaming/azyron/mixin/MinecraftClientMixin": {
         "setScreen": "Lnet/minecraft/class_310;method_1507(Lnet/minecraft/class_437;)V",
-        "getWindowTitle": "Lnet/minecraft/class_310;method_24287()Ljava/lang/String;"
+        "getWindowTitle": "Lnet/minecraft/class_310;method_24287()Ljava/lang/String;",
+        "onWindowFocusChanged": "Lnet/minecraft/class_310;method_15995(Z)V"
       },
       "com/jigneshgaming/azyron/mixin/MouseMixin": {
         "onMouseButton": "Lnet/minecraft/class_312;method_1601(JLnet/minecraft/class_11910;I)V",
