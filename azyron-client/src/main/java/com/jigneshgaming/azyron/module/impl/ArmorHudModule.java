@@ -49,6 +49,15 @@ public final class ArmorHudModule extends HudModule {
         ));
     }
 
+    public void clearWorldCache() {
+        for (int i = 0; i < 5; i++) {
+            activeStacks[i] = null;
+            slotLabels[i] = "";
+            cachedDamage[i] = -1;
+            cachedMaxDamage[i] = -1;
+        }
+    }
+
     @Override
     protected void renderWidget(DrawContext context, MinecraftClient client, boolean editorPreview) {
         if (context == null || client == null || client.textRenderer == null) {
@@ -133,8 +142,10 @@ public final class ArmorHudModule extends HudModule {
                 // Minecraft 1.21.11: DrawContext.drawItemBar (method_64860) is private;
                 // use public DrawContext.drawStackOverlay (method_51431) for durability bar, stack count & cooldowns.
                 context.drawStackOverlay(client.textRenderer, stack, 5, ry);
-            } catch (Throwable ignored) {
-                // Fallback icon marker if a third-party modded ItemStack fails model rendering
+            } catch (Throwable t) {
+                // Log rate-limited diagnostic and draw clean fallback marker if a modded server item model fails
+                com.jigneshgaming.azyron.profile.MultiplayerPerformanceController
+                        .logRateLimitedWarning("ArmorHud item render fallback", t);
                 UiRenderUtils.drawRoundedPanel(context, 5, ry + 1, 14, 14, 0xFF1E293B, slotColors[i]);
             }
             String lbl = slotLabels[i];

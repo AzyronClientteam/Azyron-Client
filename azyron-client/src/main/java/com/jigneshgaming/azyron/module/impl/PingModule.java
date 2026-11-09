@@ -15,6 +15,10 @@ import net.minecraft.client.network.PlayerListEntry;
 public final class PingModule extends HudModule {
     private final Setting.BooleanSetting colorByQuality;
 
+    private int sampledPingMs = -1;
+    private boolean hasSampledThisWorld = false;
+    private int tickCounter = 0;
+
     private int lastPingMs = Integer.MIN_VALUE;
     private int lastStateKind = -1;
     private String cachedText = "-- ms";
@@ -28,17 +32,52 @@ public final class PingModule extends HudModule {
         ));
     }
 
+    public void clearWorldCache() {
+        sampledPingMs = -1;
+        hasSampledThisWorld = false;
+        tickCounter = 0;
+        lastPingMs = Integer.MIN_VALUE;
+        lastStateKind = -1;
+    }
+
     @Override
-    protected void renderWidget(DrawContext context, MinecraftClient client, boolean editorPreview) {
-        int pingMs = -1;
+    public void onTick(MinecraftClient client) {
+        if (!isEnabled() || client == null || client.player == null || client.world == null) {
+            sampledPingMs = -1;
+            hasSampledThisWorld = false;
+            return;
+        }
+        tickCounter++;
+        // Sample network PlayerListEntry once every 10 ticks (0.5s) instead of per-frame HashMap lookups
+        if (!hasSampledThisWorld || tickCounter >= 10) {
+            tickCounter = 0;
+            sampleLatency(client);
+        }
+    }
+
+    private void sampleLatency(MinecraftClient client) {
         if (client != null && client.player != null) {
             ClientPlayNetworkHandler net = client.getNetworkHandler();
             if (net != null) {
                 PlayerListEntry entry = net.getPlayerListEntry(client.player.getUuid());
                 if (entry != null) {
-                    pingMs = Math.max(0, entry.getLatency());
+                    sampledPingMs = Math.max(0, entry.getLatency());
+                    hasSampledThisWorld = true;
+                    return;
                 }
             }
+        }
+        sampledPingMs = -1;
+    }
+
+    @Override
+    protected void renderWidget(DrawContext context, MinecraftClient client, boolean editorPreview) {
+        int pingMs = -1;
+        if (client != null && client.player != null && client.world != null) {
+            if (!hasSampledThisWorld) {
+                sampleLatency(client);
+            }
+            pingMs = sampledPingMs;
         }
 
         int stateKind;

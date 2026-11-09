@@ -1,4 +1,4 @@
-1e7f6de1d6361214ce673f427f347efe9b55a5bfc3ff439ce4c174978aa7e40e  Azyron-Client-1.0.2.jar
-891862b5a8fc9e754d0ae0eab4649b3486b7ba855e4e3dd6116e3abe1572932f  Azyron-Modpack-1.0.2.mrpack
-71eba2d8453d87850e8bf754d637d628cd17f2bb5db912572cbcb9637668fe14  Azyron-Client-Source-v1.0.2.zip
-91eff639972db68947aec2e58407d7b9f123fc9b782a37e7663fcdcd6eea8ac2  Azyron-Client-Source-v1.0.2.tar.gz
+16ef49e13e685fde30556dc999bda7ae9b071a325264913f801e4d1aa4563f3b  Azyron-Client-1.0.2.jar
+00ac1139af7eec8dec7a014e9667742a0bc8c5ae004d9965ca4e3923fbe07542  Azyron-Modpack-1.0.2.mrpack
+95096304cb9b8a855519af465cc350eec4afe0dbcb7df988f355ad2e8b5b4529  Azyron-Client-Source-v1.0.2.zip
+61cf417617bdae44f69418063fb8f47ca6e57e2ae0bed3fa68695678deb1b6eb  Azyron-Client-Source-v1.0.2.tar.gz

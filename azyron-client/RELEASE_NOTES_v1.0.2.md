@@ -16,14 +16,21 @@
 
 | Package | Filename & Direct Download | Description |
 | :--- | :--- | :--- |
-| **Client Mod JAR (`1.0.2`)** | [**`Azyron-Client-1.0.2.jar`**](releases/Azyron-Client-1.0.2.jar) | Standalone Fabric `1.21.11` client mod (`58` Java 21 classes, `12` Mixins) |
+| **Client Mod JAR (`1.0.2`)** | [**`Azyron-Client-1.0.2.jar`**](releases/Azyron-Client-1.0.2.jar) | Standalone Fabric `1.21.11` client mod (`62` Java 21 classes, `15` Mixins) |
 | **Universal Modpack (`1.0.2`)** | [**`Azyron-Modpack-1.0.2.mrpack`**](releases/Azyron-Modpack-1.0.2.mrpack) | Modrinth `v1` universal PC + Android/PojavLauncher modpack with `Azyron-Client-1.0.2.jar` + 8 verified `1.21.11` Fabric optimization mods |
-| **Source Code Archive (`.zip`)** | [**`Azyron-Client-Source-v1.0.2.zip`**](releases/Azyron-Client-Source-v1.0.2.zip) | Complete `v1.0.2` Java 21 source code, Gradle build scripts, test suite & modpack configs |
+| **Source Code Archive (`.zip`)** | [**`Azyron-Client-Source-v1.0.2.zip`**](releases/Azyron-Client-Source-v1.0.2.zip) | Complete `v1.0.2` Java 21 source code, Gradle build scripts, 25-suite verifier & modpack configs |
 | **Source Code Archive (`.tar.gz`)** | [**`Azyron-Client-Source-v1.0.2.tar.gz`**](releases/Azyron-Client-Source-v1.0.2.tar.gz) | Complete `v1.0.2` compressed tarball source archive |
 
 ---
 
 ## What's New & Fixed in Changelog (`v1.0.2`)
+
+- **Multiplayer Server-Join Lag & Crash Fix (`MultiplayerPerformanceController`, `ChunkBatchSizeCalculatorMixin`, `ClientWorldMixin`, `EntityRenderManagerMixin`, `MemoryOptimizer`, `InGameHudMixin`, `PotionHudModule`, `PingModule`):**
+  - Removed automatic `System.gc()` calls during server login, `LevelLoadingScreen` / `ConnectScreen` / `ReconfiguringScreen`, and BungeeCord/Velocity dimension transfers to eliminate multi-second Stop-The-World GC freezes and KeepAlive disconnects on `3GB–8GB` devices.
+  - Added protocol-compliant `ChunkBatchSizeCalculator` (`class_8760.method_53485()F`) chunk-batch pacing across `3GB–8GB` RAM tiers and an 80-tick (`4.0s`) server-join warmup ramp (`1.28–6.00` chunks/tick on join -> `2.98–14.00` steady state).
+  - Added nanosecond frame-budgeted draining of `ClientWorld.runQueuedChunkUpdates()` (`class_638.method_38534()V` / `field_34804`) so `250–1,200+` chunk light bursts spread smoothly across frames (`<= 1.85 ms` max frame time on `3GB` tier) with zero dropped updates.
+  - Added gameplay-safe distant hub entity culling (`EntityRenderManager.shouldRender`, `class_898.method_3950`) that preserves 100% of nearby entities (`<=16m`), players, combat hostiles, projectiles, mounts, and glowing targets while culling distant lobby hologram/item clutter.
+  - Guarded HUD overlays during `LevelLoadingScreen` / `ConnectScreen` / `ReconfiguringScreen`, verified `RegistryEntry.hasKeyAndValue()` (`method_40227()Z`) before `.value()` in `PotionHudModule`, throttled `PingModule` latency polling to every 10 ticks, released old-world HUD caches on `MinecraftClient.joinWorld`, preserved **Armour Hub (`ArmorHudModule`)** in full, and logged diagnostics instead of hiding errors.
 
 - **World Data Protection & `raids.dat` Recovery (`PersistentStateGuard` + `PersistentStateManagerMixin`):** Automatically backs up truncated, corrupted, or legacy `raids.dat` / `raids_end.dat` (and any unreadable world `.dat` state) into `<world>/data/azyron_backups/<file>.<timestamp>.bak` (+ diagnostic `.meta.txt`) **before** any repair or vanilla fallback occurs, repairs legacy/partial `1.21.11` raid NBT tags (`next_id`, `tick`, `raids`) in memory without deleting world files, and writes saves atomically via `.azyron.tmp` rename.
 - **`fullscreen:off` & Boolean Option Sanitizer (`OptionsConfigSanitizer` + `GameOptionsMixin`):** Automatically normalizes non-standard boolean tokens (`"off"` → `"false"`, `"on"` → `"true"`, malformed strings → safe boolean defaults) during `GameOptions.load()` before `SimpleOption` parsing.

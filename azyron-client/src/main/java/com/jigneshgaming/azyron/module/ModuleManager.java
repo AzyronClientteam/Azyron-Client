@@ -99,13 +99,32 @@ public final class ModuleManager {
 
     public void onTick(MinecraftClient client) {
         for (AzyronModule module : modules) {
-            module.onTick(client);
+            try {
+                module.onTick(client);
+            } catch (Throwable t) {
+                com.jigneshgaming.azyron.profile.MultiplayerPerformanceController
+                        .logRateLimitedWarning("Module tick error (" + module.getId() + ")", t);
+            }
         }
+    }
+
+    /**
+     * Releases transient world/entity/item references across all HUD modules when joining,
+     * switching, or disconnecting from a server so old ClientWorld graphs never leak.
+     */
+    public void onWorldChanged() {
+        armorHudModule.clearWorldCache();
+        potionHudModule.clearWorldCache();
+        pingModule.clearWorldCache();
+        coordinatesModule.clearWorldCache();
     }
 
     public void renderHudOverlay(DrawContext context, MinecraftClient client) {
         FrameTimeTracker.onFrameRendered();
         if (client == null || client.options == null || client.options.hudHidden) {
+            return;
+        }
+        if (com.jigneshgaming.azyron.profile.MultiplayerPerformanceController.isTransitionScreen(client.currentScreen)) {
             return;
         }
         if (!UiRenderUtils.isCoreTextShaderReady(client)) {

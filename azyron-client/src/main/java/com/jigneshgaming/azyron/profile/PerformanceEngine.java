@@ -52,6 +52,7 @@ public final class PerformanceEngine {
                 || AzyronClient.getInstance().getConfig() == null
                 || AzyronClient.getInstance().getConfig().isAutoMemoryOptimization();
         MemoryOptimizer.onClientTick(client, autoMem || activeProfile != PerformanceProfile.BALANCED);
+        MultiplayerPerformanceController.onClientTick(client);
 
         if (!initialRamCalibrationApplied && client != null && client.options != null) {
             initialRamCalibrationApplied = true;
@@ -244,9 +245,11 @@ public final class PerformanceEngine {
         int budget = activeProfile.getMaxParticlesPerTick();
         double maxDist = activeProfile.getMaxParticleDistanceBlocks();
 
-        // Dynamically tighten particle load during live frame-time spikes or high/critical 3GB–8GB RAM pressure
-        if (FrameTimeTracker.isExperiencingFrameSpike() || MemoryOptimizer.isCriticalMemoryPressure()) {
-            budget = Math.max(12, budget / 4);
+        // Dynamically tighten particle load during server-join warmup, live frame spikes, or 3GB–8GB RAM pressure
+        if (MultiplayerPerformanceController.isInJoinWarmup()
+                || FrameTimeTracker.isExperiencingFrameSpike()
+                || MemoryOptimizer.isCriticalMemoryPressure()) {
+            budget = Math.max(12, Math.min(16, budget / 4));
             maxDist = Math.min(maxDist, 14.0);
         } else if (activeProfile != PerformanceProfile.POTATO && MemoryOptimizer.isHighMemoryPressure()) {
             budget = Math.min(budget, MemoryOptimizer.detectRamTier().getDynamicParticleCap());

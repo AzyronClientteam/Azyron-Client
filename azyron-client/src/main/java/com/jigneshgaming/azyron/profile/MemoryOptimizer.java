@@ -232,24 +232,11 @@ public final class MemoryOptimizer {
         boolean dimensionChanged = hasWorld && hadWorldLastTick
                 && lastWorldDimensionKey != null && currentDimKey != null
                 && !lastWorldDimensionKey.equals(currentDimKey);
-        boolean pastStartupGrace = (now - BOOT_TIME_MS) > STARTUP_GRACE_MS;
-        int pausedCleanupThreshold = detectRamTier().getHighPressurePercent();
 
-        if (pastStartupGrace) {
-            if (hadWorldLastTick && !hasWorld && usagePercent >= 55 && (now - lastCleanupMs) > 15_000L) {
-                // Reclaim discarded ClientWorld & IntegratedServer chunk/entity graphs right after leaving a world
-                triggerSafeCleanup(now);
-            } else if (dimensionChanged && usagePercent >= 65 && (now - lastCleanupMs) > 20_000L) {
-                // Reclaim unloaded dimension chunk sections cleanly during portal transition screen
-                triggerSafeCleanup(now);
-            } else if (aggressiveOptimization
-                    && usagePercent >= pausedCleanupThreshold
-                    && client != null
-                    && client.currentScreen != null
-                    && (now - lastCleanupMs) > 40_000L) {
-                // Only advise GC when paused in a GUI screen under high heap pressure — never mid-combat!
-                triggerSafeCleanup(now);
-            }
+        if ((hadWorldLastTick != hasWorld) || dimensionChanged) {
+            // Reset allocation-rate baseline across server/world transitions WITHOUT calling System.gc(),
+            // avoiding multi-second Stop-The-World Full GC freezes during server join & chunk bursts.
+            onWorldTransition();
         }
         hadWorldLastTick = hasWorld;
         lastWorldDimensionKey = currentDimKey;
@@ -259,25 +246,30 @@ public final class MemoryOptimizer {
         requestSafeMemoryTrim(false);
     }
 
+    /**
+     * Explicit user-initiated memory trim from the AZYRON Client Options tab only.
+     * Never triggered automatically during gameplay, server joining, or world transitions.
+     */
     public static void requestSafeMemoryTrim(boolean force) {
+        if (!force && MultiplayerPerformanceController.isInJoinWarmup()) {
+            return;
+        }
         long now = System.currentTimeMillis();
-        if (force || (now - lastCleanupMs > 5_000L)) {
-            triggerSafeCleanup(now);
+        if (force || (now - lastCleanupMs > 10_000L)) {
+            lastCleanupMs = now;
+            System.gc();
             lastQuickReadMs = 0L;
             onClientTick(null, false);
         }
     }
 
+    /**
+     * Resets telemetry sampling state on world/server switches without invoking System.gc().
+     */
     public static void onWorldTransition() {
-        long now = System.currentTimeMillis();
-        if ((now - BOOT_TIME_MS) > STARTUP_GRACE_MS && (now - lastCleanupMs) > 12_000L) {
-            triggerSafeCleanup(now);
-        }
-    }
-
-    private static void triggerSafeCleanup(long now) {
-        lastCleanupMs = now;
-        System.gc();
+        lastSampleMs = 0L;
+        lastQuickReadMs = 0L;
+        allocationRateMbPerSec = 0;
     }
 
     public static int getUsedMb() { return usedMb; }

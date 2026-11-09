@@ -48,6 +48,14 @@ public final class PotionHudModule extends HudModule {
         return isEnabled() && hideVanillaOverlay.getValue();
     }
 
+    public void clearWorldCache() {
+        Arrays.fill(scratchEffects, null);
+        Arrays.fill(rowNames, null);
+        Arrays.fill(rowTimers, null);
+        cachedCount = -1;
+        lastStateHash = 0;
+    }
+
     @Override
     protected void renderWidget(DrawContext context, MinecraftClient client, boolean editorPreview) {
         Collection<StatusEffectInstance> raw = (client != null && client.player != null)
@@ -108,7 +116,9 @@ public final class PotionHudModule extends HudModule {
             int maxW = 80;
             for (int i = 0; i < n; i++) {
                 StatusEffectInstance inst = scratchEffects[i];
-                StatusEffect effect = inst.getEffectType() != null ? inst.getEffectType().value() : null;
+                var holder = inst.getEffectType();
+                // Verify RegistryEntry is bound (hasKeyAndValue) before calling .value() during server switches
+                StatusEffect effect = (holder != null && holder.hasKeyAndValue()) ? holder.value() : null;
                 String baseName = (effect != null && effect.getName() != null) ? effect.getName().getString() : "Effect";
                 String amp = toRoman(inst.getAmplifier() + 1);
                 String fullTitle = amp.isEmpty() ? baseName : (baseName + " " + amp);

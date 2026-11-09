@@ -8,6 +8,9 @@
     "PersistentStateManagerMixin"
   ],
   "client": [
+    "ChunkBatchSizeCalculatorMixin",
+    "ClientWorldMixin",
+    "EntityRenderManagerMixin",
     "GameMenuScreenMixin",
     "GameOptionsMixin",
     "GameRendererMixin",

@@ -4,7 +4,7 @@ import com.jigneshgaming.azyron.AzyronClient;
 import com.jigneshgaming.azyron.module.ModuleManager;
 import com.jigneshgaming.azyron.module.impl.CrosshairModule;
 import com.jigneshgaming.azyron.module.impl.PotionHudModule;
-import com.jigneshgaming.azyron.util.UiRenderUtils;
+import com.jigneshgaming.azyron.profile.MultiplayerPerformanceController;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
@@ -25,8 +25,13 @@ public abstract class InGameHudMixin {
     @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true, require = 0)
     private void azyron$renderCustomCrosshair(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
         try {
+            if (this.client == null || this.client.world == null || this.client.player == null
+                    || this.client.options == null || this.client.options.hudHidden
+                    || MultiplayerPerformanceController.isTransitionScreen(this.client.currentScreen)) {
+                return;
+            }
             AzyronClient inst = AzyronClient.getInstance();
-            if (inst == null || inst.getModuleManager() == null || this.client == null || this.client.options == null || this.client.options.hudHidden) {
+            if (inst == null || inst.getModuleManager() == null) {
                 return;
             }
             CrosshairModule crosshair = inst.getModuleManager().getCrosshairModule();
@@ -34,7 +39,8 @@ public abstract class InGameHudMixin {
                 crosshair.renderCrosshair(context, this.client);
                 ci.cancel();
             }
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            MultiplayerPerformanceController.logRateLimitedWarning("Custom crosshair render error", t);
         }
     }
 
@@ -48,13 +54,20 @@ public abstract class InGameHudMixin {
                     ci.cancel();
                 }
             }
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            MultiplayerPerformanceController.logRateLimitedWarning("Status effect overlay guard error", t);
         }
     }
 
     @Inject(method = "render", at = @At("TAIL"), require = 0)
     private void azyron$renderClientHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
         try {
+            // Match vanilla Gui.render: never render in-game HUD overlays during LevelLoadingScreen,
+            // ConnectScreen, ReconfiguringScreen, or before ClientWorld & LocalPlayer are ready.
+            if (this.client == null || this.client.world == null || this.client.player == null
+                    || MultiplayerPerformanceController.isTransitionScreen(this.client.currentScreen)) {
+                return;
+            }
             AzyronClient inst = AzyronClient.getInstance();
             if (inst != null) {
                 ModuleManager mm = inst.getModuleManager();
@@ -62,7 +75,8 @@ public abstract class InGameHudMixin {
                     mm.renderHudOverlay(context, this.client);
                 }
             }
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            MultiplayerPerformanceController.logRateLimitedWarning("InGameHud overlay render error", t);
         }
     }
 }

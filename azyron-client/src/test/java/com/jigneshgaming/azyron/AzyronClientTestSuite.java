@@ -19,6 +19,7 @@ import com.jigneshgaming.azyron.module.impl.ZoomModule;
 import com.jigneshgaming.azyron.profile.FrameTimeTracker;
 import com.jigneshgaming.azyron.profile.IntegratedServerOptimizer;
 import com.jigneshgaming.azyron.profile.MemoryOptimizer;
+import com.jigneshgaming.azyron.profile.MultiplayerPerformanceController;
 import com.jigneshgaming.azyron.profile.PerformanceEngine;
 import com.jigneshgaming.azyron.profile.PerformanceProfile;
 import com.jigneshgaming.azyron.ui.AzyronCosmeticsScreen;
@@ -54,8 +55,13 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderLoader;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.DisconnectedScreen;
 import net.minecraft.client.gui.screen.GameMenuScreen;
+import net.minecraft.client.gui.screen.ProgressScreen;
+import net.minecraft.client.gui.screen.ReconfiguringScreen;
 import net.minecraft.client.gui.screen.SplashOverlay;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
+import net.minecraft.client.gui.screen.world.LevelLoadingScreen;
 import net.minecraft.client.gui.screen.world.SelectWorldScreen;
 import net.minecraft.client.input.CharInput;
 import net.minecraft.client.input.KeyInput;
@@ -65,12 +71,24 @@ import net.minecraft.client.option.GraphicsMode;
 import net.minecraft.client.realms.RealmsAvailability;
 import net.minecraft.client.session.Session;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.ExperienceOrbEntity;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.decoration.DisplayEntity;
+import net.minecraft.entity.decoration.ItemFrameEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.mob.HostileEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.ProjectileEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.particle.ParticlesMode;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.integrated.IntegratedServer;
+import net.minecraft.util.Identifier;
 
 /**
  * Comprehensive Automated Verification Suite for AZYRON CLIENT v1.0.2
@@ -132,6 +150,16 @@ public final class AzyronClientTestSuite {
                 AzyronClientTestSuite::testOfflineLocalRealmsGracefulHandling);
         runTest("20. Armor HUD 1.21.11 Public Overlay Fix, IntegratedServer Pacing & Corrupt Config Backup",
                 AzyronClientTestSuite::testArmorHudIntegratedServerAndConfigRecovery);
+        runTest("21. Multiplayer Server-Join Transition Guards, Unbound Registry Safety & Zero-Full-GC World Switches (50 Joins)",
+                AzyronClientTestSuite::testMultiplayerServerJoinLifecycleAndUnboundRegistries);
+        runTest("22. ChunkBatchSizeCalculator Protocol Flow-Control Pacing Across 3GB-8GB RAM Tiers",
+                AzyronClientTestSuite::testChunkBatchSizeCalculatorPacingAcrossRamTiers);
+        runTest("23. ClientWorld.runQueuedChunkUpdates() Nanosecond Budgeted Light Queue Benchmark (250 & 1,200 Chunk Bursts)",
+                AzyronClientTestSuite::testBudgetedChunkLightQueueUnderServerJoinBursts);
+        runTest("24. Crowded Multiplayer Hub Entity Render Culling (300 Entities, 100% Nearby/Combat Preservation)",
+                AzyronClientTestSuite::testCrowdedMultiplayerHubEntityRenderCulling);
+        runTest("25. Extended 30-Minute Equivalent Multiplayer Session Soak Test (36,000 Ticks / 72,000 HUD Frames + Armour Hub)",
+                AzyronClientTestSuite::testExtendedMultiplayerSessionSoak);
 
         System.out.println("-----------------------------------------------------------------------");
         System.out.printf(" TEST SUMMARY: %d PASSED, %d FAILED%n", passed, failed);
@@ -193,7 +221,7 @@ public final class AzyronClientTestSuite {
             JsonArray commonMixinArray = mixinsJson.getAsJsonArray("mixins");
             assertEquals(1, commonMixinArray.size(), "PersistentStateManagerMixin registered in common mixins");
             JsonArray mixinArray = mixinsJson.getAsJsonArray("client");
-            assertEquals(11, mixinArray.size(), "All 11 client Mixins registered");
+            assertEquals(14, mixinArray.size(), "All 14 client Mixins registered");
 
             for (JsonArray arr : new JsonArray[]{commonMixinArray, mixinArray}) {
                 for (int i = 0; i < arr.size(); i++) {
@@ -1177,6 +1205,515 @@ public final class AzyronClientTestSuite {
                 "Chunk builder thread budget bounded in [1..4] to protect IntegratedServer workers");
 
         Files.deleteIfExists(tempCfg);
+    }
+
+    private static void testMultiplayerServerJoinLifecycleAndUnboundRegistries() throws Exception {
+        Path tempCfg = Files.createTempFile("azyron-mp-join-", ".json");
+        Files.deleteIfExists(tempCfg);
+        AzyronClient client = AzyronClient.bootstrapHeadlessForTests(tempCfg);
+        MinecraftClient mc = MinecraftClient.getInstance();
+        ClientWorld prevWorld = mc.world;
+        var prevScreen = mc.currentScreen;
+
+        try {
+            MultiplayerPerformanceController.resetCountersForTesting();
+            mc.setOverlay(null);
+            mc.getShaderLoader().simulateReloadComplete();
+            AzyronLoadingRenderer.setCoreResourcesReady(true);
+
+            // 1. Verify transition screen detection covers all 5 multiplayer handshake/loading screens
+            assertTrue(MultiplayerPerformanceController.isTransitionScreen(new LevelLoadingScreen()),
+                    "LevelLoadingScreen recognized as transition screen");
+            assertTrue(MultiplayerPerformanceController.isTransitionScreen(new ConnectScreen()),
+                    "ConnectScreen recognized as transition screen");
+            assertTrue(MultiplayerPerformanceController.isTransitionScreen(new ReconfiguringScreen()),
+                    "ReconfiguringScreen recognized as transition screen");
+            assertTrue(MultiplayerPerformanceController.isTransitionScreen(new ProgressScreen()),
+                    "ProgressScreen recognized as transition screen");
+            assertTrue(MultiplayerPerformanceController.isTransitionScreen(new DisconnectedScreen()),
+                    "DisconnectedScreen recognized as transition screen");
+            assertTrue(!MultiplayerPerformanceController.isTransitionScreen(null),
+                    "In-world null screen is NOT a transition screen");
+            assertTrue(!MultiplayerPerformanceController.isTransitionScreen(new GameMenuScreen(true)),
+                    "Pause menu is NOT a transition screen");
+
+            // 2. Verify HUD rendering skips cleanly while LevelLoadingScreen / ConnectScreen / ReconfiguringScreen is active
+            DrawContext loadingCtx = new DrawContext(854, 480);
+            mc.currentScreen = new LevelLoadingScreen();
+            client.getModuleManager().renderHudOverlay(loadingCtx, mc);
+            assertEquals(0, loadingCtx.drawnStrings.size(),
+                    "HUD overlay must NOT render during LevelLoadingScreen terrain/registry handshake");
+
+            // 3. Verify PotionHudModule safely handles UNBOUND RegistryEntry<StatusEffect> without IllegalStateException
+            mc.currentScreen = null;
+            mc.player.setStatusEffectsForTest(List.of(
+                    new StatusEffectInstance(new RegistryEntry.Unbound<>(), 1, 400, false),
+                    new StatusEffectInstance()
+            ));
+            DrawContext unboundCtx = new DrawContext(854, 480);
+            client.getModuleManager().renderHudOverlay(unboundCtx, mc);
+            assertTrue(unboundCtx.drawnStrings.stream().anyMatch(s -> s.contains("Effect II")),
+                    "Unbound server RegistryEntry<StatusEffect> degrades cleanly to 'Effect II' without crashing");
+            assertTrue(unboundCtx.drawnStrings.stream().anyMatch(s -> s.contains("Speed II")),
+                    "Bound Speed II effect continues rendering alongside unbound entry");
+            mc.player.setStatusEffectsForTest(List.of(new StatusEffectInstance()));
+
+            // 4. Simulate 50 consecutive server joins + BungeeCord/Velocity dimension transfers & measure Full GC count
+            long oldGenBefore = getOldGenCollectionCount();
+            java.lang.ref.WeakReference<ClientWorld> firstWorldRef = null;
+            DrawContext joinHudCtx = new DrawContext(854, 480);
+
+            MemoryOptimizer.setSimulatedRamForTesting(1536, 3072);
+            for (int joinIdx = 0; joinIdx < 50; joinIdx++) {
+                Identifier dim = (joinIdx % 3 == 0)
+                        ? Identifier.ofVanilla("overworld")
+                        : (joinIdx % 3 == 1 ? Identifier.ofVanilla("the_nether") : Identifier.ofVanilla("the_end"));
+                ClientWorld serverWorld = new ClientWorld(dim);
+                if (joinIdx == 0) {
+                    firstWorldRef = new java.lang.ref.WeakReference<>(serverWorld);
+                }
+
+                mc.currentScreen = new ConnectScreen();
+                client.getModuleManager().onWorldChanged();
+                mc.joinWorld(serverWorld);
+                MultiplayerPerformanceController.onWorldJoinOrSwitch(mc, serverWorld);
+
+                mc.currentScreen = new LevelLoadingScreen();
+                for (int t = 0; t < 4; t++) {
+                    client.getPerformanceEngine().onClientTick(mc);
+                    client.getModuleManager().onTick(mc);
+                    joinHudCtx.drawnStrings.clear();
+                    client.getModuleManager().renderHudOverlay(joinHudCtx, mc);
+                }
+                // Warmup ticks must remain intact until LevelLoadingScreen closes
+                assertEquals(MultiplayerPerformanceController.JOIN_WARMUP_TICKS,
+                        MultiplayerPerformanceController.getJoinWarmupTicksRemaining(),
+                        "Warmup ramp waits until LevelLoadingScreen closes before counting down");
+
+                mc.currentScreen = null;
+                for (int t = 0; t < 20; t++) {
+                    client.getPerformanceEngine().onClientTick(mc);
+                    client.getModuleManager().onTick(mc);
+                    joinHudCtx.drawnStrings.clear();
+                    client.getModuleManager().renderHudOverlay(joinHudCtx, mc);
+                }
+                assertEquals(MultiplayerPerformanceController.JOIN_WARMUP_TICKS - 20,
+                        MultiplayerPerformanceController.getJoinWarmupTicksRemaining(),
+                        "Warmup ticks count down smoothly once in-world");
+            }
+            long oldGenAfter = getOldGenCollectionCount();
+            assertEquals(oldGenBefore, oldGenAfter,
+                    "50 server joins & dimension switches triggered ZERO automatic System.gc() Full GCs");
+
+            // Verify first unloaded ClientWorld is eligible for GC (no stale HUD/module leak)
+            System.gc();
+            Thread.sleep(20L);
+            assertNotNull(firstWorldRef, "WeakReference initialized");
+            assertTrue(firstWorldRef.get() == null,
+                    "Unloaded server ClientWorld cleanly collected with zero HUD/module reference retention");
+        } finally {
+            MemoryOptimizer.setSimulatedRamForTesting(-1, -1);
+            MultiplayerPerformanceController.resetCountersForTesting();
+            mc.world = prevWorld;
+            mc.currentScreen = prevScreen;
+            Files.deleteIfExists(tempCfg);
+        }
+    }
+
+    private static void testChunkBatchSizeCalculatorPacingAcrossRamTiers() throws Exception {
+        Path tempCfg = Files.createTempFile("azyron-chunk-pace-", ".json");
+        Files.deleteIfExists(tempCfg);
+        AzyronClient client = AzyronClient.bootstrapHeadlessForTests(tempCfg);
+        MinecraftClient mc = MinecraftClient.getInstance();
+        var prevScreen = mc.currentScreen;
+
+        try {
+            mc.currentScreen = null;
+            float serverFloodRequest = 64.0f; // Vanilla fast-link burst (64 chunks/tick = 1,280 chunks/sec)
+
+            // 3GB RAM device (Potato profile)
+            MemoryOptimizer.setSimulatedRamForTesting(1408, 3072);
+            client.getPerformanceEngine().applyProfile(PerformanceProfile.POTATO, mc, false);
+            MultiplayerPerformanceController.onWorldJoinOrSwitch(mc, mc.world);
+            float t3Join = MultiplayerPerformanceController.paceDesiredChunksPerTick(serverFloodRequest);
+            for (int i = 0; i < MultiplayerPerformanceController.JOIN_WARMUP_TICKS; i++) {
+                MultiplayerPerformanceController.onClientTick(mc);
+            }
+            float t3Steady = MultiplayerPerformanceController.paceDesiredChunksPerTick(serverFloodRequest);
+            assertTrue(t3Join >= 1.0f && t3Join <= 1.6f, "3GB join-warmup chunk batch cap ~1.28 chunks/tick: " + t3Join);
+            assertTrue(t3Steady >= 2.5f && t3Steady <= 3.6f, "3GB steady-state chunk batch cap ~2.98 chunks/tick: " + t3Steady);
+
+            // 4GB RAM device (Smooth FPS profile)
+            MemoryOptimizer.setSimulatedRamForTesting(2048, 4096);
+            client.getPerformanceEngine().applyProfile(PerformanceProfile.SMOOTH_FPS, mc, false);
+            MultiplayerPerformanceController.onWorldJoinOrSwitch(mc, mc.world);
+            float t4Join = MultiplayerPerformanceController.paceDesiredChunksPerTick(serverFloodRequest);
+            for (int i = 0; i < MultiplayerPerformanceController.JOIN_WARMUP_TICKS; i++) {
+                MultiplayerPerformanceController.onClientTick(mc);
+            }
+            float t4Steady = MultiplayerPerformanceController.paceDesiredChunksPerTick(serverFloodRequest);
+            assertEquals(2.5f, t4Join, "4GB join-warmup chunk batch cap == 2.5 chunks/tick");
+            assertEquals(5.5f, t4Steady, "4GB steady-state chunk batch cap == 5.5 chunks/tick");
+
+            // 6GB RAM device (Balanced profile)
+            MemoryOptimizer.setSimulatedRamForTesting(3072, 6144);
+            client.getPerformanceEngine().applyProfile(PerformanceProfile.BALANCED, mc, false);
+            MultiplayerPerformanceController.onWorldJoinOrSwitch(mc, mc.world);
+            float t6Join = MultiplayerPerformanceController.paceDesiredChunksPerTick(serverFloodRequest);
+            for (int i = 0; i < MultiplayerPerformanceController.JOIN_WARMUP_TICKS; i++) {
+                MultiplayerPerformanceController.onClientTick(mc);
+            }
+            float t6Steady = MultiplayerPerformanceController.paceDesiredChunksPerTick(serverFloodRequest);
+            assertEquals(4.0f, t6Join, "6GB join-warmup chunk batch cap == 4.0 chunks/tick");
+            assertEquals(9.0f, t6Steady, "6GB steady-state chunk batch cap == 9.0 chunks/tick");
+
+            // 8GB RAM device (Balanced profile)
+            MemoryOptimizer.setSimulatedRamForTesting(4096, 8192);
+            MultiplayerPerformanceController.onWorldJoinOrSwitch(mc, mc.world);
+            float t8Join = MultiplayerPerformanceController.paceDesiredChunksPerTick(serverFloodRequest);
+            for (int i = 0; i < MultiplayerPerformanceController.JOIN_WARMUP_TICKS; i++) {
+                MultiplayerPerformanceController.onClientTick(mc);
+            }
+            float t8Steady = MultiplayerPerformanceController.paceDesiredChunksPerTick(serverFloodRequest);
+            assertEquals(6.0f, t8Join, "8GB join-warmup chunk batch cap == 6.0 chunks/tick");
+            assertEquals(14.0f, t8Steady, "8GB steady-state chunk batch cap == 14.0 chunks/tick");
+
+            // Verify small server requests below cap pass through untouched
+            assertEquals(1.0f, MultiplayerPerformanceController.paceDesiredChunksPerTick(1.0f),
+                    "Low vanilla batch request (1.0) preserved unchanged");
+
+            System.out.printf("        [Metrics] ChunkBatch Pacing (64.0 req/tick) -> 3GB: %.2f->%.2f | 4GB: %.2f->%.2f | 6GB: %.2f->%.2f | 8GB: %.2f->%.2f chunks/tick%n",
+                    t3Join, t3Steady, t4Join, t4Steady, t6Join, t6Steady, t8Join, t8Steady);
+        } finally {
+            MemoryOptimizer.setSimulatedRamForTesting(-1, -1);
+            MultiplayerPerformanceController.resetCountersForTesting();
+            mc.currentScreen = prevScreen;
+            Files.deleteIfExists(tempCfg);
+        }
+    }
+
+    private static void testBudgetedChunkLightQueueUnderServerJoinBursts() throws Exception {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        var prevScreen = mc.currentScreen;
+
+        try {
+            MemoryOptimizer.setSimulatedRamForTesting(1536, 3072); // 3GB device tier
+            MultiplayerPerformanceController.resetCountersForTesting();
+
+            // Simulate realistic ~0.45ms lighting propagation work per chunk update
+            Runnable simulatedLightWork = () -> {
+                long target = System.nanoTime() + 450_000L;
+                while (System.nanoTime() < target) {
+                    Thread.onSpinWait();
+                }
+            };
+
+            // Baseline: Vanilla unbudgeted 120-chunk burst
+            ClientWorld vanillaWorld = new ClientWorld();
+            for (int i = 0; i < 120; i++) {
+                vanillaWorld.getChunkUpdatersForTest().add(simulatedLightWork);
+            }
+            long vStart = System.nanoTime();
+            vanillaWorld.runQueuedChunkUpdates();
+            double vanilla120FrameMs = (System.nanoTime() - vStart) / 1_000_000.0;
+
+            // AZYRON budgeted 250-chunk burst in-world on 3GB tier
+            mc.currentScreen = null;
+            ClientWorld azyronWorld = new ClientWorld();
+            final java.util.concurrent.atomic.AtomicInteger completed = new java.util.concurrent.atomic.AtomicInteger();
+            for (int i = 0; i < 250; i++) {
+                azyronWorld.getChunkUpdatersForTest().add(() -> {
+                    simulatedLightWork.run();
+                    completed.incrementAndGet();
+                });
+            }
+
+            double maxSingleFrameMs = 0.0;
+            int framesNeeded = 0;
+            while (!azyronWorld.getChunkUpdatersForTest().isEmpty()) {
+                long f0 = System.nanoTime();
+                MultiplayerPerformanceController.runBudgetedChunkLightUpdates(
+                        azyronWorld.getChunkUpdatersForTest(), mc
+                );
+                double fMs = (System.nanoTime() - f0) / 1_000_000.0;
+                if (fMs > maxSingleFrameMs) {
+                    maxSingleFrameMs = fMs;
+                }
+                framesNeeded++;
+                assertTrue(framesNeeded <= 200, "Light queue must drain steadily without stalling");
+            }
+
+            assertEquals(250, completed.get(), "All 250 queued chunk light updates completed with ZERO dropped tasks");
+            assertTrue(framesNeeded >= 40, "250 light updates spread smoothly across " + framesNeeded + " frames on 3GB tier");
+            assertTrue(maxSingleFrameMs < 8.0, "Max single-frame light update time bounded (" + String.format("%.2f", maxSingleFrameMs) + " ms)");
+
+            // Also test 1,200-chunk extreme teleport burst (where vanilla runs all 1,200 in 1 frame = ~540ms freeze!)
+            final java.util.concurrent.atomic.AtomicInteger completed1200 = new java.util.concurrent.atomic.AtomicInteger();
+            for (int i = 0; i < 1200; i++) {
+                azyronWorld.getChunkUpdatersForTest().add(completed1200::incrementAndGet);
+            }
+            MultiplayerPerformanceController.runBudgetedChunkLightUpdates(azyronWorld.getChunkUpdatersForTest(), mc);
+            int ranFirstFrame = completed1200.get();
+            assertTrue(ranFirstFrame >= 2 && ranFirstFrame <= 6,
+                    "1,200-chunk burst capped to <=6 updates on 3GB frame instead of all 1,200 (ran " + ranFirstFrame + ")");
+            while (!azyronWorld.getChunkUpdatersForTest().isEmpty()) {
+                MultiplayerPerformanceController.runBudgetedChunkLightUpdates(azyronWorld.getChunkUpdatersForTest(), mc);
+            }
+            assertEquals(1200, completed1200.get(), "All 1,200 burst light updates drained cleanly");
+
+            System.out.printf("        [Metrics] LightQueue 250-chunk burst (0.45ms/chunk): completed=250/250 across %d frames | maxFrame=%.2f ms (vanilla 120-chunk single-frame=%.2f ms; vanilla 1200-chunk would stall ~540 ms)%n",
+                    framesNeeded, maxSingleFrameMs, vanilla120FrameMs);
+        } finally {
+            MemoryOptimizer.setSimulatedRamForTesting(-1, -1);
+            MultiplayerPerformanceController.resetCountersForTesting();
+            mc.currentScreen = prevScreen;
+        }
+    }
+
+    private static void testCrowdedMultiplayerHubEntityRenderCulling() throws Exception {
+        Path tempCfg = Files.createTempFile("azyron-hub-cull-", ".json");
+        Files.deleteIfExists(tempCfg);
+        AzyronClient client = AzyronClient.bootstrapHeadlessForTests(tempCfg);
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        try {
+            MemoryOptimizer.setSimulatedRamForTesting(1536, 3072); // 3GB device joining crowded server hub
+            client.getPerformanceEngine().applyProfile(PerformanceProfile.POTATO, mc, false);
+            MultiplayerPerformanceController.resetCountersForTesting();
+            MultiplayerPerformanceController.onWorldJoinOrSwitch(mc, mc.world);
+
+            double camX = 0.0, camY = 64.0, camZ = 0.0;
+            mc.player.setPosForTest(camX, camY, camZ);
+
+            List<Entity> hubEntities = new java.util.ArrayList<>(300);
+
+            // 1) 40 critical/nearby gameplay entities that MUST 100% render:
+            hubEntities.add(mc.player); // local player
+            for (int i = 0; i < 15; i++) { // 15 nearby PvP/lobby players within 15m
+                PlayerEntity nearP = new PlayerEntity();
+                nearP.setPosForTest(4.0 + (i * 0.7), 64.0, 4.0);
+                hubEntities.add(nearP);
+            }
+            for (int i = 0; i < 10; i++) { // 10 arrows/projectiles even at 70m!
+                ProjectileEntity proj = new ProjectileEntity();
+                proj.setPosForTest(70.0, 66.0, i * 2.0);
+                hubEntities.add(proj);
+            }
+            for (int i = 0; i < 8; i++) { // 8 combat hostiles at 28m
+                HostileEntity mob = new HostileEntity();
+                mob.setPosForTest(28.0, 64.0, i * 1.5);
+                hubEntities.add(mob);
+            }
+            for (int i = 0; i < 4; i++) { // 4 glowing objectives at 90m
+                ArmorStandEntity glowingObjective = new ArmorStandEntity();
+                glowingObjective.setPosForTest(90.0, 65.0, i * 3.0);
+                glowingObjective.setGlowingForTest(true);
+                hubEntities.add(glowingObjective);
+            }
+            for (int i = 0; i < 2; i++) { // 2 ridden mounts at 80m
+                Entity mount = new Entity();
+                mount.setPosForTest(80.0, 64.0, 10.0);
+                mount.setHasPassengersForTest(true);
+                hubEntities.add(mount);
+            }
+
+            int criticalCount = hubEntities.size(); // 40 entities
+
+            // 2) 260 distant hub clutter entities
+            for (int i = 0; i < 80; i++) {
+                DisplayEntity holo = new DisplayEntity();
+                holo.setPosForTest(26.0 + (i % 45), 67.0, 18.0 + (i % 30));
+                hubEntities.add(holo);
+            }
+            for (int i = 0; i < 60; i++) {
+                ArmorStandEntity npc = new ArmorStandEntity();
+                npc.setPosForTest(25.0 + (i % 50), 64.0, 20.0 + (i % 30));
+                hubEntities.add(npc);
+            }
+            for (int i = 0; i < 40; i++) {
+                ItemFrameEntity frame = new ItemFrameEntity();
+                frame.setPosForTest(24.0 + (i % 40), 65.0, 22.0);
+                hubEntities.add(frame);
+            }
+            for (int i = 0; i < 40; i++) {
+                ItemEntity drop = new ItemEntity();
+                drop.setPosForTest(20.0 + (i % 35), 64.0, 15.0);
+                hubEntities.add(drop);
+            }
+            for (int i = 0; i < 20; i++) {
+                ExperienceOrbEntity orb = new ExperienceOrbEntity();
+                orb.setPosForTest(19.0 + (i % 30), 64.0, 12.0);
+                hubEntities.add(orb);
+            }
+            for (int i = 0; i < 20; i++) {
+                PlayerEntity farPlayer = new PlayerEntity();
+                farPlayer.setPosForTest(42.0 + i, 64.0, 25.0);
+                hubEntities.add(farPlayer);
+            }
+
+            assertEquals(300, hubEntities.size(), "300 total hub entities constructed");
+
+            int rendered = 0;
+            int criticalRendered = 0;
+            for (int idx = 0; idx < hubEntities.size(); idx++) {
+                boolean r = MultiplayerPerformanceController.shouldRenderEntity(
+                        hubEntities.get(idx), camX, camY, camZ, mc
+                );
+                if (r) {
+                    rendered++;
+                    if (idx < criticalCount) {
+                        criticalRendered++;
+                    }
+                }
+            }
+            int culled = hubEntities.size() - rendered;
+            assertEquals(criticalCount, criticalRendered,
+                    "100% of critical/nearby players, hostiles, projectiles, glowing targets & mounts preserved");
+            assertTrue(culled >= 220,
+                    "Distant multiplayer hub clutter culled effectively (" + culled + "/300 culled)");
+
+            System.out.printf("        [Metrics] Crowded Hub (300 entities on 3GB join): rendered=%d, culled=%d (%.1f%% draw-call reduction), criticalGameplayPreserved=%d/%d%n",
+                    rendered, culled, (culled * 100.0) / hubEntities.size(), criticalRendered, criticalCount);
+        } finally {
+            MemoryOptimizer.setSimulatedRamForTesting(-1, -1);
+            MultiplayerPerformanceController.resetCountersForTesting();
+            Files.deleteIfExists(tempCfg);
+        }
+    }
+
+    private static void testExtendedMultiplayerSessionSoak() throws Exception {
+        Path tempCfg = Files.createTempFile("azyron-soak-", ".json");
+        Files.deleteIfExists(tempCfg);
+        AzyronClient client = AzyronClient.bootstrapHeadlessForTests(tempCfg);
+        MinecraftClient mc = MinecraftClient.getInstance();
+        ClientWorld prevWorld = mc.world;
+        var prevScreen = mc.currentScreen;
+
+        try {
+            mc.setOverlay(null);
+            mc.getShaderLoader().simulateReloadComplete();
+            AzyronLoadingRenderer.setCoreResourcesReady(true);
+            MultiplayerPerformanceController.resetCountersForTesting();
+            mc.currentScreen = null;
+
+            ModuleManager mm = client.getModuleManager();
+            for (AzyronModule m : mm.getModules()) {
+                m.setEnabled(true);
+            }
+            assertTrue(mm.getArmorHudModule().isEnabled(), "Armour Hub (ArmorHudModule) active during extended soak");
+
+            CosmeticsManager cm = client.getCosmeticsManager();
+            cm.setActiveCape(CosmeticsManager.CapeStyle.OBSIDIAN_CROWN);
+            cm.setActiveHalo(CosmeticsManager.HaloStyle.AZYRON_HALO);
+            cm.setActiveBadge(CosmeticsManager.BadgeStyle.AZYRON_BOLT);
+
+            final int totalTicks = 36_000;
+            final int totalFrames = totalTicks * 2;
+            long[] frameTimesNs = new long[1_000];
+            int sampleIdx = 0;
+
+            long gcCountBefore = getTotalGcCount();
+            long gcTimeMsBefore = getTotalGcTimeMs();
+            long oldGenBefore = getOldGenCollectionCount();
+
+            DrawContext reusableCtx = new DrawContext(854, 480);
+            long soakStartNs = System.nanoTime();
+
+            for (int tick = 0; tick < totalTicks; tick++) {
+                if (tick % 6_000 == 0) {
+                    Identifier dim = (tick % 12_000 == 0)
+                            ? Identifier.ofVanilla("overworld")
+                            : Identifier.ofVanilla("the_nether");
+                    ClientWorld nextWorld = new ClientWorld(dim);
+                    for (int q = 0; q < 80; q++) {
+                        nextWorld.getChunkUpdatersForTest().add(() -> {});
+                    }
+                    mm.onWorldChanged();
+                    mc.joinWorld(nextWorld);
+                    MultiplayerPerformanceController.onWorldJoinOrSwitch(mc, nextWorld);
+                }
+
+                mc.player.setPosForTest(100.0 + (tick * 0.15), 64.0 + (tick % 8), -200.0 + (tick * 0.1));
+                if (tick % 15 == 0) {
+                    CpsTracker.recordLeftClick();
+                }
+
+                client.getPerformanceEngine().onClientTick(mc);
+                MultiplayerPerformanceController.paceDesiredChunksPerTick(32.0f);
+                MultiplayerPerformanceController.runBudgetedChunkLightUpdates(mc.world.getChunkUpdatersForTest(), mc);
+                mm.onTick(mc);
+
+                for (int f = 0; f < 2; f++) {
+                    reusableCtx.drawnStrings.clear();
+                    long f0 = System.nanoTime();
+                    mm.renderHudOverlay(reusableCtx, mc);
+                    long fNs = System.nanoTime() - f0;
+                    int globalFrame = tick * 2 + f;
+                    if (globalFrame % 72 == 0 && sampleIdx < frameTimesNs.length) {
+                        frameTimesNs[sampleIdx++] = fNs;
+                    }
+                }
+            }
+
+            double totalSoakMs = (System.nanoTime() - soakStartNs) / 1_000_000.0;
+            long gcCountDelta = getTotalGcCount() - gcCountBefore;
+            long gcTimeMsDelta = getTotalGcTimeMs() - gcTimeMsBefore;
+            long oldGenDelta = getOldGenCollectionCount() - oldGenBefore;
+
+            java.util.Arrays.sort(frameTimesNs, 0, sampleIdx);
+            double p50Us = (frameTimesNs[sampleIdx / 2]) / 1_000.0;
+            double p99Us = (frameTimesNs[Math.min(sampleIdx - 1, (int) (sampleIdx * 0.99))]) / 1_000.0;
+
+            Runtime rt = Runtime.getRuntime();
+            long usedHeapMb = (rt.totalMemory() - rt.freeMemory()) / (1024L * 1024L);
+
+            assertTrue(reusableCtx.drawnStrings.stream().anyMatch(s -> s.contains("95%")),
+                    "Armour Hub (ArmorHudModule) rendered 95% durability cleanly through frame 72,000");
+            assertTrue(reusableCtx.drawnStrings.stream().anyMatch(s -> s.contains("24 ms")),
+                    "PingModule rendered 24 ms server latency cleanly through frame 72,000");
+            assertTrue(p99Us < 500.0, "HUD render p99 latency under 500 microseconds (" + String.format("%.2f", p99Us) + " us)");
+            assertEquals(0L, oldGenDelta, "Zero Full Old-Gen stop-the-world GCs during 36,000-tick / 72,000-frame multiplayer soak");
+
+            System.out.printf(
+                    "        [Metrics] 30-Min Multiplayer Soak (%d ticks / %d HUD frames, 6 server switches): wallTime=%.1f ms | HUD p50=%.2f us, p99=%.2f us | minorGCs=%d (%d ms total), fullGCs=%d | postSoakHeap=%d MB%n",
+                    totalTicks, totalFrames, totalSoakMs, p50Us, p99Us, gcCountDelta, gcTimeMsDelta, oldGenDelta, usedHeapMb
+            );
+        } finally {
+            MultiplayerPerformanceController.resetCountersForTesting();
+            mc.world = prevWorld;
+            mc.currentScreen = prevScreen;
+            Files.deleteIfExists(tempCfg);
+        }
+    }
+
+    private static long getTotalGcCount() {
+        long count = 0L;
+        for (var gc : java.lang.management.ManagementFactory.getGarbageCollectorMXBeans()) {
+            long c = gc.getCollectionCount();
+            if (c > 0) count += c;
+        }
+        return count;
+    }
+
+    private static long getTotalGcTimeMs() {
+        long ms = 0L;
+        for (var gc : java.lang.management.ManagementFactory.getGarbageCollectorMXBeans()) {
+            long t = gc.getCollectionTime();
+            if (t > 0) ms += t;
+        }
+        return ms;
+    }
+
+    private static long getOldGenCollectionCount() {
+        long count = 0L;
+        for (var gc : java.lang.management.ManagementFactory.getGarbageCollectorMXBeans()) {
+            String name = gc.getName().toLowerCase();
+            if (name.contains("old") || name.contains("marksweep") || name.contains("full")) {
+                long c = gc.getCollectionCount();
+                if (c > 0) count += c;
+            }
+        }
+        return count;
     }
 
     private static JsonObject readJsonEntry(JarFile jf, String name) throws Exception {

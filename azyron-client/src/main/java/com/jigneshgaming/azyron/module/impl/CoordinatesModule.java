@@ -54,6 +54,13 @@ public final class CoordinatesModule extends HudModule {
         ));
     }
 
+    public void clearWorldCache() {
+        lastBx = Integer.MIN_VALUE;
+        lastBy = Integer.MIN_VALUE;
+        lastBz = Integer.MIN_VALUE;
+        lastFacing = "";
+    }
+
     @Override
     protected void renderWidget(DrawContext context, MinecraftClient client, boolean editorPreview) {
         double x = 128.0, y = 64.0, z = -256.0;
@@ -66,7 +73,8 @@ public final class CoordinatesModule extends HudModule {
             y = p.getY();
             z = p.getZ();
             yaw = p.getYaw();
-            if (client.world != null && client.world.getRegistryKey() != null) {
+            if (client.world != null && client.world.getRegistryKey() != null
+                    && client.world.getRegistryKey().getValue() != null) {
                 inNether = "the_nether".equals(client.world.getRegistryKey().getValue().getPath());
             }
         }
