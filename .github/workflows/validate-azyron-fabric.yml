@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 jobs:
   fabric-build:
@@ -39,6 +40,7 @@ jobs:
         with:
           gradle-version: '9.2.1'
       - name: Compile against actual Minecraft and Fabric (no generated stubs)
+        id: compile
         working-directory: azyron-client
         env:
           MC: ${{ matrix.minecraft }}
@@ -66,18 +68,27 @@ jobs:
           PY
           fi
           exit "$result"
-      - name: Expose failure context separately from compiler matchers
-        if: failure()
-        working-directory: azyron-client
+      - name: Store complete compiler diagnostics in a readable check
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MC: ${{ matrix.minecraft }}
+          BUILD_OUTCOME: ${{ steps.compile.outcome }}
         shell: python
         run: |
+          import json, os, subprocess
           from pathlib import Path
-          p = Path('build/validation/fabric-build.log')
-          if p.exists():
-              lines = p.read_text(errors='replace').splitlines()
-              text = '\n'.join(lines[:160])
-              safe = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-              print('::error title=Fabric compiler context::' + safe)
+          path = Path('azyron-client/build/validation/fabric-build.log')
+          text = path.read_text(errors='replace') if path.exists() else 'No Gradle log produced.'
+          for part, offset in enumerate(range(0, max(1, len(text)), 48000), 1):
+              payload = {'name': f"Compiler diagnostics {os.environ['MC']} part {part}",
+                         'head_sha': os.environ['GITHUB_SHA'], 'status': 'completed', 'conclusion': 'neutral',
+                         'output': {'title': 'Real Fabric compiler diagnostics',
+                                    'summary': 'Build outcome: ' + os.environ['BUILD_OUTCOME'],
+                                    'text': '```text\n' + text[offset:offset+48000] + '\n```'}}
+              subprocess.run(['gh', 'api', '--method', 'POST',
+                              'repos/' + os.environ['GITHUB_REPOSITORY'] + '/check-runs', '--input', '-'],
+                             input=json.dumps(payload), text=True, stdout=subprocess.DEVNULL, check=True)
       - name: Keep diagnostic logs and genuine build outputs only
         if: always()
         uses: actions/upload-artifact@v6
