@@ -5,13 +5,11 @@ import com.jigneshgaming.azyron.cosmetics.CosmeticsManager;
 import com.jigneshgaming.azyron.profile.MemoryOptimizer;
 import com.jigneshgaming.azyron.profile.PerformanceProfile;
 import com.jigneshgaming.azyron.util.AzyronTheme;
+import com.jigneshgaming.azyron.util.McVersionBridge;
 import com.jigneshgaming.azyron.util.UiRenderUtils;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ConfirmLinkScreen;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.SplashOverlay;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
@@ -20,10 +18,10 @@ import net.minecraft.client.gui.screen.world.SelectWorldScreen;
 import net.minecraft.text.Text;
 
 /**
- * Premium dark Minecraft-themed Main Menu for AZYRON CLIENT (Minecraft 1.21.11).
+ * Premium dark Minecraft-themed Main Menu for AZYRON CLIENT (Minecraft 1.21.11 & 1.20.1).
  * Renders live 3D Minecraft Panorama + ambient purple/electric-blue starfield + complete navigation.
  */
-public final class AzyronMainMenuScreen extends Screen {
+public final class AzyronMainMenuScreen extends AzyronBaseScreen {
     public static boolean bypassRedirectOnce = false;
 
     private record MenuButton(String id, String label, String subtitle, int x, int y, int w, int h, boolean primary, boolean accentDiscord) {}
@@ -95,12 +93,8 @@ public final class AzyronMainMenuScreen extends Screen {
             return;
         }
 
-        // 1. Live rotating Minecraft 1.21.11 3D Panorama background
-        try {
-            this.renderPanoramaBackground(context, delta);
-        } catch (Throwable ignored) {
-            context.fillGradient(0, 0, this.width, this.height, 0xFF080A16, 0xFF0D1024);
-        }
+        // 1. Live rotating Minecraft 3D Panorama / version-native background
+        McVersionBridge.renderMainMenuBackground(this, context, delta);
 
         // 2. Premium dark obsidian + purple/electric-blue vignette overlay
         context.fillGradient(0, 0, this.width, this.height, 0xB8080A16, 0xDC0D1024);
@@ -120,8 +114,8 @@ public final class AzyronMainMenuScreen extends Screen {
                 context, this.textRenderer, "AZYRON CLIENT", cx, heroTop + 34,
                 1.5f, AzyronTheme.TEXT_PRIMARY, true
         );
-        context.drawCenteredTextWithShadow(
-                this.textRenderer,
+        UiRenderUtils.drawCenteredText(
+                context, this.textRenderer,
                 "PERFORMANCE  •  SMOOTHNESS  •  STYLE",
                 cx, heroTop + 50, AzyronTheme.ACCENT_ELECTRIC_BLUE
         );
@@ -145,11 +139,12 @@ public final class AzyronMainMenuScreen extends Screen {
         }
 
         // Bottom credits & version footer
-        String leftFooter = "AZYRON CLIENT v" + AzyronClient.CLIENT_VERSION + "  •  Minecraft 1.21.11 (Fabric)";
+        String leftFooter = "AZYRON CLIENT v" + AzyronClient.CLIENT_VERSION
+                + "  •  Minecraft " + McVersionBridge.getActiveMcVersionString() + " (Fabric)";
         String rightFooter = "Made by JIGNESH GAMING";
-        context.drawTextWithShadow(this.textRenderer, leftFooter, 8, this.height - 14, AzyronTheme.TEXT_MUTED);
+        UiRenderUtils.drawText(context, this.textRenderer, leftFooter, 8, this.height - 14, AzyronTheme.TEXT_MUTED);
         int rw = this.textRenderer.getWidth(rightFooter);
-        context.drawTextWithShadow(this.textRenderer, rightFooter, this.width - rw - 8, this.height - 14, AzyronTheme.ACCENT_PURPLE_BRIGHT);
+        UiRenderUtils.drawText(context, this.textRenderer, rightFooter, this.width - rw - 8, this.height - 14, AzyronTheme.ACCENT_PURPLE_BRIGHT);
     }
 
     private void renderTopBar(DrawContext ctx, int mouseX, int mouseY) {
@@ -170,7 +165,7 @@ public final class AzyronMainMenuScreen extends Screen {
         }
         int uw = cachedUserWidth;
         UiRenderUtils.drawRoundedPanel(ctx, 8, 8, uw, 18, AzyronTheme.BG_CARD, AzyronTheme.ACCENT_PURPLE_BRIGHT);
-        ctx.drawTextWithShadow(this.textRenderer, cachedUserLabel, 16, 13, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(ctx, this.textRenderer, cachedUserLabel, 16, 13, AzyronTheme.TEXT_PRIMARY);
 
         MemoryOptimizer.onClientTick(this.client, false);
         int fps = (this.client != null) ? this.client.getCurrentFps() : 240;
@@ -185,7 +180,7 @@ public final class AzyronMainMenuScreen extends Screen {
         int sx = 14 + uw;
         if (sx + sw < this.width - 166) {
             UiRenderUtils.drawRoundedPanel(ctx, sx, 8, sw, 18, AzyronTheme.BG_CARD, AzyronTheme.BORDER_SUBTLE);
-            ctx.drawTextWithShadow(this.textRenderer, cachedStatsLabel, sx + 7, 13, AzyronTheme.TEXT_SECONDARY);
+            UiRenderUtils.drawText(ctx, this.textRenderer, cachedStatsLabel, sx + 7, 13, AzyronTheme.TEXT_SECONDARY);
         }
     }
 
@@ -202,12 +197,12 @@ public final class AzyronMainMenuScreen extends Screen {
                 case SMOOTH_FPS -> "◈ Smooth FPS";
             };
             UiRenderUtils.drawAccentCard(ctx, btn.x, btn.y, btn.w, btn.h, hovered ? AzyronTheme.BG_CARD_HOVER : AzyronTheme.BG_CARD, hovered, true);
-            ctx.drawCenteredTextWithShadow(this.textRenderer, pName, btn.x + btn.w / 2, btn.y + 5, AzyronTheme.ACCENT_ELECTRIC_BLUE);
+            UiRenderUtils.drawCenteredText(ctx, this.textRenderer, pName, btn.x + btn.w / 2, btn.y + 5, AzyronTheme.ACCENT_ELECTRIC_BLUE);
             return;
         }
         if ("vanilla".equals(btn.id)) {
             UiRenderUtils.drawRoundedPanel(ctx, btn.x, btn.y, btn.w, btn.h, hovered ? AzyronTheme.BG_CARD_HOVER : AzyronTheme.BG_CARD, AzyronTheme.BORDER_SUBTLE);
-            ctx.drawCenteredTextWithShadow(this.textRenderer, "Classic", btn.x + btn.w / 2, btn.y + 5, AzyronTheme.TEXT_SECONDARY);
+            UiRenderUtils.drawCenteredText(ctx, this.textRenderer, "Classic", btn.x + btn.w / 2, btn.y + 5, AzyronTheme.TEXT_SECONDARY);
             return;
         }
 
@@ -215,7 +210,7 @@ public final class AzyronMainMenuScreen extends Screen {
             int bg = hovered ? 0xEB3B44A8 : 0xD8262D6E;
             int border = hovered ? AzyronTheme.ACCENT_ELECTRIC_BLUE : AzyronTheme.DISCORD_BLURPLE;
             UiRenderUtils.drawRoundedPanel(ctx, btn.x, btn.y, btn.w, btn.h, bg, border);
-            ctx.drawCenteredTextWithShadow(this.textRenderer, btn.label, btn.x + btn.w / 2, btn.y + 7, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawCenteredText(ctx, this.textRenderer, btn.label, btn.x + btn.w / 2, btn.y + 7, AzyronTheme.TEXT_PRIMARY);
             return;
         }
 
@@ -224,7 +219,7 @@ public final class AzyronMainMenuScreen extends Screen {
                 : (btn.primary ? AzyronTheme.BG_CARD_ACTIVE : AzyronTheme.BG_CARD);
         UiRenderUtils.drawAccentCard(ctx, btn.x, btn.y, btn.w, btn.h, bg, hovered, btn.primary && hovered);
         int textCol = ("quit".equals(btn.id) && hovered) ? AzyronTheme.STATUS_DANGER : AzyronTheme.TEXT_PRIMARY;
-        ctx.drawCenteredTextWithShadow(this.textRenderer, btn.label, btn.x + btn.w / 2, btn.y + 7, textCol);
+        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, btn.label, btn.x + btn.w / 2, btn.y + 7, textCol);
     }
 
     private void renderAmbientParticles(DrawContext ctx) {
@@ -247,10 +242,8 @@ public final class AzyronMainMenuScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
-        if (click.button() == 0 && this.client != null) {
-            double mx = click.x();
-            double my = click.y();
+    public boolean azyronMouseClicked(double mx, double my, int button) {
+        if (button == 0 && this.client != null) {
             for (MenuButton btn : buttons) {
                 if (UiRenderUtils.isHovered(mx, my, btn.x, btn.y, btn.w, btn.h)) {
                     handleAction(btn.id);
@@ -258,7 +251,7 @@ public final class AzyronMainMenuScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(click, doubled);
+        return false;
     }
 
     public void handleAction(String actionId) {
@@ -277,7 +270,7 @@ public final class AzyronMainMenuScreen extends Screen {
                 String url = (inst != null && inst.getConfig() != null)
                         ? inst.getConfig().getDiscordInviteUrl()
                         : "https://discord.gg/jigneshgaming";
-                ConfirmLinkScreen.open(this, url, true);
+                McVersionBridge.openConfirmLink(this, url);
             }
             case "profile" -> {
                 if (inst != null && inst.getPerformanceEngine() != null) {

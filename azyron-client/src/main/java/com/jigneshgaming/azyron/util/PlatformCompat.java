@@ -14,7 +14,7 @@ import net.minecraft.client.session.Session;
 
 /**
  * Cross-platform runtime compatibility layer for Desktop (Windows/macOS/Linux) and
- * Android launchers (PojavLauncher, ZalithLauncher, Amethyst, FoldCraft) on Minecraft 1.21.11.
+ * Android launchers (PojavLauncher, ZalithLauncher, Amethyst, FoldCraft) on Minecraft 1.21.11 & 1.20.1.
  */
 public final class PlatformCompat {
     private static final String[] LINUX_FLITE_CANDIDATE_DIRS = {
@@ -46,9 +46,15 @@ public final class PlatformCompat {
      */
     public static boolean isAndroidOrPojav() {
         Boolean override = simulatedAndroidOverride;
-        if (override != null) {
-            return override;
-        }
+        return override != null ? override : AndroidRuntime.DETECTED;
+    }
+
+    // Probe environment/native paths only once, not on every splash/HUD frame.
+    private static final class AndroidRuntime {
+        private static final boolean DETECTED = detectAndroidOrPojav();
+    }
+
+    private static boolean detectAndroidOrPojav() {
         try {
             if (hasNonBlankEnv("POJAV_RENDERER")
                     || hasNonBlankEnv("POJAV_ENVIRON")

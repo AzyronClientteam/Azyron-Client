@@ -4,15 +4,15 @@ import com.jigneshgaming.azyron.AzyronClient;
 import com.jigneshgaming.azyron.cosmetics.CosmeticsManager;
 import com.jigneshgaming.azyron.util.AzyronTheme;
 import com.jigneshgaming.azyron.util.UiRenderUtils;
-import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 
 /**
- * Interactive AZYRON CLIENT Cosmetics Locker for equipping Capes, Animated Halos & Client Badges.
+ * Interactive AZYRON CLIENT Cosmetics Locker for equipping Capes, Animated Halos & Client Badges
+ * across Minecraft 1.21.11 & 1.20.1 (Fabric).
  */
-public final class AzyronCosmeticsScreen extends Screen {
+public final class AzyronCosmeticsScreen extends AzyronBaseScreen {
     private final Screen parent;
     private int activeTab = 0; // 0 = Capes, 1 = Halos, 2 = Badges
 
@@ -34,13 +34,13 @@ public final class AzyronCosmeticsScreen extends Screen {
         UiRenderUtils.drawHorizontalGradient(ctx, px + 2, py, panelW - 4, 2, AzyronTheme.ACCENT_PURPLE_BRIGHT, AzyronTheme.ACCENT_ELECTRIC_BLUE);
 
         // Header
-        ctx.drawTextWithShadow(this.textRenderer, "AZYRON COSMETICS LOCKER", px + 14, py + 10, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(ctx, this.textRenderer, "AZYRON COSMETICS LOCKER", px + 14, py + 10, AzyronTheme.TEXT_PRIMARY);
         String closeLabel = "✕ Back";
         int closeW = 52;
         int closeX = px + panelW - closeW - 10;
         boolean closeHover = UiRenderUtils.isHovered(mouseX, mouseY, closeX, py + 6, closeW, 18);
         UiRenderUtils.drawRoundedPanel(ctx, closeX, py + 6, closeW, 18, closeHover ? AzyronTheme.BG_CARD_HOVER : AzyronTheme.BG_CARD, AzyronTheme.BORDER_SUBTLE);
-        ctx.drawCenteredTextWithShadow(this.textRenderer, closeLabel, closeX + closeW / 2, py + 11, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, closeLabel, closeX + closeW / 2, py + 11, AzyronTheme.TEXT_PRIMARY);
 
         // Tabs
         String[] tabs = {"Cloaks & Capes", "Halos & Auras", "Client Badges"};
@@ -50,7 +50,7 @@ public final class AzyronCosmeticsScreen extends Screen {
             int ty = py + 28;
             boolean hov = UiRenderUtils.isHovered(mouseX, mouseY, tx, ty, tabW, 18);
             UiRenderUtils.drawAccentCard(ctx, tx, ty, tabW, 18, activeTab == i ? AzyronTheme.BG_CARD_ACTIVE : AzyronTheme.BG_CARD, hov, activeTab == i);
-            ctx.drawCenteredTextWithShadow(this.textRenderer, tabs[i], tx + tabW / 2, ty + 5, activeTab == i ? AzyronTheme.ACCENT_ELECTRIC_BLUE : AzyronTheme.TEXT_SECONDARY);
+            UiRenderUtils.drawCenteredText(ctx, this.textRenderer, tabs[i], tx + tabW / 2, ty + 5, activeTab == i ? AzyronTheme.ACCENT_ELECTRIC_BLUE : AzyronTheme.TEXT_SECONDARY);
         }
 
         CosmeticsManager cm = AzyronClient.getInstance().getCosmeticsManager();
@@ -69,10 +69,10 @@ public final class AzyronCosmeticsScreen extends Screen {
                 boolean hov = UiRenderUtils.isHovered(mouseX, mouseY, listX, cy, listW, 32);
                 UiRenderUtils.drawAccentCard(ctx, listX, cy, listW, 32, eq ? AzyronTheme.BG_CARD_ACTIVE : AzyronTheme.BG_CARD, hov, eq);
                 UiRenderUtils.drawHorizontalGradient(ctx, listX + 6, cy + 7, 18, 18, s.getPrimaryColor(), s.getSecondaryColor());
-                ctx.drawTextWithShadow(this.textRenderer, s.getDisplayName(), listX + 30, cy + 6, AzyronTheme.TEXT_PRIMARY);
-                ctx.drawTextWithShadow(this.textRenderer, s.getDescription(), listX + 30, cy + 18, AzyronTheme.TEXT_MUTED);
+                UiRenderUtils.drawText(ctx, this.textRenderer, s.getDisplayName(), listX + 30, cy + 6, AzyronTheme.TEXT_PRIMARY);
+                UiRenderUtils.drawText(ctx, this.textRenderer, s.getDescription(), listX + 30, cy + 18, AzyronTheme.TEXT_MUTED);
                 if (eq) {
-                    ctx.drawTextWithShadow(this.textRenderer, "EQUIPPED", listX + listW - 58, cy + 12, AzyronTheme.STATUS_GOOD);
+                    UiRenderUtils.drawText(ctx, this.textRenderer, "EQUIPPED", listX + listW - 58, cy + 12, AzyronTheme.STATUS_GOOD);
                 }
             }
         } else if (activeTab == 1) {
@@ -84,10 +84,10 @@ public final class AzyronCosmeticsScreen extends Screen {
                 boolean hov = UiRenderUtils.isHovered(mouseX, mouseY, listX, cy, listW, 34);
                 UiRenderUtils.drawAccentCard(ctx, listX, cy, listW, 34, eq ? AzyronTheme.BG_CARD_ACTIVE : AzyronTheme.BG_CARD, hov, eq);
                 ctx.fill(listX + 8, cy + 9, listX + 22, cy + 23, s.getColor());
-                ctx.drawTextWithShadow(this.textRenderer, s.getDisplayName(), listX + 30, cy + 7, AzyronTheme.TEXT_PRIMARY);
-                ctx.drawTextWithShadow(this.textRenderer, s.getDescription(), listX + 30, cy + 19, AzyronTheme.TEXT_MUTED);
+                UiRenderUtils.drawText(ctx, this.textRenderer, s.getDisplayName(), listX + 30, cy + 7, AzyronTheme.TEXT_PRIMARY);
+                UiRenderUtils.drawText(ctx, this.textRenderer, s.getDescription(), listX + 30, cy + 19, AzyronTheme.TEXT_MUTED);
                 if (eq) {
-                    ctx.drawTextWithShadow(this.textRenderer, "EQUIPPED", listX + listW - 58, cy + 13, AzyronTheme.STATUS_GOOD);
+                    UiRenderUtils.drawText(ctx, this.textRenderer, "EQUIPPED", listX + listW - 58, cy + 13, AzyronTheme.STATUS_GOOD);
                 }
             }
         } else {
@@ -99,10 +99,10 @@ public final class AzyronCosmeticsScreen extends Screen {
                 boolean hov = UiRenderUtils.isHovered(mouseX, mouseY, listX, cy, listW, 34);
                 UiRenderUtils.drawAccentCard(ctx, listX, cy, listW, 34, eq ? AzyronTheme.BG_CARD_ACTIVE : AzyronTheme.BG_CARD, hov, eq);
                 String title = s.getTag().isEmpty() ? "None" : s.getTag();
-                ctx.drawTextWithShadow(this.textRenderer, title, listX + 10, cy + 7, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-                ctx.drawTextWithShadow(this.textRenderer, s.getDescription(), listX + 10, cy + 19, AzyronTheme.TEXT_MUTED);
+                UiRenderUtils.drawText(ctx, this.textRenderer, title, listX + 10, cy + 7, AzyronTheme.ACCENT_ELECTRIC_BLUE);
+                UiRenderUtils.drawText(ctx, this.textRenderer, s.getDescription(), listX + 10, cy + 19, AzyronTheme.TEXT_MUTED);
                 if (eq) {
-                    ctx.drawTextWithShadow(this.textRenderer, "EQUIPPED", listX + listW - 58, cy + 13, AzyronTheme.STATUS_GOOD);
+                    UiRenderUtils.drawText(ctx, this.textRenderer, "EQUIPPED", listX + listW - 58, cy + 13, AzyronTheme.STATUS_GOOD);
                 }
             }
         }
@@ -117,7 +117,7 @@ public final class AzyronCosmeticsScreen extends Screen {
 
     private void renderPreviewStage(DrawContext ctx, int x, int y, int w, int h, CosmeticsManager cm) {
         UiRenderUtils.drawRoundedPanel(ctx, x, y, w, h, 0xE6090B17, AzyronTheme.BORDER_SUBTLE);
-        ctx.drawCenteredTextWithShadow(this.textRenderer, "LIVE PREVIEW", x + w / 2, y + 8, AzyronTheme.TEXT_SECONDARY);
+        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, "LIVE PREVIEW", x + w / 2, y + 8, AzyronTheme.TEXT_SECONDARY);
 
         int cx = x + w / 2;
         int cy = y + h / 2 + 8;
@@ -126,8 +126,8 @@ public final class AzyronCosmeticsScreen extends Screen {
         if (cm.getActiveHalo() != CosmeticsManager.HaloStyle.NONE) {
             int bob = (int) Math.round(Math.sin(System.currentTimeMillis() / 320.0) * 3.0);
             int hc = cm.getActiveHalo().getColor();
-            ctx.drawHorizontalLine(cx - 14, cx + 14, cy - 42 + bob, hc);
-            ctx.drawHorizontalLine(cx - 10, cx + 10, cy - 44 + bob, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawHLine(ctx, cx - 14, cx + 14, cy - 42 + bob, hc);
+            UiRenderUtils.drawHLine(ctx, cx - 10, cx + 10, cy - 44 + bob, AzyronTheme.TEXT_PRIMARY);
         }
 
         // Stylized Minecraft Player Silhouette + Equipped Cloak
@@ -150,12 +150,10 @@ public final class AzyronCosmeticsScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
-        if (click.button() != 0) {
-            return super.mouseClicked(click, doubled);
+    public boolean azyronMouseClicked(double mx, double my, int button) {
+        if (button != 0) {
+            return false;
         }
-        double mx = click.x();
-        double my = click.y();
 
         int panelW = Math.min(430, this.width - 24);
         int panelH = Math.min(256, this.height - 24);
@@ -208,7 +206,7 @@ public final class AzyronCosmeticsScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(click, doubled);
+        return false;
     }
 
     @Override

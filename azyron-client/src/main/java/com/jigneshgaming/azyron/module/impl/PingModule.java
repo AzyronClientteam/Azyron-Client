@@ -121,7 +121,7 @@ public final class PingModule extends HudModule {
                 textColor = AzyronTheme.STATUS_DANGER;
             }
         }
-        context.drawTextWithShadow(client.textRenderer, "Ping: ", 7, 5, AzyronTheme.TEXT_SECONDARY);
-        context.drawTextWithShadow(client.textRenderer, cachedText, 7 + cachedLabelWidth, 5, textColor);
+        UiRenderUtils.drawText(context, client.textRenderer, "Ping: ", 7, 5, AzyronTheme.TEXT_SECONDARY);
+        UiRenderUtils.drawText(context, client.textRenderer, cachedText, 7 + cachedLabelWidth, 5, textColor);
     }
 }

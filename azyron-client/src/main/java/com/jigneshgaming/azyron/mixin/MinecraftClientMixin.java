@@ -3,6 +3,7 @@ package com.jigneshgaming.azyron.mixin;
 import com.jigneshgaming.azyron.AzyronClient;
 import com.jigneshgaming.azyron.profile.MultiplayerPerformanceController;
 import com.jigneshgaming.azyron.ui.AzyronMainMenuScreen;
+import com.jigneshgaming.azyron.util.McVersionBridge;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
@@ -66,7 +67,7 @@ public abstract class MinecraftClientMixin {
         try {
             String original = cir.getReturnValue();
             if (original != null && !original.startsWith("AZYRON CLIENT")) {
-                cir.setReturnValue("AZYRON CLIENT 1.21.11  |  " + original);
+                cir.setReturnValue("AZYRON CLIENT " + McVersionBridge.getActiveMcVersionString() + "  |  " + original);
             }
         } catch (Throwable t) {
             MultiplayerPerformanceController.logRateLimitedWarning("getWindowTitle warning", t);

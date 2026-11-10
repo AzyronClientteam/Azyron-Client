@@ -5,7 +5,6 @@ import java.util.Deque;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.DisconnectedScreen;
 import net.minecraft.client.gui.screen.ProgressScreen;
-import net.minecraft.client.gui.screen.ReconfiguringScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
 import net.minecraft.client.gui.screen.world.LevelLoadingScreen;
@@ -46,11 +45,26 @@ public final class MultiplayerPerformanceController {
      * transition screen during which world/HUD state is still synchronizing.
      */
     public static boolean isTransitionScreen(Screen screen) {
-        return screen instanceof LevelLoadingScreen
+        if (screen == null) {
+            return false;
+        }
+        if (screen instanceof LevelLoadingScreen
                 || screen instanceof ConnectScreen
-                || screen instanceof ReconfiguringScreen
                 || screen instanceof ProgressScreen
-                || screen instanceof DisconnectedScreen;
+                || screen instanceof DisconnectedScreen) {
+            return true;
+        }
+        // ReconfiguringScreen (net.minecraft.class_8671) exists in 1.20.2+ / 1.21.11, absent in 1.20.1
+        String clsName = screen.getClass().getName();
+        return "net.minecraft.class_8671".equals(clsName) || clsName.endsWith(".ReconfiguringScreen");
+    }
+
+    /**
+     * Records a chunk packet load on Minecraft 1.20.1 (where protocol ChunkBatchSizeCalculator does not exist)
+     * so multiplayer chunk burst telemetry and light-update pacing stay synchronized across 1.20.1 & 1.21.11.
+     */
+    public static void recordChunkLoaded120() {
+        totalChunkBatchesPaced++;
     }
 
     public static boolean isInJoinWarmup() {

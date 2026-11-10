@@ -1,0 +1,133 @@
+{
+  "formatVersion": 1,
+  "game": "minecraft",
+  "versionId": "1.0.3",
+  "name": "Azyron Modpack v1.0.3",
+  "summary": "AZYRON CLIENT by JIGNESH GAMING. 1.20.1 Fabric low-RAM profile; hardware validation pending, no guaranteed FPS.",
+  "files": [
+    {
+      "path": "mods/fabric-api-0.88.1+1.20.1.jar",
+      "hashes": {
+        "sha1": "e85c54a01f173f6cb5e533e66593ea5d65d462a1",
+        "sha512": "636f1cf9ab6e0266d29964c6405e0901434ce41ed939337068f680b513817cf5785b03315aefc5c987c3a8d066105c5c0fdd2bc73080f632dbbc9016250954a5"
+      },
+      "env": {
+        "client": "required",
+        "server": "unsupported"
+      },
+      "downloads": [
+        "https://cdn.modrinth.com/data/P7dR8mSH/versions/pYtlDijL/fabric-api-0.88.1%2B1.20.1.jar"
+      ],
+      "fileSize": 2055825
+    },
+    {
+      "path": "mods/sodium-fabric-mc1.20.1-0.5.3.jar",
+      "hashes": {
+        "sha1": "74784e6deb72e8cdb4e3788ac3a3cfd88fc77acf",
+        "sha512": "989dffbf494030a09d69004ff761aadd130ac1fbdd26d640c1dccb5dae6a48db24de812bdf75ae7ba373e8bbdd668300884f35f9ad85b25f168619e33218279b"
+      },
+      "env": {
+        "client": "required",
+        "server": "unsupported"
+      },
+      "downloads": [
+        "https://cdn.modrinth.com/data/AANobbMI/versions/4OZL6q9h/sodium-fabric-mc1.20.1-0.5.3.jar"
+      ],
+      "fileSize": 852373
+    },
+    {
+      "path": "mods/lithium-fabric-mc1.20.1-0.11.2.jar",
+      "hashes": {
+        "sha1": "8f4642147e60827f728badac7a819d1a9f3b25d5",
+        "sha512": "d1b5c90ba8b4879814df7fbf6e67412febbb2870e8131858c211130e9b5546e86b213b768b912fc7a2efa37831ad91caf28d6d71ba972274618ffd59937e5d0d"
+      },
+      "env": {
+        "client": "required",
+        "server": "unsupported"
+      },
+      "downloads": [
+        "https://cdn.modrinth.com/data/gvQqBUqZ/versions/ZSNsJrPI/lithium-fabric-mc1.20.1-0.11.2.jar"
+      ],
+      "fileSize": 645865
+    },
+    {
+      "path": "mods/ferritecore-6.0.0-fabric.jar",
+      "hashes": {
+        "sha1": "5a57ea73c3c7c0cc300d69611a9cad93baf8e9ab",
+        "sha512": "9f563d8ceb2ec838e5da23257d369a26be0323e2f7777df8bb6e2ac4610dd0020827411f7e82e1f151d0fd9236014a8f02801ab4c1a5857ad3fd90345f6cfa9c"
+      },
+      "env": {
+        "client": "required",
+        "server": "unsupported"
+      },
+      "downloads": [
+        "https://cdn.modrinth.com/data/uXXizFIs/versions/FCnCG6PS/ferritecore-6.0.0-fabric.jar"
+      ],
+      "fileSize": 124927
+    },
+    {
+      "path": "mods/entityculling-fabric-1.6.2-mc1.20.1.jar",
+      "hashes": {
+        "sha1": "8e4be2bb9703deddb3d3d212c812cdc1f9de072b",
+        "sha512": "0080d3733f77e6b2e80e40d5d7bfe63dd125d94984bf92568d3434ff281f68123ec382ee53eba021278c01059299c12492dd518e61de1247f5cf7e8040bc98f1"
+      },
+      "env": {
+        "client": "required",
+        "server": "unsupported"
+      },
+      "downloads": [
+        "https://cdn.modrinth.com/data/NNAgCjsB/versions/BDwHAdWc/entityculling-fabric-1.6.2-mc1.20.1.jar"
+      ],
+      "fileSize": 59348
+    },
+    {
+      "path": "mods/moreculling-1.20.1-0.19.0.jar",
+      "hashes": {
+        "sha1": "2b781b5ec7aa1b13f49a5fcc761a6b3f57c1e05f",
+        "sha512": "de1e00d14d0f682341863028fa970f929ced6b6cdc6f6105b99c0adb0b4be07c24f89ce95f256999acd4469590d40ddedeb41d6466d723d314ad16b6e456ebed"
+      },
+      "env": {
+        "client": "required",
+        "server": "unsupported"
+      },
+      "downloads": [
+        "https://cdn.modrinth.com/data/51shyZVL/versions/Bu5pCvCn/moreculling-1.20.1-0.19.0.jar"
+      ],
+      "fileSize": 334034
+    },
+    {
+      "path": "mods/cloth-config-11.1.106-fabric.jar",
+      "hashes": {
+        "sha1": "a05e176326365f2b8e377a35be52a5671491bcfd",
+        "sha512": "bce3d04905f49a331ade089332f0bb5f2329a81451f2acdd4d95590cb090dbc88f0192a85de342e705f4aea9f4cdf2add8b5ef842d0014e29f0a2a9c281984a2"
+      },
+      "env": {
+        "client": "required",
+        "server": "unsupported"
+      },
+      "downloads": [
+        "https://cdn.modrinth.com/data/9s6osm5g/versions/s7VTKfLA/cloth-config-11.1.106-fabric.jar"
+      ],
+      "fileSize": 1159179
+    },
+    {
+      "path": "mods/dynamic-fps-3.2.1+minecraft-1.20.0.jar",
+      "hashes": {
+        "sha1": "d4edd1828b1595eca7be0d36d1cc45b189a17a6e",
+        "sha512": "6ca9280ee22153552cdb4a75454850c2b75914d661afdea97c11a7c70370631f8f1574233c52ab46e36e97b9caed3f3574eee95169b2382d1b7a1e96973bdb77"
+      },
+      "env": {
+        "client": "required",
+        "server": "unsupported"
+      },
+      "downloads": [
+        "https://cdn.modrinth.com/data/LQ3K71Q1/versions/MJxmQ042/dynamic-fps-3.2.1%2Bminecraft-1.20.0.jar"
+      ],
+      "fileSize": 70316
+    }
+  ],
+  "dependencies": {
+    "minecraft": "1.20.1",
+    "fabric-loader": "0.14.22"
+  }
+}

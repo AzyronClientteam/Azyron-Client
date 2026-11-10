@@ -11,27 +11,25 @@ import com.jigneshgaming.azyron.profile.MemoryOptimizer;
 import com.jigneshgaming.azyron.profile.PerformanceEngine;
 import com.jigneshgaming.azyron.profile.PerformanceProfile;
 import com.jigneshgaming.azyron.util.AzyronTheme;
+import com.jigneshgaming.azyron.util.McVersionBridge;
 import com.jigneshgaming.azyron.util.UiRenderUtils;
 import java.util.List;
 import java.util.Locale;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.input.CharInput;
-import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
 /**
  * AZYRON CLIENT Main Mod Hub (Opened with Right Shift or from Main Menu / Pause Menu).
- * Inspired by FastClient & Spunky Boost:
+ * Unified across Minecraft 1.21.11 (Fabric) and Minecraft 1.20.1 (Fabric):
  *  - Sidebar category tabs + instant HUD Editor launcher
  *  - Real-time module search filter
  *  - 2-column responsive module cards with ON/OFF toggle + Mod Settings drawer
- *  - Dedicated Performance Profiles & Mod Stack Optimization center
+ *  - Dedicated Performance Profiles, Selectable MC Version Stack & Optimization center
  */
-public final class AzyronModsScreen extends Screen {
+public final class AzyronModsScreen extends AzyronBaseScreen {
     private enum Section {
         ALL_MODS("All Mods", ModuleCategory.ALL),
         HUD_MODS("HUD Widgets", ModuleCategory.HUD),
@@ -136,12 +134,16 @@ public final class AzyronModsScreen extends Screen {
 
     private void renderSidebar(DrawContext ctx, int wx, int wy, int sideW, int winH, int mx, int my) {
         ctx.fill(wx + 1, wy + 2, wx + sideW, wy + winH - 1, AzyronTheme.BG_SIDEBAR);
-        ctx.drawVerticalLine(wx + sideW, wy + 2, wy + winH - 2, AzyronTheme.BORDER_SUBTLE);
+        UiRenderUtils.drawVLine(ctx, wx + sideW, wy + 2, wy + winH - 2, AzyronTheme.BORDER_SUBTLE);
 
         // Brand badge
         UiRenderUtils.drawAzyronEmblem(ctx, wx + 16, wy + 17, 9, 255);
-        ctx.drawTextWithShadow(this.textRenderer, "AZYRON", wx + 29, wy + 10, AzyronTheme.TEXT_PRIMARY);
-        UiRenderUtils.drawScaledText(ctx, this.textRenderer, "1.21.11 FABRIC", wx + 29, wy + 20, 0.72f, AzyronTheme.ACCENT_ELECTRIC_BLUE, false);
+        UiRenderUtils.drawText(ctx, this.textRenderer, "AZYRON", wx + 29, wy + 10, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawScaledText(
+                ctx, this.textRenderer,
+                McVersionBridge.getActiveMcVersionString() + " FABRIC",
+                wx + 29, wy + 20, 0.72f, AzyronTheme.ACCENT_ELECTRIC_BLUE, false
+        );
 
         int navY = wy + 36;
         for (Section sec : Section.values()) {
@@ -152,8 +154,8 @@ public final class AzyronModsScreen extends Screen {
                     selected ? AzyronTheme.BG_CARD_ACTIVE : (hov ? AzyronTheme.BG_CARD_HOVER : AzyronTheme.BG_CARD),
                     hov, selected
             );
-            ctx.drawTextWithShadow(
-                    this.textRenderer, sec.title, wx + 13, navY + 6,
+            UiRenderUtils.drawText(
+                    ctx, this.textRenderer, sec.title, wx + 13, navY + 6,
                     selected ? AzyronTheme.ACCENT_ELECTRIC_BLUE : AzyronTheme.TEXT_PRIMARY
             );
             navY += 24;
@@ -163,22 +165,22 @@ public final class AzyronModsScreen extends Screen {
         int hudBtnY = wy + winH - 50;
         boolean hudHov = UiRenderUtils.isHovered(mx, my, wx + 6, hudBtnY, sideW - 12, 20);
         UiRenderUtils.drawAccentCard(ctx, wx + 6, hudBtnY, sideW - 12, 20, hudHov ? AzyronTheme.ACCENT_PURPLE : AzyronTheme.BG_CARD_ACTIVE, hudHov, true);
-        ctx.drawCenteredTextWithShadow(this.textRenderer, "✦ HUD Editor", wx + sideW / 2, hudBtnY + 6, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, "✦ HUD Editor", wx + sideW / 2, hudBtnY + 6, AzyronTheme.TEXT_PRIMARY);
 
         int cosBtnY = wy + winH - 26;
         boolean cosHov = UiRenderUtils.isHovered(mx, my, wx + 6, cosBtnY, sideW - 12, 18);
         UiRenderUtils.drawRoundedPanel(ctx, wx + 6, cosBtnY, sideW - 12, 18, cosHov ? AzyronTheme.BG_CARD_HOVER : AzyronTheme.BG_CARD, AzyronTheme.BORDER_SUBTLE);
-        ctx.drawCenteredTextWithShadow(this.textRenderer, "Cosmetics", wx + sideW / 2, cosBtnY + 5, AzyronTheme.TEXT_SECONDARY);
+        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, "Cosmetics", wx + sideW / 2, cosBtnY + 5, AzyronTheme.TEXT_SECONDARY);
     }
 
     private void renderTopHeader(DrawContext ctx, int x, int y, int w, int mx, int my) {
-        ctx.drawHorizontalLine(x, x + w - 2, y + 30, AzyronTheme.BORDER_SUBTLE);
+        UiRenderUtils.drawHLine(ctx, x, x + w - 2, y + 30, AzyronTheme.BORDER_SUBTLE);
 
         if (editingModule != null) {
             boolean backHov = UiRenderUtils.isHovered(mx, my, x + 8, y + 7, 54, 18);
             UiRenderUtils.drawRoundedPanel(ctx, x + 8, y + 7, 54, 18, backHov ? AzyronTheme.BG_CARD_HOVER : AzyronTheme.BG_CARD, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-            ctx.drawCenteredTextWithShadow(this.textRenderer, "← Back", x + 35, y + 12, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-            ctx.drawTextWithShadow(this.textRenderer, editingModule.getName() + "  •  Mod Settings", x + 70, y + 12, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawCenteredText(ctx, this.textRenderer, "← Back", x + 35, y + 12, AzyronTheme.ACCENT_ELECTRIC_BLUE);
+            UiRenderUtils.drawText(ctx, this.textRenderer, editingModule.getName() + "  •  Mod Settings", x + 70, y + 12, AzyronTheme.TEXT_PRIMARY);
         } else if (activeSection.category != null) {
             // Search Box
             int sbW = Math.min(186, w - 92);
@@ -191,16 +193,16 @@ public final class AzyronModsScreen extends Screen {
                     ? "Search mods (FPS, Zoom, CPS...)"
                     : (searchQuery + cursor);
             int col = searchQuery.isEmpty() && !searchFocused ? AzyronTheme.TEXT_MUTED : AzyronTheme.TEXT_PRIMARY;
-            ctx.drawTextWithShadow(this.textRenderer, display, sbX + 7, sbY + 5, col);
+            UiRenderUtils.drawText(ctx, this.textRenderer, display, sbX + 7, sbY + 5, col);
         } else {
-            ctx.drawTextWithShadow(this.textRenderer, activeSection.title, x + 10, y + 12, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawText(ctx, this.textRenderer, activeSection.title, x + 10, y + 12, AzyronTheme.TEXT_PRIMARY);
         }
 
         // Close button
         int closeX = x + w - 26;
         boolean closeHov = UiRenderUtils.isHovered(mx, my, closeX, y + 7, 18, 18);
         UiRenderUtils.drawRoundedPanel(ctx, closeX, y + 7, 18, 18, closeHov ? 0xCCEF4444 : AzyronTheme.BG_CARD, AzyronTheme.BORDER_SUBTLE);
-        ctx.drawCenteredTextWithShadow(this.textRenderer, "✕", closeX + 9, y + 12, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, "✕", closeX + 9, y + 12, AzyronTheme.TEXT_PRIMARY);
     }
 
     private void renderModuleGrid(DrawContext ctx, int x, int y, int w, int h, int mx, int my) {
@@ -233,13 +235,11 @@ public final class AzyronModsScreen extends Screen {
                     cardHov, mod.isEnabled()
             );
 
-            ctx.drawTextWithShadow(this.textRenderer, mod.getName(), cx + 8, cy + 6, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawText(ctx, this.textRenderer, mod.getName(), cx + 8, cy + 6, AzyronTheme.TEXT_PRIMARY);
 
-            // Truncate description cleanly to fit card width
             String desc = this.textRenderer.trimToWidth(mod.getDescription(), cardW - 16);
             UiRenderUtils.drawScaledText(ctx, this.textRenderer, desc, cx + 8, cy + 18, 0.78f, AzyronTheme.TEXT_MUTED, false);
 
-            // Bottom row inside card: Settings gear button + ON/OFF pill switch
             int gearX = cx + 8;
             int gearY = cy + 28;
             boolean gearHov = UiRenderUtils.isHovered(mx, my, gearX, gearY, 54, 12);
@@ -263,18 +263,18 @@ public final class AzyronModsScreen extends Screen {
 
         // Master Enable Row
         UiRenderUtils.drawAccentCard(ctx, x, curY, w, 28, AzyronTheme.BG_CARD_ACTIVE, false, mod.isEnabled());
-        ctx.drawTextWithShadow(this.textRenderer, "Module Enabled", x + 10, curY + 5, AzyronTheme.TEXT_PRIMARY);
-        ctx.drawTextWithShadow(this.textRenderer, mod.getDescription(), x + 10, curY + 16, AzyronTheme.TEXT_MUTED);
+        UiRenderUtils.drawText(ctx, this.textRenderer, "Module Enabled", x + 10, curY + 5, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(ctx, this.textRenderer, mod.getDescription(), x + 10, curY + 16, AzyronTheme.TEXT_MUTED);
         int mToggleX = x + w - 52;
         UiRenderUtils.drawRoundedPanel(ctx, mToggleX, curY + 6, 44, 16, mod.isEnabled() ? AzyronTheme.ACCENT_PURPLE_BRIGHT : 0xFF1E293B, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-        ctx.drawCenteredTextWithShadow(this.textRenderer, mod.isEnabled() ? "ENABLED" : "OFF", mToggleX + 22, curY + 10, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, mod.isEnabled() ? "ENABLED" : "OFF", mToggleX + 22, curY + 10, AzyronTheme.TEXT_PRIMARY);
         curY += 34;
 
         // HUD Scale Slider if this is a HudModule
         if (mod instanceof HudModule hud) {
             UiRenderUtils.drawRoundedPanel(ctx, x, curY, w, 26, AzyronTheme.BG_CARD, AzyronTheme.BORDER_SUBTLE);
             String scaleLbl = String.format(Locale.ROOT, "HUD Widget Scale: %.2fx", hud.getScale());
-            ctx.drawTextWithShadow(this.textRenderer, scaleLbl, x + 10, curY + 9, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawText(ctx, this.textRenderer, scaleLbl, x + 10, curY + 9, AzyronTheme.TEXT_PRIMARY);
             int barX = x + w - 124;
             int barW = 112;
             float norm = (hud.getScale() - 0.5f) / 1.5f;
@@ -285,22 +285,22 @@ public final class AzyronModsScreen extends Screen {
         // Dynamic Module Settings
         for (Setting<?> setting : mod.getSettings()) {
             UiRenderUtils.drawRoundedPanel(ctx, x, curY, w, 26, AzyronTheme.BG_CARD, AzyronTheme.BORDER_SUBTLE);
-            ctx.drawTextWithShadow(this.textRenderer, setting.getLabel(), x + 10, curY + 5, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawText(ctx, this.textRenderer, setting.getLabel(), x + 10, curY + 5, AzyronTheme.TEXT_PRIMARY);
             UiRenderUtils.drawScaledText(ctx, this.textRenderer, setting.getDescription(), x + 10, curY + 16, 0.72f, AzyronTheme.TEXT_MUTED, false);
 
             if (setting instanceof Setting.BooleanSetting bs) {
                 int bx = x + w - 48;
                 UiRenderUtils.drawRoundedPanel(ctx, bx, curY + 5, 38, 15, bs.getValue() ? AzyronTheme.ACCENT_PURPLE_BRIGHT : 0xFF1E293B, AzyronTheme.BORDER_SUBTLE);
-                ctx.drawCenteredTextWithShadow(this.textRenderer, bs.getValue() ? "ON" : "OFF", bx + 19, curY + 9, AzyronTheme.TEXT_PRIMARY);
+                UiRenderUtils.drawCenteredText(ctx, this.textRenderer, bs.getValue() ? "ON" : "OFF", bx + 19, curY + 9, AzyronTheme.TEXT_PRIMARY);
             } else if (setting instanceof Setting.ModeSetting ms) {
                 String val = "< " + ms.getValue() + " >";
                 int bw = Math.max(76, this.textRenderer.getWidth(val) + 12);
                 int bx = x + w - bw - 8;
                 UiRenderUtils.drawRoundedPanel(ctx, bx, curY + 5, bw, 15, AzyronTheme.BG_CARD_ACTIVE, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-                ctx.drawCenteredTextWithShadow(this.textRenderer, val, bx + bw / 2, curY + 9, AzyronTheme.ACCENT_ELECTRIC_BLUE);
+                UiRenderUtils.drawCenteredText(ctx, this.textRenderer, val, bx + bw / 2, curY + 9, AzyronTheme.ACCENT_ELECTRIC_BLUE);
             } else if (setting instanceof Setting.NumberSetting ns) {
                 String valStr = ns.getFormattedValue();
-                ctx.drawTextWithShadow(this.textRenderer, valStr, x + w - 156, curY + 9, AzyronTheme.ACCENT_ELECTRIC_BLUE);
+                UiRenderUtils.drawText(ctx, this.textRenderer, valStr, x + w - 156, curY + 9, AzyronTheme.ACCENT_ELECTRIC_BLUE);
                 drawSliderBar(ctx, x + w - 120, curY + 10, 108, ns.getNormalized());
             }
             curY += 30;
@@ -309,7 +309,7 @@ public final class AzyronModsScreen extends Screen {
         // Reset Module Button
         boolean resetHov = UiRenderUtils.isHovered(mx, my, x, curY, 118, 20);
         UiRenderUtils.drawRoundedPanel(ctx, x, curY, 118, 20, resetHov ? AzyronTheme.BG_CARD_HOVER : AzyronTheme.BG_CARD, AzyronTheme.STATUS_WARN);
-        ctx.drawCenteredTextWithShadow(this.textRenderer, "Reset to Defaults", x + 59, curY + 6, AzyronTheme.STATUS_WARN);
+        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, "Reset to Defaults", x + 59, curY + 6, AzyronTheme.STATUS_WARN);
         curY += 26;
 
         int contentTotal = (curY + (int) Math.round(scrollOffset)) - y;
@@ -343,13 +343,13 @@ public final class AzyronModsScreen extends Screen {
                 MemoryOptimizer.getUsagePercent(), MemoryOptimizer.getUsedMb(), MemoryOptimizer.getMaxMb(),
                 MemoryOptimizer.detectRamTier().getLabel()
         );
-        ctx.drawTextWithShadow(this.textRenderer, this.textRenderer.trimToWidth(telemetry, w - 92), x + 8, y + 10, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(ctx, this.textRenderer, this.textRenderer.trimToWidth(telemetry, w - 92), x + 8, y + 10, AzyronTheme.TEXT_PRIMARY);
 
         // Manual Trim Memory CTA
         int trimX = x + w - 80;
         boolean trimHov = UiRenderUtils.isHovered(mx, my, trimX, y + 5, 74, 18);
         UiRenderUtils.drawAccentCard(ctx, trimX, y + 5, 74, 18, trimHov ? AzyronTheme.BG_CARD_HOVER : AzyronTheme.BG_CARD, trimHov, false);
-        ctx.drawCenteredTextWithShadow(this.textRenderer, "Boost RAM", trimX + 37, y + 10, AzyronTheme.ACCENT_ELECTRIC_BLUE);
+        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, "Boost RAM", trimX + 37, y + 10, AzyronTheme.ACCENT_ELECTRIC_BLUE);
 
         // 3 Performance Profile Cards: Potato Mode, Balanced Mode, Smooth FPS Mode
         PerformanceProfile[] profiles = PerformanceProfile.values();
@@ -362,7 +362,7 @@ public final class AzyronModsScreen extends Screen {
                     active ? AzyronTheme.BG_CARD_ACTIVE : AzyronTheme.BG_CARD,
                     hov, active
             );
-            ctx.drawTextWithShadow(this.textRenderer, p.getDisplayName(), x + 10, py + 6, active ? AzyronTheme.ACCENT_ELECTRIC_BLUE : AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawText(ctx, this.textRenderer, p.getDisplayName(), x + 10, py + 6, active ? AzyronTheme.ACCENT_ELECTRIC_BLUE : AzyronTheme.TEXT_PRIMARY);
             UiRenderUtils.drawScaledText(ctx, this.textRenderer, p.getSummary(), x + 10, py + 18, 0.78f, AzyronTheme.TEXT_SECONDARY, false);
 
             String specs = String.format(
@@ -377,14 +377,18 @@ public final class AzyronModsScreen extends Screen {
             int bw = 52;
             int bx = x + w - bw - 8;
             UiRenderUtils.drawRoundedPanel(ctx, bx, py + 14, bw, 18, active ? AzyronTheme.ACCENT_PURPLE_BRIGHT : 0xFF1E293B, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-            ctx.drawCenteredTextWithShadow(this.textRenderer, badge, bx + bw / 2, py + 19, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawCenteredText(ctx, this.textRenderer, badge, bx + bw / 2, py + 19, AzyronTheme.TEXT_PRIMARY);
 
             py += 50;
         }
 
         // Integrated Optimization Mod Stack Status Bar
         UiRenderUtils.drawRoundedPanel(ctx, x, py + 2, w, 34, 0xCC090C18, AzyronTheme.BORDER_SUBTLE);
-        ctx.drawTextWithShadow(this.textRenderer, "Optimization Mod Stack (1.21.11 Fabric):", x + 8, py + 7, AzyronTheme.TEXT_SECONDARY);
+        UiRenderUtils.drawText(
+                ctx, this.textRenderer,
+                "Optimization Mod Stack (" + McVersionBridge.getActiveMcVersionString() + " Fabric):",
+                x + 8, py + 7, AzyronTheme.TEXT_SECONDARY
+        );
 
         String[][] modStack = {
                 {"sodium", "Sodium"},
@@ -425,22 +429,51 @@ public final class AzyronModsScreen extends Screen {
         };
 
         for (int i = 0; i < titles.length; i++) {
-            int ry = y + i * 36;
+            int ry = y + i * 33;
             boolean val = rows[i][0];
-            UiRenderUtils.drawAccentCard(ctx, x, ry, w, 30, AzyronTheme.BG_CARD, UiRenderUtils.isHovered(mx, my, x, ry, w, 30), val);
-            ctx.drawTextWithShadow(this.textRenderer, titles[i], x + 10, ry + 6, AzyronTheme.TEXT_PRIMARY);
-            UiRenderUtils.drawScaledText(ctx, this.textRenderer, descs[i], x + 10, ry + 18, 0.75f, AzyronTheme.TEXT_MUTED, false);
+            UiRenderUtils.drawAccentCard(ctx, x, ry, w, 29, AzyronTheme.BG_CARD, UiRenderUtils.isHovered(mx, my, x, ry, w, 29), val);
+            UiRenderUtils.drawText(ctx, this.textRenderer, titles[i], x + 10, ry + 5, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawScaledText(ctx, this.textRenderer, descs[i], x + 10, ry + 17, 0.75f, AzyronTheme.TEXT_MUTED, false);
 
             int bx = x + w - 50;
-            UiRenderUtils.drawRoundedPanel(ctx, bx, ry + 7, 42, 16, val ? AzyronTheme.ACCENT_PURPLE_BRIGHT : 0xFF1E293B, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-            ctx.drawCenteredTextWithShadow(this.textRenderer, val ? "ON" : "OFF", bx + 21, ry + 11, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawRoundedPanel(ctx, bx, ry + 6, 42, 16, val ? AzyronTheme.ACCENT_PURPLE_BRIGHT : 0xFF1E293B, AzyronTheme.ACCENT_ELECTRIC_BLUE);
+            UiRenderUtils.drawCenteredText(ctx, this.textRenderer, val ? "ON" : "OFF", bx + 21, ry + 10, AzyronTheme.TEXT_PRIMARY);
         }
 
-        int infoY = y + 118;
-        UiRenderUtils.drawRoundedPanel(ctx, x, infoY, w, 58, 0xCC090C18, AzyronTheme.BORDER_SUBTLE);
-        ctx.drawTextWithShadow(this.textRenderer, "AZYRON CLIENT  •  v" + AzyronClient.CLIENT_VERSION + "  (Minecraft 1.21.11 Fabric)", x + 10, infoY + 8, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-        ctx.drawTextWithShadow(this.textRenderer, "Created by JIGNESH GAMING  |  PojavLauncher & Desktop Ready", x + 10, infoY + 22, AzyronTheme.TEXT_PRIMARY);
-        ctx.drawTextWithShadow(this.textRenderer, "Keybinds: [Right Shift] Client Menu  •  [C] Smooth Zoom  •  [H] HUD Editor", x + 10, infoY + 36, AzyronTheme.TEXT_MUTED);
+        // Selectable Minecraft Version Profile Row (1.21.11 Fabric / 1.20.1 Fabric)
+        int verY = y + 102;
+        McVersionBridge.SupportedMcVersion selectedVer = cfg.getSelectedMcVersion();
+        boolean verHov = UiRenderUtils.isHovered(mx, my, x, verY, w, 34);
+        UiRenderUtils.drawAccentCard(ctx, x, verY, w, 34, AzyronTheme.BG_CARD_ACTIVE, verHov, true);
+        UiRenderUtils.drawText(
+                ctx, this.textRenderer,
+                "Supported Minecraft Profile (Active Runtime: " + McVersionBridge.getActiveMcVersionString() + ")",
+                x + 10, verY + 5, AzyronTheme.TEXT_PRIMARY
+        );
+        UiRenderUtils.drawScaledText(
+                ctx, this.textRenderer,
+                this.textRenderer.trimToWidth(
+                        "Java " + selectedVer.getMinJavaVersion() + "+  •  Fabric API " + selectedVer.getFabricApiVersion()
+                        + "  •  " + selectedVer.getModStackSummary(),
+                        w - 110
+                ),
+                x + 10, verY + 19, 0.72f, AzyronTheme.TEXT_SECONDARY, false
+        );
+        String verBtnLabel = "< " + selectedVer.getVersionId() + " >";
+        int verBtnW = 82;
+        int verBtnX = x + w - verBtnW - 8;
+        UiRenderUtils.drawRoundedPanel(ctx, verBtnX, verY + 8, verBtnW, 18, AzyronTheme.ACCENT_PURPLE_BRIGHT, AzyronTheme.ACCENT_ELECTRIC_BLUE);
+        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, verBtnLabel, verBtnX + verBtnW / 2, verY + 13, AzyronTheme.TEXT_PRIMARY);
+
+        int infoY = y + 142;
+        UiRenderUtils.drawRoundedPanel(ctx, x, infoY, w, 52, 0xCC090C18, AzyronTheme.BORDER_SUBTLE);
+        UiRenderUtils.drawText(
+                ctx, this.textRenderer,
+                "AZYRON CLIENT  •  v" + AzyronClient.CLIENT_VERSION + "  (Minecraft 1.21.11 & 1.20.1 Fabric)",
+                x + 10, infoY + 7, AzyronTheme.ACCENT_ELECTRIC_BLUE
+        );
+        UiRenderUtils.drawText(ctx, this.textRenderer, "Created by JIGNESH GAMING  |  PojavLauncher & Desktop Ready", x + 10, infoY + 20, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(ctx, this.textRenderer, "Keybinds: [Right Shift] Client Menu  •  [C] Smooth Zoom  •  [H] HUD Editor", x + 10, infoY + 33, AzyronTheme.TEXT_MUTED);
     }
 
     private static boolean isModLoaded(String modId) {
@@ -455,11 +488,7 @@ public final class AzyronModsScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
-        double mx = click.x();
-        double my = click.y();
-        int btn = click.button();
-
+    public boolean azyronMouseClicked(double mx, double my, int btn) {
         int winW = Math.min(476, this.width - 16);
         int winH = Math.min(286, this.height - 16);
         int wx = (this.width - winW) / 2;
@@ -518,7 +547,7 @@ public final class AzyronModsScreen extends Screen {
         int contentH = winH - 42;
 
         if (!UiRenderUtils.isHovered(mx, my, contentX, contentY, contentW, contentH)) {
-            return super.mouseClicked(click, doubled);
+            return false;
         }
 
         if (editingModule != null) {
@@ -633,20 +662,25 @@ public final class AzyronModsScreen extends Screen {
     }
 
     private boolean handleClientSettingsClick(double mx, double my, int btn, int x, int y, int w) {
-        if (btn != 0) return false;
+        if (btn != 0 && btn != 1) return false;
         AzyronConfig cfg = AzyronClient.getInstance().getConfig();
-        if (UiRenderUtils.isHovered(mx, my, x, y, w, 30)) {
+        if (btn == 0 && UiRenderUtils.isHovered(mx, my, x, y, w, 29)) {
             cfg.setCustomMainMenu(!cfg.isCustomMainMenu());
             cfg.save();
             return true;
         }
-        if (UiRenderUtils.isHovered(mx, my, x, y + 36, w, 30)) {
+        if (btn == 0 && UiRenderUtils.isHovered(mx, my, x, y + 33, w, 29)) {
             cfg.setCustomLoadingScreen(!cfg.isCustomLoadingScreen());
             cfg.save();
             return true;
         }
-        if (UiRenderUtils.isHovered(mx, my, x, y + 72, w, 30)) {
+        if (btn == 0 && UiRenderUtils.isHovered(mx, my, x, y + 66, w, 29)) {
             cfg.setAutoMemoryOptimization(!cfg.isAutoMemoryOptimization());
+            cfg.save();
+            return true;
+        }
+        if (UiRenderUtils.isHovered(mx, my, x, y + 102, w, 34)) {
+            cfg.cycleSelectedMcVersion();
             cfg.save();
             return true;
         }
@@ -659,53 +693,52 @@ public final class AzyronModsScreen extends Screen {
     }
 
     @Override
-    public boolean mouseDragged(Click click, double offsetX, double offsetY) {
+    public boolean azyronMouseDragged(double mx, double my, int button, double offsetX, double offsetY) {
         if (draggingSlider != null) {
-            draggingSlider.setFromNormalized((float) ((click.x() - sliderTrackX) / sliderTrackW));
+            draggingSlider.setFromNormalized((float) ((mx - sliderTrackX) / sliderTrackW));
             return true;
         }
         if (draggingHudScale && editingModule instanceof HudModule hud) {
-            updateHudScaleFromMouse(hud, click.x());
+            updateHudScaleFromMouse(hud, mx);
             return true;
         }
-        return super.mouseDragged(click, offsetX, offsetY);
+        return false;
     }
 
     @Override
-    public boolean mouseReleased(Click click) {
+    public boolean azyronMouseReleased(double mx, double my, int button) {
         if (draggingSlider != null || draggingHudScale) {
             draggingSlider = null;
             draggingHudScale = false;
             AzyronClient.getInstance().getConfig().save();
             return true;
         }
-        return super.mouseReleased(click);
+        return false;
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+    public boolean azyronMouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (verticalAmount != 0.0 && maxScroll > 0) {
             scrollOffset = Math.max(0.0, Math.min(maxScroll, scrollOffset - verticalAmount * 18.0));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+        return false;
     }
 
     @Override
-    public boolean keyPressed(KeyInput input) {
-        int key = input.getKeycode();
+    public boolean azyronKeyPressed(int keyCode, int scanCode, int modifiers) {
         if (searchFocused) {
-            if (key == GLFW.GLFW_KEY_BACKSPACE && !searchQuery.isEmpty()) {
+            if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !searchQuery.isEmpty()) {
                 searchQuery = searchQuery.substring(0, searchQuery.length() - 1);
                 scrollOffset = 0.0;
                 return true;
             }
-            if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+            if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
                 searchFocused = false;
                 return true;
             }
         }
-        if (input.isEscape()) {
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             if (editingModule != null) {
                 editingModule = null;
                 return true;
@@ -713,17 +746,17 @@ public final class AzyronModsScreen extends Screen {
             close();
             return true;
         }
-        return super.keyPressed(input);
+        return super.azyronKeyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
-    public boolean charTyped(CharInput input) {
-        if (searchFocused && input.isValidChar() && searchQuery.length() < 26) {
-            searchQuery += input.asString();
+    public boolean azyronCharTyped(char chr, int modifiers) {
+        if (searchFocused && chr >= 32 && chr != 127 && searchQuery.length() < 26) {
+            searchQuery += chr;
             scrollOffset = 0.0;
             return true;
         }
-        return super.charTyped(input);
+        return false;
     }
 
     @Override

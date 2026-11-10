@@ -1,6 +1,8 @@
 package com.jigneshgaming.azyron.ui;
 
 import com.jigneshgaming.azyron.util.AzyronTheme;
+import com.jigneshgaming.azyron.util.PlatformCompat;
+import com.jigneshgaming.azyron.util.McVersionBridge;
 import com.jigneshgaming.azyron.util.UiRenderUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -53,6 +55,11 @@ public final class AzyronLoadingRenderer {
             smoothedProgress = target;
         } else {
             smoothedProgress += (target - smoothedProgress) * 0.18f;
+        }
+
+        if (PlatformCompat.isAndroidOrPojav()) {
+            renderMobileLoading(ctx, client, w, h, smoothedProgress, a, textShaderReady);
+            return;
         }
 
         // Clean obsidian dark gradient backdrop
@@ -113,20 +120,20 @@ public final class AzyronLoadingRenderer {
                     ctx, font, "AZYRON CLIENT", cx, cy - 4, 1.45f,
                     AzyronTheme.withAlpha(AzyronTheme.TEXT_PRIMARY, a), true
             );
-            ctx.drawCenteredTextWithShadow(
-                    font, "Welcome to AZYRON CLIENT", cx, cy + 14,
+            UiRenderUtils.drawCenteredText(
+                    ctx, font, "Welcome to AZYRON CLIENT", cx, cy + 14,
                     AzyronTheme.withAlpha(AzyronTheme.ACCENT_ELECTRIC_BLUE, a)
             );
-            ctx.drawCenteredTextWithShadow(
-                    font, getStageDescription(smoothedProgress), cx, cy + 28,
+            UiRenderUtils.drawCenteredText(
+                    ctx, font, getStageDescription(smoothedProgress), cx, cy + 28,
                     AzyronTheme.withAlpha(AzyronTheme.TEXT_MUTED, a)
             );
-            ctx.drawCenteredTextWithShadow(
-                    font, pct + "%", cx, barY + 11,
+            UiRenderUtils.drawCenteredText(
+                    ctx, font, pct + "%", cx, barY + 11,
                     AzyronTheme.withAlpha(AzyronTheme.TEXT_SECONDARY, a)
             );
-            ctx.drawCenteredTextWithShadow(
-                    font, "PERFORMANCE • SMOOTHNESS • STYLE  |  Made by JIGNESH GAMING",
+            UiRenderUtils.drawCenteredText(
+                    ctx, font, "PERFORMANCE • SMOOTHNESS • STYLE  |  Made by JIGNESH GAMING",
                     cx, h - 16, AzyronTheme.withAlpha(AzyronTheme.TEXT_MUTED, a)
             );
         } else {
@@ -154,8 +161,28 @@ public final class AzyronLoadingRenderer {
         }
     }
 
+    /** Android path: no orbit/shimmer animation, textures or per-pixel footer text.
+     * Does not alter resource-reload ordering, GL capabilities or launcher worker pools.
+     */
+    private static void renderMobileLoading(DrawContext ctx, MinecraftClient client,
+            int w, int h, float progress, int alpha, boolean textReady) {
+        int cx = w / 2, cy = h / 2;
+        int barW = Math.min(240, Math.max(80, w - 32));
+        int left = cx - barW / 2;
+        ctx.fill(0, 0, w, h, AzyronTheme.withAlpha(0x0B0E1D, alpha));
+        ctx.fill(left, cy + 12, left + barW, cy + 18, AzyronTheme.withAlpha(0x334155, alpha));
+        ctx.fill(left, cy + 12, left + Math.round(barW * progress), cy + 18,
+                AzyronTheme.withAlpha(AzyronTheme.ACCENT_ELECTRIC_BLUE, alpha));
+        int color = AzyronTheme.withAlpha(AzyronTheme.TEXT_PRIMARY, alpha);
+        if (textReady && client != null && client.textRenderer != null) {
+            UiRenderUtils.drawCenteredText(ctx, client.textRenderer, "AZYRON CLIENT", cx, cy - 12, color);
+        } else {
+            UiRenderUtils.drawCenteredBootPixelText(ctx, "AZYRON CLIENT", cx, cy - 12, 1, color);
+        }
+    }
+
     private static String getStageDescription(float progress) {
-        if (progress < 0.25f) return "Initializing AZYRON 1.21.11 Core Engine...";
+        if (progress < 0.25f) return "Initializing AZYRON " + McVersionBridge.getActiveMcVersionString() + "...";
         if (progress < 0.55f) return "Optimizing Render Pipelines & Memory...";
         if (progress < 0.85f) return "Loading Client Modules, HUD & Textures...";
         return "Finalizing High-FPS Workspace...";

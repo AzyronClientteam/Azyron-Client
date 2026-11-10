@@ -3,6 +3,7 @@ package com.jigneshgaming.azyron.module.impl;
 import com.jigneshgaming.azyron.module.HudModule;
 import com.jigneshgaming.azyron.module.Setting;
 import com.jigneshgaming.azyron.util.AzyronTheme;
+import com.jigneshgaming.azyron.util.McVersionBridge;
 import com.jigneshgaming.azyron.util.UiRenderUtils;
 import java.util.Arrays;
 import java.util.Collection;
@@ -73,9 +74,9 @@ public final class PotionHudModule extends HudModule {
             this.height = 34;
             UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), resolveAccentColor());
             context.fill(6, 6, 9, 14, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-            context.drawTextWithShadow(client.textRenderer, "Speed II  01:30", 13, 6, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawText(context, client.textRenderer, "Speed II  01:30", 13, 6, AzyronTheme.TEXT_PRIMARY);
             context.fill(6, 19, 9, 27, AzyronTheme.ACCENT_MAGENTA);
-            context.drawTextWithShadow(client.textRenderer, "Strength I  00:45", 13, 19, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawText(context, client.textRenderer, "Strength I  00:45", 13, 19, AzyronTheme.TEXT_PRIMARY);
             return;
         }
 
@@ -116,9 +117,7 @@ public final class PotionHudModule extends HudModule {
             int maxW = 80;
             for (int i = 0; i < n; i++) {
                 StatusEffectInstance inst = scratchEffects[i];
-                var holder = inst.getEffectType();
-                // Verify RegistryEntry is bound (hasKeyAndValue) before calling .value() during server switches
-                StatusEffect effect = (holder != null && holder.hasKeyAndValue()) ? holder.value() : null;
+                StatusEffect effect = McVersionBridge.resolveStatusEffect(inst);
                 String baseName = (effect != null && effect.getName() != null) ? effect.getName().getString() : "Effect";
                 String amp = toRoman(inst.getAmplifier() + 1);
                 String fullTitle = amp.isEmpty() ? baseName : (baseName + " " + amp);
@@ -149,12 +148,12 @@ public final class PotionHudModule extends HudModule {
         for (int i = 0; i < n; i++) {
             int ry = 4 + i * 14;
             context.fill(5, ry, 8, ry + 9, rowColors[i]);
-            context.drawTextWithShadow(client.textRenderer, rowNames[i], 12, ry, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawText(context, client.textRenderer, rowNames[i], 12, ry, AzyronTheme.TEXT_PRIMARY);
 
             int timeCol = (blinkEnabled && rowExpiring[i])
                     ? (blinkPhase ? AzyronTheme.STATUS_DANGER : AzyronTheme.STATUS_WARN)
                     : AzyronTheme.ACCENT_ELECTRIC_BLUE;
-            context.drawTextWithShadow(client.textRenderer, rowTimers[i], width - rowTimerWidths[i] - 6, ry, timeCol);
+            UiRenderUtils.drawText(context, client.textRenderer, rowTimers[i], width - rowTimerWidths[i] - 6, ry, timeCol);
         }
     }
 

@@ -18,7 +18,7 @@ public final class MemoryOptimizer {
      * across desktop launchers and PojavLauncher.
      */
     public enum RamTier {
-        TIER_3GB("3GB RAM (Ultra-Light)", 6, 5, 1, 0, 0.55, 1, 40, 75, 85),
+        TIER_3GB("3GB RAM (Ultra-Light)", 6, 5, 0, 0, 0.50, 1, 40, 75, 85),
         TIER_4GB("4GB RAM (Low-Memory)", 7, 6, 1, 1, 0.65, 2, 75, 78, 87),
         TIER_6GB("5–6GB RAM (Balanced)", 9, 7, 2, 2, 0.80, 3, 130, 82, 89),
         TIER_8GB("7–8GB+ RAM (High-Headroom)", 10, 8, 2, 2, 0.90, 4, 180, 85, 91);

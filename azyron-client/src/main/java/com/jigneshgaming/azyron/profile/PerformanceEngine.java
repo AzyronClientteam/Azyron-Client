@@ -1,6 +1,7 @@
 package com.jigneshgaming.azyron.profile;
 
 import com.jigneshgaming.azyron.AzyronClient;
+import com.jigneshgaming.azyron.util.McVersionBridge;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,6 +22,11 @@ import net.minecraft.particle.ParticlesMode;
  */
 public final class PerformanceEngine {
     private static final int UNFOCUSED_FPS_CAP = 15;
+    public static final int LOW_RAM_FPS_TARGET = 60;
+    public static final int REQUESTED_LOW_RAM_SIMULATION_DISTANCE = 4;
+    // Conservative vanilla-compatible floor; four needs version-specific game validation.
+    // Do not serialize an out-of-range four or bypass the option codec/tick semantics.
+    public static final int MIN_SAFE_SIMULATION_DISTANCE = 5;
 
     private PerformanceProfile activeProfile = PerformanceProfile.BALANCED;
     private int particlesSpawnedThisTick = 0;
@@ -64,8 +70,8 @@ public final class PerformanceEngine {
 
     /**
      * Automatically clamps excessive vanilla render/simulation/biome/entity settings to safe bounds
-     * for the detected 3GB–8GB RAM tier so low-memory PCs and PojavLauncher phones never OOM
-     * or stutter on chunk loading, while preserving any tighter user settings.
+     * for the detected 3GB–8GB RAM tier to reduce memory pressure and chunk-load work,
+     * while preserving tighter user settings. This cannot guarantee FPS or prevent every OOM.
      */
     public void applyAutoRamCalibration(MinecraftClient client) {
         if (client == null || client.options == null) {
@@ -114,17 +120,19 @@ public final class PerformanceEngine {
             }
 
             if (tier == MemoryOptimizer.RamTier.TIER_3GB) {
-                opts.applyGraphicsMode(GraphicsMode.FAST);
+                McVersionBridge.setGraphicsMode(opts, GraphicsMode.FAST);
                 opts.getCloudRenderMode().setValue(CloudRenderMode.OFF);
                 opts.getParticles().setValue(ParticlesMode.MINIMAL);
                 opts.getEntityShadows().setValue(false);
                 opts.getAo().setValue(false);
-                opts.getVignette().setValue(false);
+                McVersionBridge.setVignette(opts, false);
+                int currentFps = opts.getMaxFps().getValue();
+                if (currentFps > LOW_RAM_FPS_TARGET) opts.getMaxFps().setValue(LOW_RAM_FPS_TARGET);
                 changed = true;
             } else if (tier == MemoryOptimizer.RamTier.TIER_4GB) {
-                opts.applyGraphicsMode(GraphicsMode.FAST);
+                McVersionBridge.setGraphicsMode(opts, GraphicsMode.FAST);
                 opts.getEntityShadows().setValue(false);
-                opts.getVignette().setValue(false);
+                McVersionBridge.setVignette(opts, false);
                 changed = true;
             }
 
@@ -192,7 +200,7 @@ public final class PerformanceEngine {
         if (client != null && client.options != null) {
             GameOptions opts = client.options;
             try {
-                opts.applyGraphicsMode(profile.getGraphicsMode());
+                McVersionBridge.setGraphicsMode(opts, profile.getGraphicsMode());
                 opts.getParticles().setValue(profile.getParticlesMode());
                 opts.getCloudRenderMode().setValue(profile.getCloudRenderMode());
                 opts.getViewDistance().setValue(profile.getViewDistance());
@@ -205,11 +213,17 @@ public final class PerformanceEngine {
                 opts.getEntityDistanceScaling().setValue(profile.getEntityDistanceScaling());
                 opts.getEntityShadows().setValue(profile.isEntityShadows());
                 opts.getAo().setValue(profile.isAmbientOcclusion());
-                opts.getVignette().setValue(profile.isVignette());
+                McVersionBridge.setVignette(opts, profile.isVignette());
                 opts.getEnableVsync().setValue(profile.isVsync());
                 opts.getMaxFps().setValue(profile.getMaxFps());
                 if (!IntegratedServerOptimizer.shouldForceSyncChunkWrites(opts.syncChunkWrites)) {
                     opts.syncChunkWrites = false;
+                }
+                // Profile switching previously bypassed the first-tick RAM clamp. Apply
+                // the same safety bounds on BOTH versions before saving any preset.
+                AzyronClient inst = AzyronClient.getInstance();
+                if (inst == null || inst.getConfig() == null || inst.getConfig().isAutoMemoryOptimization()) {
+                    applyAutoRamCalibration(client);
                 }
                 opts.write();
             } catch (Throwable t) {
@@ -298,23 +312,41 @@ public final class PerformanceEngine {
         return activeBannerMessage;
     }
 
-    /**
-     * Seeds RAM-tier-calibrated default config files for Sodium, Lithium, EntityCulling, MoreCulling,
-     * Dynamic FPS, and ImmediatelyFast if the user does not already have custom configs.
+    /** Seed only reviewed version-specific schemas for installed mods.
+     * Other optimizers retain their own defaults: no guessed cross-version keys.
      */
     public void seedCompanionModConfigsIfMissing() {
-        this.companionConfigsSeeded = true;
+        if (this.companionConfigsSeeded) return;
         try {
-            Path configDir = FabricLoader.getInstance().getConfigDir();
-            Files.createDirectories(configDir);
-
+            FabricLoader loader = FabricLoader.getInstance();
+            Path configDir = loader.getConfigDir();
             MemoryOptimizer.RamTier tier = MemoryOptimizer.detectRamTier();
-            int chunkThreads = MemoryOptimizer.computeOptimalChunkBuilderThreads();
-            int cpuAheadLimit = (tier == MemoryOptimizer.RamTier.TIER_3GB || tier == MemoryOptimizer.RamTier.TIER_4GB) ? 2 : 3;
-            int tracingDist = (tier == MemoryOptimizer.RamTier.TIER_3GB) ? 64 : 96;
+            int cpuAheadLimit = tier == MemoryOptimizer.RamTier.TIER_3GB
+                    || tier == MemoryOptimizer.RamTier.TIER_4GB ? 2 : 3;
+            McVersionBridge.SupportedMcVersion version = McVersionBridge.getRuntimeMcVersion();
+            if (loader.isModLoaded("sodium")) {
+                Files.createDirectories(configDir);
+                writeIfAbsent(configDir.resolve("sodium-options.json"),
+                        buildSodiumOptionsJson(version, MemoryOptimizer.computeOptimalChunkBuilderThreads(), cpuAheadLimit));
+            }
+            if (loader.isModLoaded("dynamic_fps") || loader.isModLoaded("dynamicfps")) {
+                Files.createDirectories(configDir);
+                writeIfAbsent(configDir.resolve("dynamic_fps.json"), buildDynamicFpsOptionsJson(version));
+            }
+            this.companionConfigsSeeded = true;
+        } catch (IOException e) {
+            AzyronClient.LOGGER.debug("[AZYRON] Companion config seeding deferred: {}", e.getMessage());
+        }
+    }
 
-            writeIfAbsent(configDir.resolve("sodium-options.json"),
-                    "{\n"
+    public static String buildSodiumOptionsJson(
+            McVersionBridge.SupportedMcVersion mcVer,
+            int chunkThreads,
+            int cpuAheadLimit
+    ) {
+        if (mcVer == McVersionBridge.SupportedMcVersion.MC_1_20_1) {
+            // Sodium 0.5.x (Minecraft 1.20.1) schema uses always_defer_chunk_updates_v2
+            return "{\n"
                     + "  \"quality\": {\n"
                     + "    \"weather_quality\": \"FAST\",\n"
                     + "    \"leaves_quality\": \"FAST\",\n"
@@ -322,98 +354,57 @@ public final class PerformanceEngine {
                     + "  },\n"
                     + "  \"performance\": {\n"
                     + "    \"chunk_builder_threads\": " + chunkThreads + ",\n"
-                    + "    \"chunk_build_defer_mode\": \"NEARBY\",\n"
-                    + "    \"cpu_render_ahead_limit\": " + cpuAheadLimit + ",\n"
+                    + "    \"always_defer_chunk_updates_v2\": true,\n"
                     + "    \"animate_only_visible_textures\": true,\n"
                     + "    \"use_entity_culling\": true,\n"
                     + "    \"use_fog_occlusion\": true,\n"
                     + "    \"use_block_face_culling\": true,\n"
                     + "    \"use_no_error_g_l_context\": false\n"
+                    + "  },\n"
+                    + "  \"advanced\": {\n"
+                    + "    \"cpu_render_ahead_limit\": " + cpuAheadLimit + "\n"
                     + "  }\n"
-                    + "}\n"
-            );
-
-            writeIfAbsent(configDir.resolve("entityculling.json"),
-                    "{\n"
-                    + "  \"configVersion\": 9,\n"
-                    + "  \"renderNametagsThroughWalls\": true,\n"
-                    + "  \"tracingDistance\": " + tracingDist + ",\n"
-                    + "  \"debugMode\": false,\n"
-                    + "  \"sleepDelay\": 10,\n"
-                    + "  \"hitboxLimit\": 50,\n"
-                    + "  \"tickCulling\": true,\n"
-                    + "  \"blockEntityFrustumCulling\": true,\n"
-                    + "  \"safeMode\": false,\n"
-                    + "  \"solidLeaves\": false\n"
-                    + "}\n"
-            );
-
-            writeIfAbsent(configDir.resolve("moreculling.toml"),
-                    "version = 1\n"
-                    + "enableSodiumMenu = true\n"
-                    + "cloudCulling = true\n"
-                    + "signTextCulling = true\n"
-                    + "rainCulling = true\n"
-                    + "beaconBeamCulling = true\n"
-                    + "entityModelCulling = false\n"
-                    + "endGatewayCulling = true\n"
-                    + "useBlockStateCulling = true\n"
-                    + "useCustomItemFrameRenderer = true\n"
-                    + "itemFrameMapCulling = true\n"
-                    + "useItemFrameLOD = true\n"
-                    + "itemFrameLODRange = 16\n"
-                    + "useItemFrame3FaceCulling = true\n"
-                    + "itemFrame3FaceCullingRange = 12.0\n"
-                    + "leavesCullingMode = \"FAST\"\n"
-                    + "leavesCullingAmount = 2\n"
-                    + "includeMangroveRoots = true\n"
-            );
-
-            writeIfAbsent(configDir.resolve("lithium.properties"),
-                    "# AZYRON CLIENT - Lithium 1.21.11 Optimization Preset\n"
-                    + "mixin.ai=true\n"
-                    + "mixin.alloc=true\n"
-                    + "mixin.block=true\n"
-                    + "mixin.chunk=true\n"
-                    + "mixin.entity=true\n"
-                    + "mixin.gen=true\n"
-                    + "mixin.math=true\n"
-                    + "mixin.shapes=true\n"
-                    + "mixin.world=true\n"
-            );
-
-            // Seed valid ImmediatelyFast 1.14+ (MC 1.21.11) config ONLY if user manually installed ImmediatelyFast,
-            // disabling enhanced_batching and FBO state skipping on Android/PojavLauncher to avoid mobile GL glitches.
-            if (FabricLoader.getInstance().isModLoaded("immediatelyfast")) {
-                boolean mobile = com.jigneshgaming.azyron.util.PlatformCompat.isAndroidOrPojav();
-                writeIfAbsent(configDir.resolve("immediatelyfast.json"),
-                        "{\n"
-                        + "  \"enhanced_batching\": " + (!mobile) + ",\n"
-                        + "  \"font_atlas_resizing\": false,\n"
-                        + "  \"map_atlas_generation\": true,\n"
-                        + "  \"map_atlas_size\": 1024,\n"
-                        + "  \"skip_text_translucency_sorting\": true,\n"
-                        + "  \"fast_text_lookup\": true,\n"
-                        + "  \"avoid_redundant_framebuffer_switching\": " + (!mobile) + ",\n"
-                        + "  \"batch_animated_item_updates\": " + (!mobile) + ",\n"
-                        + "  \"fast_gui_layer_lookup\": true\n"
-                        + "}\n"
-                );
-            }
-
-            writeIfAbsent(configDir.resolve("dynamic_fps.json"),
-                    "{\n"
-                    + "  \"idle\": { \"timeout\": 180, \"condition\": \"none\" },\n"
-                    + "  \"battery_tracker\": { \"enabled\": false },\n"
-                    + "  \"states\": {\n"
-                    + "    \"unfocused\": { \"frame_rate_target\": 15, \"volume_multipliers\": { \"master\": 0.25 } },\n"
-                    + "    \"invisible\": { \"frame_rate_target\": 1, \"volume_multipliers\": { \"master\": 0.0 } },\n"
-                    + "    \"abandoned\": { \"frame_rate_target\": 10 }\n"
-                    + "  }\n"
-                    + "}\n"
-            );
-        } catch (IOException ignored) {
+                    + "}\n";
         }
+        // Sodium 0.8.x (Minecraft 1.21.11) schema uses chunk_build_defer_mode
+        return "{\n"
+                + "  \"quality\": {\n"
+                + "    \"hidden_fluid_culling\": true\n"
+                + "  },\n"
+                + "  \"performance\": {\n"
+                + "    \"chunk_builder_threads\": " + chunkThreads + ",\n"
+                + "    \"chunk_build_defer_mode\": \"ALWAYS\",\n"
+                + "    \"animate_only_visible_textures\": true,\n"
+                + "    \"use_entity_culling\": true,\n"
+                + "    \"use_fog_occlusion\": true,\n"
+                + "    \"use_block_face_culling\": true,\n"
+                + "    \"use_no_error_g_l_context\": false\n"
+                + "  },\n"
+                + "  \"advanced\": {\n"
+                + "    \"cpu_render_ahead_limit\": " + cpuAheadLimit + "\n"
+                + "  }\n"
+                + "}\n";
+    }
+
+    /** Dynamic FPS 3.2.1 requires every state codec field; 3.11.6 uses volume maps. */
+    public static String buildDynamicFpsOptionsJson(McVersionBridge.SupportedMcVersion version) {
+        boolean legacy = version == McVersionBridge.SupportedMcVersion.MC_1_20_1;
+        StringBuilder json = new StringBuilder(legacy ? "{\"states\":{" :
+                "{\"enabled\":true,\"uncap_menu_frame_rate\":false,\"download_natives\":false,"
+                + "\"battery_tracker\":{\"enabled\":false},\"states\":{");
+        String[] names = {"hovered", "unfocused", "invisible"};
+        int[] rates = {60, 15, 1};
+        double[] volumes = {1.0, 0.25, 0.0};
+        for (int i = 0; i < names.length; i++) {
+            if (i > 0) json.append(',');
+            json.append('"').append(names[i]).append("\":{\"frame_rate_target\":").append(rates[i]);
+            if (legacy) json.append(",\"volume_multiplier\":").append(volumes[i]);
+            else json.append(",\"enable_vsync\":false,\"volume_multipliers\":{\"master\":")
+                    .append(volumes[i]).append('}');
+            json.append(",\"graphics_state\":\"default\",\"show_toasts\":")
+                    .append(i == 0).append(",\"run_garbage_collector\":false}");
+        }
+        return json.append("}}\n").toString();
     }
 
     private static void writeIfAbsent(Path path, String content) throws IOException {

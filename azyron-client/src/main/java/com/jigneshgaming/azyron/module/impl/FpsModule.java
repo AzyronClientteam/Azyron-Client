@@ -70,6 +70,6 @@ public final class FpsModule extends HudModule {
 
         int accent = resolveAccentColor();
         UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), accent);
-        context.drawTextWithShadow(client.textRenderer, cachedText, 7, 5, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(context, client.textRenderer, cachedText, 7, 5, AzyronTheme.TEXT_PRIMARY);
     }
 }

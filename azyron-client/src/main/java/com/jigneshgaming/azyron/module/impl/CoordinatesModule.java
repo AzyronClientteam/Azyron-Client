@@ -138,23 +138,23 @@ public final class CoordinatesModule extends HudModule {
         UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), accent);
 
         if (compact) {
-            context.drawTextWithShadow(client.textRenderer, cachedCompact, 7, 5, AzyronTheme.TEXT_PRIMARY);
+            UiRenderUtils.drawText(context, client.textRenderer, cachedCompact, 7, 5, AzyronTheme.TEXT_PRIMARY);
             return;
         }
 
         int ty = 5;
-        context.drawTextWithShadow(client.textRenderer, cachedLineX, 7, ty, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(context, client.textRenderer, cachedLineX, 7, ty, AzyronTheme.TEXT_PRIMARY);
         ty += 11;
-        context.drawTextWithShadow(client.textRenderer, cachedLineY, 7, ty, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(context, client.textRenderer, cachedLineY, 7, ty, AzyronTheme.TEXT_PRIMARY);
         ty += 11;
-        context.drawTextWithShadow(client.textRenderer, cachedLineZ, 7, ty, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(context, client.textRenderer, cachedLineZ, 7, ty, AzyronTheme.TEXT_PRIMARY);
         ty += 11;
         if (showChunk) {
-            context.drawTextWithShadow(client.textRenderer, cachedLineChunk, 7, ty, AzyronTheme.TEXT_SECONDARY);
+            UiRenderUtils.drawText(context, client.textRenderer, cachedLineChunk, 7, ty, AzyronTheme.TEXT_SECONDARY);
             ty += 11;
         }
         if (showNether) {
-            context.drawTextWithShadow(client.textRenderer, cachedLineDim, 7, ty, AzyronTheme.ACCENT_ELECTRIC_BLUE);
+            UiRenderUtils.drawText(context, client.textRenderer, cachedLineDim, 7, ty, AzyronTheme.ACCENT_ELECTRIC_BLUE);
         }
     }
 

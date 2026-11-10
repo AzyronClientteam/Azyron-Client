@@ -9,31 +9,33 @@ import com.jigneshgaming.azyron.profile.PerformanceEngine;
 import com.jigneshgaming.azyron.profile.PerformanceProfile;
 import com.jigneshgaming.azyron.ui.AzyronModsScreen;
 import com.jigneshgaming.azyron.ui.HudEditorScreen;
+import com.jigneshgaming.azyron.util.McVersionBridge;
+import java.util.List;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
-import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * AZYRON CLIENT – PERFORMANCE. SMOOTHNESS. STYLE.
- * High-FPS Minecraft 1.21.11 Fabric Client created by JIGNESH GAMING.
+ * Unified High-FPS Minecraft 1.21.11 & 1.20.1 Fabric Client created by JIGNESH GAMING.
  */
 public final class AzyronClient implements ClientModInitializer {
     public static final String MOD_ID = "azyron-client";
     public static final String CLIENT_NAME = "AZYRON CLIENT";
-    public static final String CLIENT_VERSION = "1.0.2";
+    public static final String CLIENT_VERSION = "1.0.3";
     public static final String TARGET_MC_VERSION = "1.21.11";
+    public static final String LEGACY_MC_VERSION = "1.20.1";
+    public static final List<String> SUPPORTED_MC_VERSIONS = List.of("1.21.11", "1.20.1");
     public static final String DEVELOPER = "JIGNESH GAMING";
 
     public static final Logger LOGGER = LoggerFactory.getLogger(CLIENT_NAME);
 
     private static AzyronClient instance;
-    private static KeyBinding.Category controlsCategory;
     private static boolean keyBindingsRegistered = false;
     private static boolean tickCallbackRegistered = false;
 
@@ -51,8 +53,10 @@ public final class AzyronClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         instance = this;
+        String activeMc = McVersionBridge.getActiveMcVersionString();
         LOGGER.info("==========================================================");
-        LOGGER.info(" Initializing {} v{} for Minecraft {} (Fabric)", CLIENT_NAME, CLIENT_VERSION, TARGET_MC_VERSION);
+        LOGGER.info(" Initializing {} v{} for Minecraft {} (Fabric)", CLIENT_NAME, CLIENT_VERSION, activeMc);
+        LOGGER.info(" Supported Versions: Minecraft 1.21.11 & 1.20.1 (Fabric)");
         LOGGER.info(" Tagline: AZYRON CLIENT - PERFORMANCE. SMOOTHNESS. STYLE.");
         LOGGER.info(" Created by {}", DEVELOPER);
         LOGGER.info("==========================================================");
@@ -66,7 +70,8 @@ public final class AzyronClient implements ClientModInitializer {
         this.performanceEngine = new PerformanceEngine(this.config.getActiveProfile());
         this.performanceEngine.seedCompanionModConfigsIfMissing();
         com.jigneshgaming.azyron.util.PlatformCompat.auditInstalledModCompatibility();
-        this.config.save();
+        // load() already writes first-run defaults; avoid a second startup flash write.
+        // Normal setting changes still save through the existing config/UI paths.
 
         registerKeyBindings();
         registerLifecycleCallbacks();
@@ -97,34 +102,35 @@ public final class AzyronClient implements ClientModInitializer {
             return;
         }
         try {
-            if (controlsCategory == null) {
-                controlsCategory = KeyBinding.Category.create(Identifier.of("azyron", "controls"));
-            }
-
-            this.openMenuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            this.openMenuKey = KeyBindingHelper.registerKeyBinding(McVersionBridge.createKeyBinding(
                     "key.azyron.open_menu",
                     GLFW.GLFW_KEY_RIGHT_SHIFT,
-                    controlsCategory
+                    "azyron",
+                    "controls"
             ));
-            this.hudEditorKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            this.hudEditorKey = KeyBindingHelper.registerKeyBinding(McVersionBridge.createKeyBinding(
                     "key.azyron.hud_editor",
                     GLFW.GLFW_KEY_H,
-                    controlsCategory
+                    "azyron",
+                    "controls"
             ));
-            this.zoomKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            this.zoomKey = KeyBindingHelper.registerKeyBinding(McVersionBridge.createKeyBinding(
                     "key.azyron.zoom",
                     GLFW.GLFW_KEY_C,
-                    controlsCategory
+                    "azyron",
+                    "controls"
             ));
-            this.cycleProfileKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            this.cycleProfileKey = KeyBindingHelper.registerKeyBinding(McVersionBridge.createKeyBinding(
                     "key.azyron.cycle_profile",
                     GLFW.GLFW_KEY_F8,
-                    controlsCategory
+                    "azyron",
+                    "controls"
             ));
-            this.toggleSprintKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+            this.toggleSprintKey = KeyBindingHelper.registerKeyBinding(McVersionBridge.createKeyBinding(
                     "key.azyron.toggle_sprint",
                     GLFW.GLFW_KEY_I,
-                    controlsCategory
+                    "azyron",
+                    "controls"
             ));
             keyBindingsRegistered = true;
         } catch (Throwable t) {

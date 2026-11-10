@@ -4,6 +4,7 @@ import com.jigneshgaming.azyron.module.AzyronModule;
 import com.jigneshgaming.azyron.module.ModuleCategory;
 import com.jigneshgaming.azyron.module.Setting;
 import com.jigneshgaming.azyron.util.AzyronTheme;
+import com.jigneshgaming.azyron.util.UiRenderUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 
@@ -96,7 +97,7 @@ public final class CrosshairModule extends AzyronModule {
 
             if ("Circle-Cross".equalsIgnoreCase(mode)) {
                 int r = g + len / 2 + 1;
-                ctx.drawStrokedRectangle(cx - r, cy - r, r * 2 + 1, r * 2 + 1, AzyronTheme.withAlpha(color, 150));
+                UiRenderUtils.drawOutlineRect(ctx, cx - r, cy - r, r * 2 + 1, r * 2 + 1, AzyronTheme.withAlpha(color, 150));
             }
         } else if ("Chevron".equalsIgnoreCase(mode)) {
             for (int i = 0; i <= len; i++) {
@@ -106,9 +107,9 @@ public final class CrosshairModule extends AzyronModule {
         } else if ("Box".equalsIgnoreCase(mode)) {
             int r = g + len / 2 + 1;
             if (drawOutline) {
-                ctx.drawStrokedRectangle(cx - r - 1, cy - r - 1, (r + 1) * 2 + 1, (r + 1) * 2 + 1, 0xCC000000);
+                UiRenderUtils.drawOutlineRect(ctx, cx - r - 1, cy - r - 1, (r + 1) * 2 + 1, (r + 1) * 2 + 1, 0xCC000000);
             }
-            ctx.drawStrokedRectangle(cx - r, cy - r, r * 2 + 1, r * 2 + 1, color);
+            UiRenderUtils.drawOutlineRect(ctx, cx - r, cy - r, r * 2 + 1, r * 2 + 1, color);
         }
     }
 

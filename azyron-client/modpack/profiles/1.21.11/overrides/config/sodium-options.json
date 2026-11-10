@@ -1,0 +1,17 @@
+{
+  "quality": {
+    "hidden_fluid_culling": true
+  },
+  "performance": {
+    "chunk_builder_threads": 1,
+    "animate_only_visible_textures": true,
+    "use_entity_culling": true,
+    "use_fog_occlusion": true,
+    "use_block_face_culling": true,
+    "use_no_error_g_l_context": false,
+    "chunk_build_defer_mode": "ALWAYS"
+  },
+  "advanced": {
+    "cpu_render_ahead_limit": 2
+  }
+}

@@ -1,9 +1,9 @@
 package com.jigneshgaming.azyron.module;
 
 import com.jigneshgaming.azyron.util.AzyronTheme;
+import com.jigneshgaming.azyron.util.McVersionBridge;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
-import org.joml.Matrix3x2fStack;
 
 /**
  * Base class for draggable, scalable HUD overlay widgets in AZYRON CLIENT.
@@ -119,11 +119,8 @@ public abstract class HudModule extends AzyronModule {
         int px = getScreenX(sw);
         int py = getScreenY(sh);
 
-        Matrix3x2fStack matrices = context.getMatrices();
-        matrices.pushMatrix();
+        boolean pushed = McVersionBridge.pushMatrixTranslateScale(context, px, py, scale);
         try {
-            matrices.translate(px, py);
-            matrices.scale(scale, scale);
             renderWidget(context, client, editorPreview);
         } catch (Throwable t) {
             if (!renderErrorLogged) {
@@ -134,7 +131,9 @@ public abstract class HudModule extends AzyronModule {
                 );
             }
         } finally {
-            matrices.popMatrix();
+            if (pushed) {
+                McVersionBridge.popMatrix(context);
+            }
         }
     }
 

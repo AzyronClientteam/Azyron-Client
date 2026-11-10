@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "azyron-client",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "name": "AZYRON CLIENT",
-  "description": "AZYRON CLIENT – PERFORMANCE. SMOOTHNESS. STYLE. Premium Minecraft 1.21.11 Fabric Client featuring FPS Optimization, Performance Profiles, Right-Shift Mods Menu, HUD Editor, Keystrokes, CPS, Zoom, Custom Crosshair & Cosmetics. Made by JIGNESH GAMING.",
+  "description": "AZYRON CLIENT – PERFORMANCE. SMOOTHNESS. STYLE. Unified High-FPS Fabric Client for Minecraft 1.21.11 & 1.20.1 featuring FPS Optimization, Performance Profiles, Right-Shift Mods Menu, HUD Editor, Armour Hub, Keystrokes, CPS, Zoom, Custom Crosshair & Cosmetics. Made by JIGNESH GAMING.",
   "authors": [
     "JIGNESH GAMING"
   ],
@@ -24,9 +24,12 @@
     "azyron-client.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.17.3",
-    "minecraft": "1.21.11",
-    "java": ">=21",
+    "fabricloader": ">=0.14.22",
+    "minecraft": [
+      "1.20.1",
+      "1.21.11"
+    ],
+    "java": ">=17",
     "fabric-api": "*"
   },
   "recommends": {

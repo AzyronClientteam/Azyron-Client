@@ -91,7 +91,7 @@ public final class ArmorHudModule extends HudModule {
             for (int i = 0; i < PREVIEW_ROWS.length; i++) {
                 int ry = 4 + i * 18;
                 UiRenderUtils.drawRoundedPanel(context, 5, ry, 14, 14, 0xFF1E293B, AzyronTheme.ACCENT_PURPLE_BRIGHT);
-                context.drawTextWithShadow(client.textRenderer, PREVIEW_ROWS[i], 23, ry + 3, AzyronTheme.STATUS_GOOD);
+                UiRenderUtils.drawText(context, client.textRenderer, PREVIEW_ROWS[i], 23, ry + 3, AzyronTheme.STATUS_GOOD);
             }
             return;
         }
@@ -150,7 +150,7 @@ public final class ArmorHudModule extends HudModule {
             }
             String lbl = slotLabels[i];
             if (!lbl.isEmpty()) {
-                context.drawTextWithShadow(client.textRenderer, lbl, 24, ry + 4, slotColors[i]);
+                UiRenderUtils.drawText(context, client.textRenderer, lbl, 24, ry + 4, slotColors[i]);
             }
             activeStacks[i] = null;
         }

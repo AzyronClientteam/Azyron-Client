@@ -65,19 +65,14 @@ public final class IntegratedServerOptimizer {
         lastAdjustTimeMs = 0L;
     }
 
-    /**
-     * Prevents blocking synchronous RegionFile disk flushes on every generated/saved chunk
-     * in singleplayer, allowing Minecraft's dedicated I/O worker pool to batch writes asynchronously.
-     */
+    /** Preserve vanilla save durability unless async writes are explicitly requested. */
     public static boolean shouldForceSyncChunkWrites(boolean vanillaSyncWrites) {
-        if (Boolean.getBoolean("azyron.forceSyncChunkWrites")) {
-            return vanillaSyncWrites;
-        }
+        if (Boolean.getBoolean("azyron.forceSyncChunkWrites")) return vanillaSyncWrites;
         AzyronClient inst = AzyronClient.getInstance();
         if (inst != null && inst.getConfig() != null && !inst.getConfig().isAutoMemoryOptimization()) {
             return vanillaSyncWrites;
         }
-        return false;
+        return Boolean.getBoolean("azyron.allowAsyncChunkWrites") ? false : vanillaSyncWrites;
     }
 
     /**
@@ -85,11 +80,11 @@ public final class IntegratedServerOptimizer {
      * or high 3GB–8GB RAM pressure so chunk generation workers are not starved by entity/block ticks.
      */
     public static void onIntegratedServerTick(IntegratedServer server, MinecraftClient client) {
-        if (server == null || server.isPaused()) {
+        if (server == null || client == null || client.isPaused() || client.options == null) {
             return;
         }
         PlayerManager playerManager = server.getPlayerManager();
-        if (playerManager == null || client == null || client.options == null) {
+        if (playerManager == null) {
             return;
         }
 
@@ -102,12 +97,18 @@ public final class IntegratedServerOptimizer {
         MemoryOptimizer.RamTier tier = MemoryOptimizer.detectRamTier();
 
         // 1. Guard Integrated Server view distance against excessive quadratic chunk-gen queues on 3GB/4GB hardware
-        int safeMaxView = tier.getMaxSafeViewDistance() + 2;
+        int safeMaxView = tier.getMaxSafeViewDistance()
+                + (tier == MemoryOptimizer.RamTier.TIER_3GB ? 0 : 2);
         if (tier == MemoryOptimizer.RamTier.TIER_3GB || tier == MemoryOptimizer.RamTier.TIER_4GB) {
             int currentServerView = playerManager.getViewDistance();
             if (currentServerView > safeMaxView) {
                 playerManager.setViewDistance(safeMaxView);
             }
+        }
+
+        if (tier == MemoryOptimizer.RamTier.TIER_3GB
+                && playerManager.getSimulationDistance() > tier.getMaxSafeSimDistance()) {
+            playerManager.setSimulationDistance(tier.getMaxSafeSimDistance());
         }
 
         // 2. Adaptive Simulation Distance Pacing during MSPT spikes (>46ms) or critical/high RAM pressure
@@ -116,7 +117,8 @@ public final class IntegratedServerOptimizer {
             return;
         }
 
-        int configuredSim = Math.max(2, client.options.getSimulationDistance().getValue());
+        int configuredSim = Math.max(PerformanceEngine.MIN_SAFE_SIMULATION_DISTANCE, client.options.getSimulationDistance().getValue());
+        if (tier == MemoryOptimizer.RamTier.TIER_3GB) configuredSim = Math.min(configuredSim, tier.getMaxSafeSimDistance());
         int targetStepDown = computeDesiredSimStepDown(
                 getAverageMspt(),
                 MemoryOptimizer.isHighMemoryPressure(),
@@ -128,7 +130,7 @@ public final class IntegratedServerOptimizer {
         if (targetStepDown != activeSimStepDown) {
             activeSimStepDown = targetStepDown;
             lastAdjustTimeMs = now;
-            int effectiveSim = Math.max(2, configuredSim - activeSimStepDown);
+            int effectiveSim = Math.max(PerformanceEngine.MIN_SAFE_SIMULATION_DISTANCE, configuredSim - activeSimStepDown);
             if (playerManager.getSimulationDistance() != effectiveSim) {
                 playerManager.setSimulationDistance(effectiveSim);
                 AzyronClient.LOGGER.info(
@@ -151,7 +153,7 @@ public final class IntegratedServerOptimizer {
             int configuredSimDistance,
             int currentStepDown
     ) {
-        int maxAllowedReduction = Math.max(0, configuredSimDistance - 2);
+        int maxAllowedReduction = Math.max(0, configuredSimDistance - PerformanceEngine.MIN_SAFE_SIMULATION_DISTANCE);
         if (maxAllowedReduction == 0) {
             return 0;
         }

@@ -2,6 +2,7 @@ package com.jigneshgaming.azyron.util;
 
 import com.jigneshgaming.azyron.AzyronClient;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -129,9 +130,9 @@ public final class PersistentStateGuard {
     }
 
     /**
-     * Inspects a loaded raids.dat / raids_end.dat NbtCompound for Minecraft 1.21.11 Raids.CODEC
-     * structural defects (missing "data" compound, legacy "NextAvailableID"/"Tick" keys without
-     * required "next_id"/"tick", or corrupted entries inside the "raids" list).
+     * Inspects a loaded raids.dat / raids_end.dat NbtCompound for structural defects on both:
+     *  - Minecraft 1.21.11 Raids.CODEC ("data" -> "next_id", "tick", "raids")
+     *  - Minecraft 1.20.1  RaidManager ("data" -> "NextAvailableID", "Tick", "Raids")
      *
      * If and ONLY if repair is needed, creates a verified backup of dataFile FIRST before
      * repairing the in-memory NbtCompound non-destructively.
@@ -141,22 +142,27 @@ public final class PersistentStateGuard {
             return rootTag;
         }
 
-        boolean missingDataCompound = !rootTag.contains("data") || rootTag.getCompound("data").isEmpty();
-        NbtCompound data = missingDataCompound ? null : rootTag.getCompound("data").get();
+        if (McVersionBridge.isMinecraft120()) {
+            return inspectAndRepairRaids120(dataFile, stateId, rootTag);
+        }
 
-        boolean missingNextId = (data == null) || !data.contains("next_id") || data.getInt("next_id").isEmpty();
-        boolean missingTick = (data == null) || !data.contains("tick") || data.getInt("tick").isEmpty();
+        Optional<NbtCompound> dataOpt = McVersionBridge.nbtGetCompound(rootTag, "data");
+        boolean missingDataCompound = !rootTag.contains("data") || dataOpt.isEmpty();
+        NbtCompound data = dataOpt.orElse(null);
+
+        boolean missingNextId = (data == null) || !data.contains("next_id") || McVersionBridge.nbtGetInt(data, "next_id").isEmpty();
+        boolean missingTick = (data == null) || !data.contains("tick") || McVersionBridge.nbtGetInt(data, "tick").isEmpty();
 
         int invalidRaidEntries = 0;
         NbtList existingRaidsList = null;
         if (data != null && data.contains("raids")) {
-            Optional<NbtList> listOpt = data.getList("raids");
+            Optional<NbtList> listOpt = McVersionBridge.nbtGetCompoundList(data, "raids");
             if (listOpt.isEmpty()) {
                 invalidRaidEntries = 1;
             } else {
                 existingRaidsList = listOpt.get();
                 for (int i = 0; i < existingRaidsList.size(); i++) {
-                    Optional<NbtCompound> entryOpt = existingRaidsList.getCompound(i);
+                    Optional<NbtCompound> entryOpt = McVersionBridge.nbtListGetCompound(existingRaidsList, i);
                     if (entryOpt.isEmpty() || !isMinimallyValidRaidWithIdEntry(entryOpt.get())) {
                         invalidRaidEntries++;
                     }
@@ -174,33 +180,34 @@ public final class PersistentStateGuard {
 
         if (data == null) {
             data = new NbtCompound();
-            // Recover top-level fields if an older tool wrote unwrapped raids tags directly at root
-            if (rootTag.contains("next_id") && rootTag.getInt("next_id").isPresent()) {
-                data.putInt("next_id", Math.max(1, rootTag.getInt("next_id").get()));
-            } else if (rootTag.contains("NextAvailableID") && rootTag.getInt("NextAvailableID").isPresent()) {
-                data.putInt("next_id", Math.max(1, rootTag.getInt("NextAvailableID").get()));
+            Optional<Integer> rootNext = McVersionBridge.nbtGetInt(rootTag, "next_id");
+            Optional<Integer> rootLegacyNext = McVersionBridge.nbtGetInt(rootTag, "NextAvailableID");
+            if (rootNext.isPresent()) {
+                data.putInt("next_id", Math.max(1, rootNext.get()));
+            } else if (rootLegacyNext.isPresent()) {
+                data.putInt("next_id", Math.max(1, rootLegacyNext.get()));
             }
-            if (rootTag.contains("tick") && rootTag.getInt("tick").isPresent()) {
-                data.putInt("tick", Math.max(0, rootTag.getInt("tick").get()));
-            } else if (rootTag.contains("Tick") && rootTag.getInt("Tick").isPresent()) {
-                data.putInt("tick", Math.max(0, rootTag.getInt("Tick").get()));
+            Optional<Integer> rootTick = McVersionBridge.nbtGetInt(rootTag, "tick");
+            Optional<Integer> rootLegacyTick = McVersionBridge.nbtGetInt(rootTag, "Tick");
+            if (rootTick.isPresent()) {
+                data.putInt("tick", Math.max(0, rootTick.get()));
+            } else if (rootLegacyTick.isPresent()) {
+                data.putInt("tick", Math.max(0, rootLegacyTick.get()));
             }
             rootTag.put("data", data);
         }
 
-        if (!data.contains("next_id") || data.getInt("next_id").isEmpty()) {
-            int recoveredNextId = 1;
-            if (data.contains("NextAvailableID") && data.getInt("NextAvailableID").isPresent()) {
-                recoveredNextId = Math.max(1, data.getInt("NextAvailableID").get());
-            }
+        if (!data.contains("next_id") || McVersionBridge.nbtGetInt(data, "next_id").isEmpty()) {
+            int recoveredNextId = McVersionBridge.nbtGetInt(data, "NextAvailableID")
+                    .map(v -> Math.max(1, v))
+                    .orElse(1);
             data.putInt("next_id", recoveredNextId);
         }
 
-        if (!data.contains("tick") || data.getInt("tick").isEmpty()) {
-            int recoveredTick = 0;
-            if (data.contains("Tick") && data.getInt("Tick").isPresent()) {
-                recoveredTick = Math.max(0, data.getInt("Tick").get());
-            }
+        if (!data.contains("tick") || McVersionBridge.nbtGetInt(data, "tick").isEmpty()) {
+            int recoveredTick = McVersionBridge.nbtGetInt(data, "Tick")
+                    .map(v -> Math.max(0, v))
+                    .orElse(0);
             data.putInt("tick", recoveredTick);
         }
 
@@ -208,7 +215,7 @@ public final class PersistentStateGuard {
             NbtList cleanList = new NbtList();
             if (existingRaidsList != null) {
                 for (int i = 0; i < existingRaidsList.size(); i++) {
-                    Optional<NbtCompound> entryOpt = existingRaidsList.getCompound(i);
+                    Optional<NbtCompound> entryOpt = McVersionBridge.nbtListGetCompound(existingRaidsList, i);
                     if (entryOpt.isPresent() && isMinimallyValidRaidWithIdEntry(entryOpt.get())) {
                         cleanList.add(entryOpt.get());
                     }
@@ -218,22 +225,102 @@ public final class PersistentStateGuard {
         }
 
         AzyronClient.LOGGER.warn(
-                "[AZYRON] Repaired '{}' NBT structure in memory after creating backup (missingData={}, missingNextId={}, missingTick={}, droppedCorruptEntries={})",
+                "[AZYRON] Repaired '{}' 1.21.11 NBT structure in memory after creating backup (missingData={}, missingNextId={}, missingTick={}, droppedCorruptEntries={})",
                 stateId, missingDataCompound, missingNextId, missingTick, invalidRaidEntries
         );
         return rootTag;
+    }
+
+    private static NbtCompound inspectAndRepairRaids120(Path dataFile, String stateId, NbtCompound rootTag) {
+        Optional<NbtCompound> dataOpt = McVersionBridge.nbtGetCompound(rootTag, "data");
+        boolean missingDataCompound = !rootTag.contains("data") || dataOpt.isEmpty();
+        NbtCompound data = dataOpt.orElse(null);
+
+        boolean missingNextId = (data == null) || !data.contains("NextAvailableID") || McVersionBridge.nbtGetInt(data, "NextAvailableID").isEmpty();
+        boolean missingTick = (data == null) || !data.contains("Tick") || McVersionBridge.nbtGetInt(data, "Tick").isEmpty();
+
+        int invalidRaidEntries = 0;
+        NbtList existingRaidsList = null;
+        if (data != null && data.contains("Raids")) {
+            Optional<NbtList> listOpt = McVersionBridge.nbtGetCompoundList(data, "Raids");
+            if (listOpt.isPresent()) {
+                existingRaidsList = listOpt.get();
+                for (int i = 0; i < existingRaidsList.size(); i++) {
+                    Optional<NbtCompound> entryOpt = McVersionBridge.nbtListGetCompound(existingRaidsList, i);
+                    if (entryOpt.isEmpty() || !isMinimallyValidRaid120Entry(entryOpt.get())) {
+                        invalidRaidEntries++;
+                    }
+                }
+            }
+        }
+
+        if (!missingDataCompound && !missingNextId && !missingTick && invalidRaidEntries == 0) {
+            return rootTag;
+        }
+
+        ensureBackedUpOnLoadFailure(dataFile, stateId, "raids-1201-nbt-schema-repair");
+
+        if (data == null) {
+            data = new NbtCompound();
+            rootTag.put("data", data);
+        }
+        if (!data.contains("NextAvailableID") || McVersionBridge.nbtGetInt(data, "NextAvailableID").isEmpty()) {
+            int recovered = McVersionBridge.nbtGetInt(data, "next_id")
+                    .or(() -> McVersionBridge.nbtGetInt(rootTag, "NextAvailableID"))
+                    .map(v -> Math.max(1, v))
+                    .orElse(1);
+            data.putInt("NextAvailableID", recovered);
+        }
+        if (!data.contains("Tick") || McVersionBridge.nbtGetInt(data, "Tick").isEmpty()) {
+            int recovered = McVersionBridge.nbtGetInt(data, "tick")
+                    .or(() -> McVersionBridge.nbtGetInt(rootTag, "Tick"))
+                    .map(v -> Math.max(0, v))
+                    .orElse(0);
+            data.putInt("Tick", recovered);
+        }
+        if (invalidRaidEntries > 0) {
+            NbtList cleanList = new NbtList();
+            if (existingRaidsList != null) {
+                for (int i = 0; i < existingRaidsList.size(); i++) {
+                    Optional<NbtCompound> entryOpt = McVersionBridge.nbtListGetCompound(existingRaidsList, i);
+                    if (entryOpt.isPresent() && isMinimallyValidRaid120Entry(entryOpt.get())) {
+                        cleanList.add(entryOpt.get());
+                    }
+                }
+            }
+            data.put("Raids", cleanList);
+        } else if (!data.contains("Raids")) {
+            data.put("Raids", new NbtList());
+        }
+
+        AzyronClient.LOGGER.warn(
+                "[AZYRON] Repaired '{}' 1.20.1 NBT structure in memory after creating backup (missingData={}, missingNextId={}, missingTick={}, droppedCorruptEntries={})",
+                stateId, missingDataCompound, missingNextId, missingTick, invalidRaidEntries
+        );
+        return rootTag;
+    }
+
+    private static boolean isMinimallyValidRaid120Entry(NbtCompound entry) {
+        if (entry == null) {
+            return false;
+        }
+        boolean hasId = (entry.contains("Id") && McVersionBridge.nbtGetInt(entry, "Id").isPresent())
+                || (entry.contains("id") && McVersionBridge.nbtGetInt(entry, "id").isPresent());
+        if (!hasId) {
+            return false;
+        }
+        return (entry.contains("Status") && McVersionBridge.nbtGetString(entry, "Status").isPresent())
+                || (entry.contains("status") && McVersionBridge.nbtGetString(entry, "status").isPresent());
     }
 
     private static boolean isMinimallyValidRaidWithIdEntry(NbtCompound entry) {
         if (entry == null) {
             return false;
         }
-        if (!entry.contains("id") || entry.getInt("id").isEmpty()) {
+        if (!entry.contains("id") || McVersionBridge.nbtGetInt(entry, "id").isEmpty()) {
             return false;
         }
-        // In 1.21.11 Raids.RaidWithId.CODEC uses MapCodec flattening or "raid" fields ("center", "status", etc.);
-        // verify it is a non-empty compound with either "raid" compound or flattened "center"/"active"/"status".
-        if (entry.contains("raid") && entry.getCompound("raid").isPresent()) {
+        if (entry.contains("raid") && McVersionBridge.nbtGetCompound(entry, "raid").isPresent()) {
             return true;
         }
         return entry.contains("center") || entry.contains("status") || entry.contains("active");
@@ -241,6 +328,7 @@ public final class PersistentStateGuard {
 
     /**
      * Atomically writes a compressed PersistentState NbtCompound via a sibling .azyron.tmp file
+     * using OutputStream-based NbtIo.writeCompressed (identical Intermediary method_10634 across 1.20.1 & 1.21.11)
      * so sudden power loss or Android LMK termination never truncates the live .dat file.
      */
     public static void saveCompressedAtomically(Path targetFile, NbtCompound nbt) throws IOException {
@@ -252,11 +340,12 @@ public final class PersistentStateGuard {
             Files.createDirectories(parent);
         }
 
-        // Cleanly clear session backup marker once a verified valid save is being committed
         Path normalized = targetFile.toAbsolutePath().normalize();
         Path tmpFile = targetFile.resolveSibling(targetFile.getFileName().toString() + ".azyron.tmp");
 
-        NbtIo.writeCompressed(nbt, tmpFile);
+        try (OutputStream out = Files.newOutputStream(tmpFile)) {
+            NbtIo.writeCompressed(nbt, out);
+        }
         if (!Files.exists(tmpFile) || Files.size(tmpFile) <= 0L) {
             Files.deleteIfExists(tmpFile);
             throw new IOException("Refusing to commit empty temporary persistent state file: " + tmpFile);

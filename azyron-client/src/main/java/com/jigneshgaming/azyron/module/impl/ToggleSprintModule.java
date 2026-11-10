@@ -76,6 +76,6 @@ public final class ToggleSprintModule extends HudModule {
         this.width = Math.max(96, client.textRenderer.getWidth(status) + 14);
         this.height = 18;
         UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), resolveAccentColor());
-        context.drawTextWithShadow(client.textRenderer, status, 7, 5, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(context, client.textRenderer, status, 7, 5, AzyronTheme.TEXT_PRIMARY);
     }
 }

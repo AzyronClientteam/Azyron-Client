@@ -152,13 +152,14 @@ public final class ModuleManager {
                 int bx = (context.getScaledWindowWidth() - bw) / 2;
                 int by = 14;
                 UiRenderUtils.drawAccentCard(context, bx, by, bw, 20, AzyronTheme.BG_PANEL, false, true);
-                context.drawCenteredTextWithShadow(client.textRenderer, banner, bx + bw / 2, by + 6, AzyronTheme.TEXT_PRIMARY);
+                UiRenderUtils.drawCenteredText(context, client.textRenderer, banner, bx + bw / 2, by + 6, AzyronTheme.TEXT_PRIMARY);
             }
         }
     }
 
     private com.jigneshgaming.azyron.profile.PerformanceProfile cachedWatermarkProfile = null;
     private CosmeticsManager.BadgeStyle cachedWatermarkBadge = null;
+    private String cachedWatermarkMcVer = "";
     private String cachedWatermarkLabel = "";
     private int cachedWatermarkWidth = 0;
 
@@ -170,12 +171,14 @@ public final class ModuleManager {
         com.jigneshgaming.azyron.profile.PerformanceProfile prof = (inst != null && inst.getPerformanceEngine() != null)
                 ? inst.getPerformanceEngine().getActiveProfile()
                 : com.jigneshgaming.azyron.profile.PerformanceProfile.BALANCED;
+        String mcVer = com.jigneshgaming.azyron.util.McVersionBridge.getActiveMcVersionString();
 
-        if (prof != cachedWatermarkProfile || bs != cachedWatermarkBadge || cachedWatermarkWidth <= 0) {
+        if (prof != cachedWatermarkProfile || bs != cachedWatermarkBadge || !mcVer.equals(cachedWatermarkMcVer) || cachedWatermarkWidth <= 0) {
             cachedWatermarkProfile = prof;
             cachedWatermarkBadge = bs;
+            cachedWatermarkMcVer = mcVer;
             String badge = (bs != null && bs != CosmeticsManager.BadgeStyle.NONE) ? (" " + bs.getTag()) : "";
-            cachedWatermarkLabel = "AZYRON 1.21.11 • " + prof.name() + badge;
+            cachedWatermarkLabel = "AZYRON " + mcVer + " • " + prof.name() + badge;
             cachedWatermarkWidth = client.textRenderer.getWidth(cachedWatermarkLabel) + 14;
         }
 
@@ -184,7 +187,7 @@ public final class ModuleManager {
         int y = 6;
         UiRenderUtils.drawRoundedPanel(context, x, y, w, 16, 0xB80B0D1A, AzyronTheme.getAnimatedAccent(0.15f));
         UiRenderUtils.drawHorizontalGradient(context, x + 2, y, w - 4, 2, AzyronTheme.ACCENT_PURPLE_BRIGHT, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-        context.drawTextWithShadow(client.textRenderer, cachedWatermarkLabel, x + 7, y + 4, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(context, client.textRenderer, cachedWatermarkLabel, x + 7, y + 4, AzyronTheme.TEXT_PRIMARY);
     }
 
     public void resetAllHudPositions() {

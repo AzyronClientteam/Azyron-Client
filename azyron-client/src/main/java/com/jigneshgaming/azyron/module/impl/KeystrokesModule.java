@@ -129,9 +129,9 @@ public final class KeystrokesModule extends HudModule {
         UiRenderUtils.drawRoundedPanel(ctx, x, y, w, h, bg, border);
         int textColor = fade > 0.55f ? AzyronTheme.BG_DEEPEST : AzyronTheme.TEXT_PRIMARY;
         if (subLabel == null) {
-            ctx.drawCenteredTextWithShadow(client.textRenderer, label, x + w / 2, y + (h - 8) / 2, textColor);
+            UiRenderUtils.drawCenteredText(ctx, client.textRenderer, label, x + w / 2, y + (h - 8) / 2, textColor);
         } else {
-            ctx.drawCenteredTextWithShadow(client.textRenderer, label, x + w / 2, y + 3, textColor);
+            UiRenderUtils.drawCenteredText(ctx, client.textRenderer, label, x + w / 2, y + 3, textColor);
             UiRenderUtils.drawScaledText(ctx, client.textRenderer, subLabel, x + w / 2, y + 13, 0.72f, AzyronTheme.TEXT_SECONDARY, true);
         }
     }

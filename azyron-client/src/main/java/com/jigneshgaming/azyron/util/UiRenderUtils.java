@@ -1,65 +1,64 @@
 package com.jigneshgaming.azyron.util;
 
-import com.jigneshgaming.azyron.ui.AzyronLoadingRenderer;
-import com.mojang.blaze3d.shaders.ShaderType;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gl.ShaderLoader;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.SplashOverlay;
 import net.minecraft.util.Identifier;
-import org.joml.Matrix3x2fStack;
 
 /**
- * Hardware-safe UI rendering helpers built strictly on Minecraft 1.21.11 DrawContext.
- * Includes cold-boot ShaderLoader readiness verification so AZYRON CLIENT never triggers
- * premature "minecraft:core/rendertype_text" VERTEX/FRAGMENT shader errors during SplashOverlay.
+ * Hardware-safe, dual-version UI rendering helpers built strictly on DrawContext primitives
+ * shared across Minecraft 1.20.1 and Minecraft 1.21.11, bridged via McVersionBridge.
  */
 public final class UiRenderUtils {
-    public static final Identifier LOGO_TEXTURE = Identifier.of("azyron", "textures/gui/logo.png");
-    public static final Identifier CORE_TEXT_SHADER_ID = Identifier.ofVanilla("core/rendertype_text");
-
-    private static ShaderLoader cachedVerifiedShaderLoader = null;
+    public static final Identifier LOGO_TEXTURE = McVersionBridge.createIdentifier("azyron", "textures/gui/logo.png");
+    public static final Identifier CORE_TEXT_SHADER_ID = McVersionBridge.createIdentifier("minecraft", "core/rendertype_text");
 
     private UiRenderUtils() {
     }
 
     /**
-     * Returns true only when Minecraft 1.21.11's ShaderLoader has loaded both VERTEX and FRAGMENT
-     * sources for "minecraft:core/rendertype_text" and initial cold-boot SplashOverlay reload has finished.
-     * Caches verified ShaderLoader identity outside SplashOverlay for O(1) zero-overhead in-game HUD checks.
+     * Returns true when cold-boot SplashOverlay resource reload and core text shaders are ready.
      */
     public static boolean isCoreTextShaderReady(MinecraftClient client) {
-        if (client == null || client.textRenderer == null) {
-            return false;
-        }
-        try {
-            boolean splashActive = client.getOverlay() instanceof SplashOverlay;
-            if (splashActive || !AzyronLoadingRenderer.isCoreResourcesReady()) {
-                cachedVerifiedShaderLoader = null;
-                if (!AzyronLoadingRenderer.isCoreResourcesReady()) {
-                    return false;
-                }
-            }
+        return McVersionBridge.isCoreTextShaderReady(client, CORE_TEXT_SHADER_ID);
+    }
 
-            ShaderLoader shaderLoader = client.getShaderLoader();
-            if (shaderLoader != null) {
-                if (!splashActive && shaderLoader == cachedVerifiedShaderLoader) {
-                    return true;
-                }
-                String vert = shaderLoader.getSource(CORE_TEXT_SHADER_ID, ShaderType.VERTEX);
-                String frag = shaderLoader.getSource(CORE_TEXT_SHADER_ID, ShaderType.FRAGMENT);
-                boolean ready = vert != null && !vert.isEmpty() && frag != null && !frag.isEmpty();
-                if (ready && !splashActive) {
-                    cachedVerifiedShaderLoader = shaderLoader;
-                }
-                return ready;
-            }
-        } catch (Throwable ignored) {
-            return AzyronLoadingRenderer.isCoreResourcesReady();
+    public static void drawText(DrawContext ctx, TextRenderer font, String text, int x, int y, int color) {
+        McVersionBridge.drawTextWithShadow(ctx, font, text, x, y, color);
+    }
+
+    public static void drawCenteredText(DrawContext ctx, TextRenderer font, String text, int centerX, int y, int color) {
+        McVersionBridge.drawCenteredTextWithShadow(ctx, font, text, centerX, y, color);
+    }
+
+    public static void drawHLine(DrawContext ctx, int x1, int x2, int y, int color) {
+        if (ctx == null) {
+            return;
         }
-        return AzyronLoadingRenderer.isCoreResourcesReady();
+        int minX = Math.min(x1, x2);
+        int maxX = Math.max(x1, x2);
+        ctx.fill(minX, y, maxX + 1, y + 1, color);
+    }
+
+    public static void drawVLine(DrawContext ctx, int x, int y1, int y2, int color) {
+        if (ctx == null) {
+            return;
+        }
+        int minY = Math.min(y1, y2);
+        int maxY = Math.max(y1, y2);
+        ctx.fill(x, minY, x + 1, maxY + 1, color);
+    }
+
+    public static void drawOutlineRect(DrawContext ctx, int x, int y, int width, int height, int color) {
+        if (ctx == null || width <= 0 || height <= 0) {
+            return;
+        }
+        ctx.fill(x, y, x + width, y + 1, color);
+        ctx.fill(x, y + height - 1, x + width, y + height, color);
+        if (height > 2) {
+            ctx.fill(x, y + 1, x + 1, y + height - 1, color);
+            ctx.fill(x + width - 1, y + 1, x + width, y + height - 1, color);
+        }
     }
 
     public static void drawRoundedPanel(DrawContext ctx, int x, int y, int width, int height, int bgColor, int borderColor) {
@@ -193,29 +192,30 @@ public final class UiRenderUtils {
     }
 
     public static void drawLogoTexture(DrawContext ctx, int x, int y, int size) {
-        try {
-            ctx.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, x, y, 0.0f, 0.0f, size, size, size, size);
-        } catch (Throwable ignored) {
-            // Safe fallback if resource manager is mid-reload
-        }
+        McVersionBridge.drawGuiLogoTexture(ctx, LOGO_TEXTURE, x, y, size);
     }
 
     public static void drawScaledText(DrawContext ctx, TextRenderer font, String text, int x, int y, float scale, int color, boolean centered) {
         if (ctx == null || font == null || text == null || text.isEmpty() || !Float.isFinite(scale) || scale <= 0.0f) {
             return;
         }
-        Matrix3x2fStack matrices = ctx.getMatrices();
-        matrices.pushMatrix();
-        try {
-            matrices.translate(x, y);
-            matrices.scale(scale, scale);
+        boolean pushed = McVersionBridge.pushMatrixTranslateScale(ctx, x, y, scale);
+        if (!pushed) {
             if (centered) {
-                ctx.drawCenteredTextWithShadow(font, text, 0, 0, color);
+                drawCenteredText(ctx, font, text, x, y, color);
             } else {
-                ctx.drawTextWithShadow(font, text, 0, 0, color);
+                drawText(ctx, font, text, x, y, color);
+            }
+            return;
+        }
+        try {
+            if (centered) {
+                drawCenteredText(ctx, font, text, 0, 0, color);
+            } else {
+                drawText(ctx, font, text, 0, 0, color);
             }
         } finally {
-            matrices.popMatrix();
+            McVersionBridge.popMatrix(ctx);
         }
     }
 

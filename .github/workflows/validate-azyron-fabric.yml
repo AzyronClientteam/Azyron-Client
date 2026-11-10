@@ -1,0 +1,73 @@
+name: Validate real Azyron Fabric builds
+
+on:
+  push:
+    branches: ["arena/a6dbb848-azyron-client"]
+    paths: [".github/workflows/validate-azyron-fabric.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fabric-build:
+    if: github.repository == 'AzyronClientteam/Azyron-Client' && github.ref == 'refs/heads/arena/a6dbb848-azyron-client'
+    name: Fabric ${{ matrix.minecraft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - minecraft: '1.20.1'
+            yarn: '1.20.1+build.10'
+            loader: '0.14.22'
+            fabric: '0.88.1+1.20.1'
+          - minecraft: '1.21.11'
+            yarn: '1.21.11+build.6'
+            loader: '0.20.1'
+            fabric: '0.141.6+1.21.11'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.2.1'
+      - name: Compile against actual Minecraft and Fabric (no generated stubs)
+        working-directory: azyron-client
+        env:
+          MC: ${{ matrix.minecraft }}
+          YARN: ${{ matrix.yarn }}
+          LOADER: ${{ matrix.loader }}
+          FABRIC: ${{ matrix.fabric }}
+        run: |
+          set -uo pipefail
+          mkdir -p build/validation
+          gradle --no-daemon --console=plain remapJar -Pminecraft_version="$MC" -Pyarn_mappings="$YARN" -Ploader_version="$LOADER" -Pfabric_version="$FABRIC" > build/validation/fabric-build.log 2>&1
+          result=$?
+          tail -120 build/validation/fabric-build.log
+          if [ "$result" -ne 0 ]; then
+            python3 - <<'PY'
+          from pathlib import Path
+          lines = Path('build/validation/fabric-build.log').read_text(errors='replace').splitlines()
+          errors = [s for s in lines if any(t in s for t in ('error:', 'What went wrong', 'Could not resolve', 'Plugin [', 'not found', 'requires', 'Could not find'))][:16]
+          for line in errors:
+              safe = line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print('::error title=Real Fabric build failed::' + safe)
+          PY
+          fi
+          exit "$result"
+      - name: Keep diagnostic logs and genuine build outputs only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fabric-validation-${{ matrix.minecraft }}
+          path: |
+            azyron-client/build/validation/fabric-build.log
+            azyron-client/build/libs/*.jar
+          if-no-files-found: warn

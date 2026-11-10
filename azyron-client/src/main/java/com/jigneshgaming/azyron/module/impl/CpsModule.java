@@ -68,7 +68,7 @@ public final class CpsModule extends HudModule {
 
         int accent = resolveAccentColor();
         UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), accent);
-        context.drawTextWithShadow(client.textRenderer, cachedText, 7, 4, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(context, client.textRenderer, cachedText, 7, 4, AzyronTheme.TEXT_PRIMARY);
 
         if (showBurstBar.getValue()) {
             float ratio = Math.min(1.0f, Math.max(lmb, rmb) / 20.0f);

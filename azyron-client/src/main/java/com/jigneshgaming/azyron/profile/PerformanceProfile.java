@@ -23,7 +23,7 @@ public enum PerformanceProfile {
             false,
             false,
             false,
-            260,
+            60,
             40,
             18.0
     ),

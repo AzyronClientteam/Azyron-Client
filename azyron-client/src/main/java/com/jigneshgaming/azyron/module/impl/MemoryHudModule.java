@@ -50,6 +50,6 @@ public final class MemoryHudModule extends HudModule {
         this.width = cachedWidth;
         this.height = 18;
         UiRenderUtils.drawHudCard(context, 0, 0, width, height, showBackground.getValue(), bgOpacity.getIntValue(), resolveAccentColor());
-        context.drawTextWithShadow(client.textRenderer, cachedText, 7, 5, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(context, client.textRenderer, cachedText, 7, 5, AzyronTheme.TEXT_PRIMARY);
     }
 }

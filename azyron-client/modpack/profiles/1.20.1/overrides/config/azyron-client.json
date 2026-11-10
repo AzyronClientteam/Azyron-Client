@@ -1,0 +1,15 @@
+{
+  "configVersion": "1.0.3",
+  "selectedMcVersion": "1.20.1",
+  "activeProfile": "POTATO",
+  "customMainMenuEnabled": true,
+  "customLoadingScreenEnabled": true,
+  "autoMemoryOptimization": true,
+  "fastLoadingFade": true,
+  "snapGridInHudEditor": true,
+  "discordInviteUrl": "https://discord.gg/jigneshgaming",
+  "capeStyle": "AZYRON_NEBULA",
+  "haloStyle": "AZYRON_HALO",
+  "badgeStyle": "AZYRON_BOLT",
+  "modules": {}
+}

@@ -10,6 +10,7 @@ import com.jigneshgaming.azyron.module.ModuleManager;
 import com.jigneshgaming.azyron.module.Setting;
 import com.jigneshgaming.azyron.profile.MemoryOptimizer;
 import com.jigneshgaming.azyron.profile.PerformanceProfile;
+import com.jigneshgaming.azyron.util.McVersionBridge;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -38,7 +39,8 @@ public final class AzyronConfig {
     }
 
     public static final class ConfigData {
-        public String configVersion = "1.0.2";
+        public String configVersion = "1.0.3";
+        public String selectedMcVersion = McVersionBridge.getActiveMcVersionString();
         public String activeProfile = MemoryOptimizer.getRecommendedProfileForHardware().name();
         public boolean customMainMenuEnabled = true;
         public boolean customLoadingScreenEnabled = true;
@@ -84,6 +86,10 @@ public final class AzyronConfig {
                 if (this.data.activeProfile == null || this.data.activeProfile.isBlank()) {
                     this.data.activeProfile = MemoryOptimizer.getRecommendedProfileForHardware().name();
                 }
+                if (this.data.selectedMcVersion == null || this.data.selectedMcVersion.isBlank()) {
+                    this.data.selectedMcVersion = McVersionBridge.getActiveMcVersionString();
+                }
+                this.data.configVersion = "1.0.3";
                 if (this.data.discordInviteUrl == null || this.data.discordInviteUrl.isBlank()) {
                     this.data.discordInviteUrl = "https://discord.gg/jigneshgaming";
                 }
@@ -153,6 +159,8 @@ public final class AzyronConfig {
                 if (snap == null) {
                     snap = new ModuleSnapshot();
                     data.modules.put(module.getId(), snap);
+                } else if (snap.settings == null) {
+                    snap.settings = new LinkedHashMap<>();
                 } else {
                     snap.settings.clear();
                 }
@@ -231,6 +239,25 @@ public final class AzyronConfig {
     public void setSnapGridInHudEditor(boolean enabled) { data.snapGridInHudEditor = enabled; }
 
     public String getDiscordInviteUrl() { return data.discordInviteUrl; }
+
+    public McVersionBridge.SupportedMcVersion getSelectedMcVersion() {
+        return McVersionBridge.SupportedMcVersion.fromString(
+                data.selectedMcVersion,
+                McVersionBridge.getRuntimeMcVersion()
+        );
+    }
+
+    public void setSelectedMcVersion(McVersionBridge.SupportedMcVersion version) {
+        if (version != null) {
+            data.selectedMcVersion = version.getVersionId();
+        }
+    }
+
+    public McVersionBridge.SupportedMcVersion cycleSelectedMcVersion() {
+        McVersionBridge.SupportedMcVersion next = getSelectedMcVersion().next();
+        setSelectedMcVersion(next);
+        return next;
+    }
 
     private static <E extends Enum<E>> E parseEnum(Class<E> type, String raw, E fallback) {
         if (raw == null || raw.isBlank()) {

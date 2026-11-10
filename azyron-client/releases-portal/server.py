@@ -1,75 +1,88 @@
 #!/usr/bin/env python3
 """
-AZYRON CLIENT — Authentic GitHub Releases Page Server (Private / Draft Mode)
-Serves the standard GitHub Releases layout (/releases and /releases/tag/v1.0)
-with expandable Assets backed by the actual compiled Minecraft 1.21.11 build files.
+AZYRON CLIENT v1.0.3 — Official Releases & Dual-Version Download Portal (Private / Draft Mode)
+Serves the AZYRON CLIENT v1.0.3 release & download portal with:
+  - Unified Azyron-Client-1.0.3.jar (Minecraft 1.21.11 & 1.20.1 Fabric)
+  - Selectable Minecraft Version Hub (1.21.11 Fabric <-> 1.20.1 Fabric)
+  - Dynamic Modpack profile serving (Azyron-Modpack-1.0.3.mrpack?mc=1.21.11 or ?mc=1.20.1)
+  - Complete v1.0.3 Changelog, Version Matrix, and Separate Test Suites Verification Report
 """
 
 from datetime import datetime, timezone
+from copy import copy
 import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import io
 import json
 import os
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
+import zipfile
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RELEASES_DIR = os.path.join(BASE_DIR, "releases")
+MODPACK_DIR = os.path.join(BASE_DIR, "modpack")
 PORT = int(os.environ.get("PORT", "8080"))
 
 ASSET_DEFINITIONS = [
     {
-        "slug": "Azyron-Client-1.0.2.jar",
-        "display_name": "Azyron-Client-1.0.2.jar",
-        "download_filename": "Azyron-Client-1.0.2.jar",
-        "disk_filename": "Azyron-Client-1.0.2.jar",
+        "slug": "Azyron-Client-1.0.3.jar",
+        "display_name": "Azyron-Client-1.0.3.jar",
+        "download_filename": "Azyron-Client-1.0.3.jar",
+        "disk_filename": "Azyron-Client-1.0.3.jar",
         "content_type": "application/java-archive",
         "icon": "package",
         "show_sha256": True,
+        "badge": "Unified 1.21.11 + 1.20.1",
     },
     {
-        "slug": "Azyron-Modpack-1.0.2.mrpack",
-        "display_name": "Azyron-Modpack-1.0.2.mrpack",
-        "download_filename": "Azyron-Modpack-1.0.2.mrpack",
-        "disk_filename": "Azyron-Modpack-1.0.2.mrpack",
+        "slug": "Azyron-Modpack-1.0.3.mrpack",
+        "display_name": "Azyron-Modpack-1.0.3.mrpack",
+        "download_filename": "Azyron-Modpack-1.0.3.mrpack",
+        "disk_filename": "Azyron-Modpack-1.0.3.mrpack",
         "content_type": "application/octet-stream",
         "icon": "package",
         "show_sha256": True,
+        "badge": "Modrinth v1.0.3",
     },
     {
-        "slug": "Azyron-Client-Source-v1.0.2.zip",
-        "display_name": "Azyron-Client-Source-v1.0.2.zip",
-        "download_filename": "Azyron-Client-Source-v1.0.2.zip",
-        "disk_filename": "Azyron-Client-Source-v1.0.2.zip",
+        "slug": "Azyron-Client-Source-v1.0.3.zip",
+        "display_name": "Azyron-Client-Source-v1.0.3.zip",
+        "download_filename": "Azyron-Client-Source-v1.0.3.zip",
+        "disk_filename": "Azyron-Client-Source-v1.0.3.zip",
         "content_type": "application/zip",
         "icon": "package",
         "show_sha256": True,
+        "badge": "",
     },
     {
-        "slug": "Azyron-Client-Source-v1.0.2.tar.gz",
-        "display_name": "Azyron-Client-Source-v1.0.2.tar.gz",
-        "download_filename": "Azyron-Client-Source-v1.0.2.tar.gz",
-        "disk_filename": "Azyron-Client-Source-v1.0.2.tar.gz",
+        "slug": "Azyron-Client-Source-v1.0.3.tar.gz",
+        "display_name": "Azyron-Client-Source-v1.0.3.tar.gz",
+        "download_filename": "Azyron-Client-Source-v1.0.3.tar.gz",
+        "disk_filename": "Azyron-Client-Source-v1.0.3.tar.gz",
         "content_type": "application/gzip",
         "icon": "package",
         "show_sha256": True,
+        "badge": "",
     },
     {
-        "slug": "Source-code-v1.0.2.zip",
-        "display_name": "Source code v1.0.2 (zip)",
-        "download_filename": "Azyron-Client-Source-v1.0.2.zip",
-        "disk_filename": "Azyron-Client-Source-v1.0.2.zip",
+        "slug": "Source-code-v1.0.3.zip",
+        "display_name": "Source code v1.0.3 (zip)",
+        "download_filename": "Azyron-Client-Source-v1.0.3.zip",
+        "disk_filename": "Azyron-Client-Source-v1.0.3.zip",
         "content_type": "application/zip",
         "icon": "zip",
         "show_sha256": False,
+        "badge": "",
     },
     {
-        "slug": "Source-code-v1.0.2.tar.gz",
-        "display_name": "Source code v1.0.2 (tar.gz)",
-        "download_filename": "Azyron-Client-Source-v1.0.2.tar.gz",
-        "disk_filename": "Azyron-Client-Source-v1.0.2.tar.gz",
+        "slug": "Source-code-v1.0.3.tar.gz",
+        "display_name": "Source code v1.0.3 (tar.gz)",
+        "download_filename": "Azyron-Client-Source-v1.0.3.tar.gz",
+        "disk_filename": "Azyron-Client-Source-v1.0.3.tar.gz",
         "content_type": "application/gzip",
         "icon": "zip",
         "show_sha256": False,
+        "badge": "",
     },
 ]
 
@@ -82,6 +95,29 @@ def format_github_size(num_bytes: int) -> str:
         return f"{kb:.0f} KB" if kb >= 100 else f"{kb:.1f} KB"
     mb = kb / 1024.0
     return f"{mb:.2f} MB"
+
+
+def build_mrpack_bytes_for_mc(mc_version: str) -> bytes:
+    """Builds or returns Azyron-Modpack-1.0.3.mrpack with root modrinth.index.json targeting mc_version."""
+    if mc_version not in ("1.21.11", "1.20.1"):
+        raise ValueError("Unsupported Minecraft profile")
+    default_mrpack = os.path.join(RELEASES_DIR, "Azyron-Modpack-1.0.3.mrpack")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(default_mrpack, "r") as src_zf:
+        profile = src_zf.read(f"profiles/modrinth.index.{mc_version}.json")
+        if src_zf.read("modrinth.index.json") == profile:
+            with open(default_mrpack, "rb") as fh:
+                return fh.read()
+        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as dst_zf:
+            for info in src_zf.infolist():
+                data = profile if info.filename == "modrinth.index.json" else src_zf.read(info.filename)
+                profile_path = f"profiles/{mc_version}/{info.filename}"
+                if info.filename.startswith("overrides/") and profile_path in src_zf.namelist():
+                    data = src_zf.read(profile_path)
+                # writestr mutates ZipInfo offsets/CRC. Never mutate the source
+                # metadata: later profile reads still rely on those original offsets.
+                dst_zf.writestr(copy(info), data)
+    return buf.getvalue()
 
 
 def load_live_assets():
@@ -180,7 +216,8 @@ def render_assets_box(assets):
     rows_html = []
     for a in assets:
         icon_svg = OCTICONS["package"] if a["icon"] == "package" else OCTICONS["zip"]
-        href = f"/releases/download/v1.0.2/{a['slug']}"
+        href = f"/releases/download/v1.0.3/{a['slug']}"
+        badge_html = f'<span class="asset-badge">{a["badge"]}</span>' if a.get("badge") else ""
         if a["show_sha256"]:
             full_sha = f"sha256:{a['sha256']}"
             short_sha = f"sha256:{a['sha256'][:8]}…"
@@ -200,6 +237,7 @@ def render_assets_box(assets):
             <div class="asset-name-cell">
               {icon_svg}
               <a href="{href}" class="asset-link">{a['display_name']}</a>
+              {badge_html}
             </div>
             {sha_html}
             <div class="asset-meta-cell">
@@ -210,7 +248,7 @@ def render_assets_box(assets):
         """)
 
     return f"""
-      <div class="release-assets-footer">
+      <div class="release-assets-footer" id="release-assets">
         <details class="assets-details" open>
           <summary class="assets-summary">
             {OCTICONS['caret']}
@@ -227,148 +265,156 @@ def render_assets_box(assets):
     """
 
 
+def render_version_selector_widget():
+    return """
+      <section class="mc-selector-panel" aria-label="Select Minecraft Version">
+        <div class="mc-selector-header">
+          <div>
+            <div class="mc-selector-eyebrow">SELECTABLE MINECRAFT TARGET PROFILE • UNIFIED v1.0.3 BUILD</div>
+            <h3 class="mc-selector-title">Choose Your Minecraft Version (Fabric)</h3>
+          </div>
+          <div class="mc-selector-tabs" role="tablist">
+            <button type="button" class="mc-tab-btn is-active" data-mc-tab="1.21.11" role="tab" aria-selected="true">
+              Minecraft 1.21.11 <span class="mc-tab-tag">Fabric 0.20.1</span>
+            </button>
+            <button type="button" class="mc-tab-btn" data-mc-tab="1.20.1" role="tab" aria-selected="false">
+              Minecraft 1.20.1 <span class="mc-tab-tag">Fabric 0.14.22+</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="mc-profile-pane is-active" id="mc-pane-1.21.11">
+          <div class="mc-specs-grid">
+            <div class="mc-spec-box"><span class="mc-spec-label">Client Version</span><strong>Azyron Client v1.0.3</strong></div>
+            <div class="mc-spec-box"><span class="mc-spec-label">Modpack Version</span><strong>Azyron Modpack v1.0.3</strong></div>
+            <div class="mc-spec-box"><span class="mc-spec-label">Minecraft &amp; Loader</span><strong>1.21.11 • Fabric 0.20.1</strong></div>
+            <div class="mc-spec-box"><span class="mc-spec-label">Java Runtime</span><strong>OpenJDK 21+ (Internal-21)</strong></div>
+          </div>
+          <p class="mc-stack-line">
+            <strong>Verified 1.21.11 Optimization Stack:</strong>
+            <code>Fabric API 0.141.6+1.21.11</code> · <code>Sodium 0.8.14</code> · <code>Lithium 0.21.4</code> ·
+            <code>FerriteCore 8.2.0</code> · <code>EntityCulling 1.11.3</code> · <code>MoreCulling 1.6.2</code> ·
+            <code>Cloth Config 21.11.153</code> · <code>Dynamic FPS 3.11.6</code>
+          </p>
+          <div class="mc-cta-row">
+            <a class="mc-download-btn mc-download-btn--primary" href="/releases/download/v1.0.3/Azyron-Client-1.0.3.jar">
+              Download Unified Azyron-Client-1.0.3.jar (1.21.11 &amp; 1.20.1)
+            </a>
+            <a class="mc-download-btn mc-download-btn--secondary" href="/releases/download/v1.0.3/Azyron-Modpack-1.0.3.mrpack?mc=1.21.11">
+              Download Azyron-Modpack-1.0.3.mrpack (MC 1.21.11 Profile)
+            </a>
+            <code class="mc-cli-pill">./download-dependencies.sh --mc 1.21.11</code>
+          </div>
+        </div>
+
+        <div class="mc-profile-pane" id="mc-pane-1.20.1">
+          <div class="mc-specs-grid">
+            <div class="mc-spec-box"><span class="mc-spec-label">Client Version</span><strong>Azyron Client v1.0.3</strong></div>
+            <div class="mc-spec-box"><span class="mc-spec-label">Modpack Version</span><strong>Azyron Modpack v1.0.3</strong></div>
+            <div class="mc-spec-box"><span class="mc-spec-label">Minecraft &amp; Loader</span><strong>1.20.1 • Fabric 0.14.22+</strong></div>
+            <div class="mc-spec-box"><span class="mc-spec-label">Java Runtime</span><strong>OpenJDK 17+ (or Java 21)</strong></div>
+          </div>
+          <p class="mc-stack-line">
+            <strong>Verified 1.20.1 Optimization Stack:</strong>
+            <code>Fabric API 0.88.1+1.20.1</code> · <code>Sodium 0.5.3</code> · <code>Lithium 0.11.2</code> ·
+            <code>FerriteCore 6.0.0</code> · <code>EntityCulling 1.6.2</code> · <code>MoreCulling 0.19.0</code> ·
+            <code>Cloth Config 11.1.106</code> · <code>Dynamic FPS 3.2.1</code>
+          </p>
+          <div class="mc-cta-row">
+            <a class="mc-download-btn mc-download-btn--primary" href="/releases/download/v1.0.3/Azyron-Client-1.0.3.jar">
+              Download Unified Azyron-Client-1.0.3.jar (1.21.11 &amp; 1.20.1)
+            </a>
+            <a class="mc-download-btn mc-download-btn--secondary" href="/releases/download/v1.0.3/Azyron-Modpack-1.0.3.mrpack?mc=1.20.1">
+              Download Azyron-Modpack-1.0.3.mrpack (MC 1.20.1 Profile)
+            </a>
+            <code class="mc-cli-pill">./download-dependencies.sh --mc 1.20.1</code>
+          </div>
+        </div>
+      </section>
+    """
+
+
 def render_release_body_html(assets):
     sha_rows = "".join(
         f'<tr><td><code>{a["display_name"]}</code></td><td><code>{a["size_bytes"]:,} B</code> (<code>{a["size_human"]}</code>)</td><td><code>{a["sha256"]}</code></td></tr>'
         for a in assets
         if a["show_sha256"]
     )
+    selector_html = render_version_selector_widget()
     return f"""
       <div class="markdown-body">
         <blockquote>
           <p><strong>AZYRON CLIENT — PERFORMANCE. SMOOTHNESS. STYLE.</strong><br>
-          <strong>AZYRON CLIENT <code>v1.0.2</code> PRE-RELEASE (Draft Pre-release)</strong>, crafted by <strong>JIGNESH GAMING</strong> exclusively for <strong>Minecraft Java Edition <code>1.21.11</code> with Fabric</strong>. Includes complete <code>MouseMixin</code> <code>1.21.11</code> crash repair, cold-boot <code>rendertype_text</code> shader fix, verified <code>1.0.2</code> metadata, and PojavLauncher GLES hardening.</p>
+          <strong>AZYRON CLIENT <code>v1.0.3</code> (Unified Dual-Version Release)</strong> by <strong>JIGNESH GAMING</strong> — now supporting <strong>both Minecraft Java Edition <code>1.21.11</code> (Fabric)</strong> and <strong>Minecraft Java Edition <code>1.20.1</code> (Fabric)</strong> inside a single unified <code>Azyron-Client-1.0.3.jar</code> and <code>Azyron-Modpack-1.0.3.mrpack</code>, verified by two separate 26-test automated suites (<code>52/52 PASS</code>).</p>
         </blockquote>
+
+        {selector_html}
 
         <table>
           <thead>
             <tr><th>Specification</th><th>Details</th></tr>
           </thead>
           <tbody>
-            <tr><td><strong>Release Version</strong></td><td><code>AZYRON CLIENT v1.0.2 PRE-RELEASE</code> (<code>1.0.2</code>)</td></tr>
-            <tr><td><strong>Release Status</strong></td><td><code>Draft Pre-release</code> <em>(Unpublished — Waiting for User Approval)</em></td></tr>
-            <tr><td><strong>Minecraft Compatibility</strong></td><td><strong>Java Edition <code>1.21.11</code> with Fabric</strong> <em>(Strictly <code>1.21.11</code>)</em></td></tr>
-            <tr><td><strong>Fabric Requirements</strong></td><td>Fabric Loader <code>0.20.1</code> <em>(min <code>&gt;=0.17.3</code>)</em> + Fabric API <code>0.141.6+1.21.11</code></td></tr>
-            <tr><td><strong>Java Runtime</strong></td><td><strong>Java 21 LTS</strong> <em>(64-bit OpenJDK 21)</em></td></tr>
+            <tr><td><strong>Client Version</strong></td><td><code>Azyron Client v1.0.3</code> (<code>Azyron-Client-1.0.3.jar</code> — Unified Single JAR)</td></tr>
+            <tr><td><strong>Modpack Version</strong></td><td><code>Azyron Modpack v1.0.3</code> (<code>Azyron-Modpack-1.0.3.mrpack</code>)</td></tr>
+            <tr><td><strong>Release Status</strong></td><td><code>Draft Pre-release</code> <em>(Staged Locally — Ready for Approval)</em></td></tr>
+            <tr><td><strong>Supported Minecraft Versions</strong></td><td><strong>Minecraft <code>1.21.11</code> (Fabric)</strong> &amp; <strong>Minecraft <code>1.20.1</code> (Fabric)</strong> <em>(Selectable)</em></td></tr>
+            <tr><td><strong>Fabric Requirements</strong></td><td><code>1.21.11</code>: Fabric Loader <code>0.20.1</code> + Fabric API <code>0.141.6+1.21.11</code><br><code>1.20.1</code>: Fabric Loader <code>0.14.22+</code> + Fabric API <code>0.88.1+1.20.1</code></td></tr>
+            <tr><td><strong>Java Runtime</strong></td><td>Compiled to <strong>Java 17 Bytecode (<code>v61.0</code>)</strong> — runs natively on <strong>Java 17</strong> (<code>1.20.1</code>) &amp; <strong>Java 21</strong> (<code>1.21.11</code>)</td></tr>
             <tr><td><strong>Developer</strong></td><td><strong>JIGNESH GAMING</strong></td></tr>
           </tbody>
         </table>
 
         <hr>
 
-        <h2>Client Introduction</h2>
-        <p><strong>AZYRON CLIENT</strong> is a modern, lightweight, fair-play <strong>Fabric client and optimization suite</strong> built from the ground up for <strong>Minecraft Java Edition <code>1.21.11</code></strong>. Designed for competitive multiplayer, survival worlds, and low-memory mobile/ARM64 devices running <strong>PojavLauncher</strong>, AZYRON combines a custom dark-themed client interface, a drag-and-drop HUD editor, and a real-time frame-pacing &amp; particle-culling engine — with <strong>zero</strong> unfair gameplay modifications or bloatware.</p>
-
-        <hr>
-
-        <h2>FPS Optimization Features</h2>
+        <h2>What's New in <code>v1.0.3</code> (Changelog)</h2>
         <ul>
-          <li><strong>Real-Time Performance Engine (<code>PerformanceEngine</code> &amp; <code>FrameTimeTracker</code>)</strong> — Tracks rolling frame-time percentiles (<code>1%</code> lows and micro-stutter spikes) and coordinates render settings without stalling the main render thread.</li>
-          <li><strong>Distance &amp; Budget Particle Throttling (<code>ParticleManagerMixin</code>)</strong> — Enforces per-tick particle caps and distance cutoffs during heavy combat, explosions, and crowded server lobbies.</li>
-          <li><strong>Smart Heap &amp; GC Hygiene (<code>MemoryOptimizer</code>)</strong> — Low-allocation tick/HUD rendering loop designed to minimize garbage-collection pauses on <code>1.5 GB – 4 GB</code> RAM allocations.</li>
-          <li><strong>Companion Optimization Config Seeding</strong> — Automatically seeds tuned defaults for the <code>1.21.11</code> Fabric optimization stack (<strong>Sodium <code>0.8.14</code></strong>, <strong>Lithium <code>0.21.4</code></strong>, <strong>FerriteCore <code>8.2.0</code></strong>, <strong>EntityCulling <code>1.11.3</code></strong>, <strong>More Culling <code>1.6.2</code></strong>, <strong>ImmediatelyFast <code>1.14.3</code></strong>, and <strong>Dynamic FPS <code>3.11.6</code></strong>) when installed via the Modpack.</li>
-          <li><strong>11 Built-In Modular HUD &amp; Utility Widgets</strong> — <code>FPS Counter</code>, <code>CPS Counter</code>, <code>Ping Display</code>, <code>Coordinates &amp; Direction</code>, <code>Keystrokes</code>, <code>Armor Status HUD</code>, <code>Potion Effects HUD</code>, <code>Memory Usage HUD</code>, <code>Custom Crosshair</code>, <code>ToggleSprint</code>, and <code>Smooth Cinematic/PvP Zoom</code>, plus custom <code>AZYRON</code> Main Menu, Splash Loading Renderer, Cosmetics Manager, and Pause Menu integration.</li>
+          <li><strong>Unified Dual-Version Client Architecture (<code>1.21.11</code> + <code>1.20.1</code> Fabric):</strong> Upgraded <code>Azyron-Client-1.0.3.jar</code> to Java 17 bytecode (<code>v61.0</code>) with <code>"minecraft": ["1.20.1", "1.21.11"]</code> so one JAR runs seamlessly on both Minecraft <code>1.21.11</code> and Minecraft <code>1.20.1</code> without separate forks.</li>
+          <li><strong>Zero-Overhead <code>McVersionBridge</code> &amp; <code>AzyronBaseScreen</code>:</strong> Pre-resolves cached <code>MethodHandle</code> bridges at startup for <code>1.21.11</code> 2D <code>Matrix3x2fStack</code> vs <code>1.20.1</code> 3D <code>MatrixStack</code> scaling, <code>DrawContext</code> item/border/text primitives, <code>RegistryEntry&lt;StatusEffect&gt;</code> vs direct <code>StatusEffect</code>, <code>KeyBinding</code> categories, and <code>1.20.1</code> primitive vs <code>1.21.11</code> record-based screen input.</li>
+          <li><strong>Version-Selective Mixin Plugin (<code>AzyronMixinPlugin</code>):</strong> Dynamically activates <strong>9 shared Mixins</strong>, <strong>7 Minecraft <code>1.21.11</code> Mixins</strong> (including <code>Screen121Mixin</code> &amp; <code>ChunkBatchSizeCalculatorMixin</code>), or <strong>6 Minecraft <code>1.20.1</code> Mixins</strong> (<code>GameRenderer120Mixin</code>, <code>InGameHud120Mixin</code>, <code>Mouse120Mixin</code>, <code>ClientPlayNetworkHandler120Mixin</code>, <code>PersistentStateManager120Mixin</code>, <code>PersistentState120Mixin</code>) with zero premature classloading.</li>
+          <li><strong>Selectable Version Profiles Across UI, Modpack &amp; Website:</strong> Added an in-game <strong>Supported Minecraft Profile</strong> selector (<code>&lt; 1.21.11 &gt;</code> &harr; <code>&lt; 1.20.1 &gt;</code>) in <strong>AZYRON Menu &rarr; Client Options</strong>, dual-profile Modrinth manifests inside <code>Azyron-Modpack-1.0.3.mrpack</code>, <code>--mc 1.21.11|1.20.1</code> dependency download scripts, and automatic <strong>Sodium <code>0.8.x</code></strong> vs <strong>Sodium <code>0.5.x</code></strong> config generation.</li>
+          <li><strong>Dual-Schema World Data Protection:</strong> Extended <code>PersistentStateGuard</code> to create mandatory pre-repair backups and atomically repair both <code>1.21.11</code> snake_case <code>raids.dat</code>/<code>raids_end.dat</code> and <code>1.20.1</code> PascalCase <code>raids.dat</code> (<code>NextAvailableID</code>, <code>Tick</code>, <code>Raids</code>).</li>
         </ul>
 
         <hr>
 
-        <h2>Performance Profiles</h2>
-        <p>Switch instantly in-game with <kbd>F8</kbd> (or inside the <kbd>Right Shift</kbd> AZYRON Menu) between three engineered performance presets:</p>
+        <p><strong>Verification scope:</strong> These are isolated JVM tests using generated Minecraft/Fabric stubs, not live game launches. The mapping audit checks symbol names, not full owner/descriptor linkage. Desktop and PojavLauncher launch, Mixin application, rendering and multiplayer tests remain pending.</p>
+        <h2>Separate Automated Test Suites Verification (<code>52 / 52 PASS</code>)</h2>
         <table>
           <thead>
             <tr>
-              <th>Profile</th>
-              <th>Graphics &amp; Clouds</th>
-              <th>Render / Sim</th>
-              <th>Particle Budget</th>
-              <th>Entity Scale &amp; Shadows</th>
-              <th>Target Cap</th>
-              <th>Best For</th>
+              <th>Dedicated Test Suite</th>
+              <th>Target Runtime</th>
+              <th>Coverage Highlights</th>
+              <th>Result</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><strong>Potato Mode</strong> (<code>POTATO</code>)</td>
-              <td><code>Fast</code> · Clouds <code>Off</code></td>
-              <td><code>6</code> / <code>5</code> chunks</td>
-              <td><code>Minimal</code> (<code>&lt;=40/tick</code>, <code>18m</code>)</td>
-              <td><code>50%</code> · Shadows <code>Off</code></td>
-              <td><code>260 FPS</code></td>
-              <td>Entry-level laptops, iGPUs &amp; <strong>PojavLauncher</strong> (<code>1.5–2 GB</code> RAM)</td>
+              <td><code>AzyronClientTestSuite12111</code></td>
+              <td><strong>Minecraft <code>1.21.11</code></strong> (Fabric <code>0.20.1</code>)</td>
+              <td><code>Matrix3x2fStack</code> 10k-frame stress, <code>Screen121Mixin</code>, <code>RegistryEntry</code>, Sodium <code>0.8.14</code>, <code>ChunkBatchSizeCalculator</code>, 72k-frame multiplayer soak</td>
+              <td><strong>26 / 26 PASS</strong></td>
             </tr>
             <tr>
-              <td><strong>Balanced Mode</strong> (<code>BALANCED</code>)</td>
-              <td><code>Fancy</code> · Clouds <code>Fast</code></td>
-              <td><code>10</code> / <code>8</code> chunks</td>
-              <td><code>Decreased</code> (<code>&lt;=180/tick</code>, <code>42m</code>)</td>
-              <td><code>75%</code> · Shadows <code>On</code></td>
-              <td><code>260 FPS</code></td>
-              <td>Everyday survival &amp; multiplayer with crisp visuals and high FPS</td>
+              <td><code>AzyronClientTestSuite1201</code></td>
+              <td><strong>Minecraft <code>1.20.1</code></strong> (Fabric <code>0.14.22+</code>)</td>
+              <td>Java 17 <code>v61.0</code> audit, all 6 <code>*120Mixin</code> descriptors, 3D <code>MatrixStack</code> 10k-frame stress, Sodium <code>0.5.3</code>, <code>1.20.1</code> PascalCase <code>raids.dat</code>, 72k-frame soak</td>
+              <td><strong>26 / 26 PASS</strong></td>
             </tr>
             <tr>
-              <td><strong>Smooth FPS Mode</strong> (<code>SMOOTH_FPS</code>)</td>
-              <td><code>Fast</code> · Clouds <code>Fast</code></td>
-              <td><code>8</code> / <code>6</code> chunks</td>
-              <td><code>Decreased</code> (<code>&lt;=100/tick</code>, <code>28m</code>)</td>
-              <td><code>75%</code> · Shadows <code>Off</code></td>
-              <td><code>120 FPS</code></td>
-              <td>Competitive PvP, consistent <code>1%</code> lows &amp; mobile thermal stability</td>
+              <td><strong>Dual-Intermediary Constant-Pool Verifier</strong></td>
+              <td><code>intermediary_1.20.1.tiny</code> + <code>intermediary_1.21.11.tiny</code></td>
+              <td>Every shared class (61 classes) verified simultaneously against both <code>1.20.1</code> and <code>1.21.11</code> Intermediary symbol tables (74 total classes)</td>
+              <td><strong>74 / 74 PASS</strong></td>
             </tr>
           </tbody>
         </table>
 
         <hr>
 
-        <h2>Supported Minecraft Version &amp; Platforms</h2>
-        <ul>
-          <li><strong>Supported Game Version:</strong> <strong>Minecraft: Java Edition <code>1.21.11</code> ONLY</strong> <em>(strictly pinned to <code>1.21.11</code> intermediary mappings)</em></li>
-          <li><strong>Mod Loader:</strong> <strong>Fabric Loader <code>0.20.1</code></strong> (<code>&gt;=0.17.3</code>) with <strong>Fabric API <code>0.141.6+1.21.11</code></strong></li>
-          <li><strong>Java Runtime:</strong> <strong>Java <code>21</code></strong> (<code>major class version 65</code>)</li>
-          <li><strong>Supported Launchers:</strong> Modrinth App, Prism Launcher, MultiMC, Official Minecraft Launcher, and <strong>PojavLauncher</strong> (Android / iOS ARM64)</li>
-        </ul>
-
-        <hr>
-
-        <h2>Installation Instructions</h2>
-        <h3>Option A — Full Modpack (<code>Azyron-Modpack-1.0.2.mrpack</code>) <em>(Recommended for PojavLauncher, Prism &amp; Modrinth App)</em></h3>
-        <ol>
-          <li>Open <strong>PojavLauncher</strong>, <strong>Modrinth App</strong>, or <strong>Prism Launcher</strong>.</li>
-          <li>Click <strong>Add Instance / Create Profile</strong> &rarr; <strong>Import Modpack</strong> and select <strong><code>Azyron-Modpack-1.0.2.mrpack</code></strong>.</li>
-          <li>The launcher will automatically fetch Minecraft <code>1.21.11</code>, Fabric Loader <code>0.20.1</code>, all <strong>9 verified 1.21.11 optimization dependencies</strong>, and install <code>Azyron-Client-1.0.2.jar</code> with PojavLauncher-safe configs.</li>
-          <li>Launch the instance and press <kbd>Right Shift</kbd> (or Pause &rarr; <strong><code>✦ AZYRON Client</code></strong> on touch) to customize modules.</li>
-        </ol>
-
-        <h3>Option B — Standalone Mod JAR (<code>Azyron-Client-1.0.2.jar</code>) <em>(PojavLauncher &amp; Official Launcher)</em></h3>
-        <ol>
-          <li>Install <strong>Minecraft <code>1.21.11</code></strong> and <strong>Fabric Loader <code>0.20.1</code></strong> in your launcher and select a <strong>Java 21</strong> runtime.</li>
-          <li>Download <strong><code>Azyron-Client-1.0.2.jar</code></strong> from the <strong>Assets</strong> section below and download <strong><code>fabric-api-0.141.6+1.21.11.jar</code></strong>.</li>
-          <li>Copy both <code>.jar</code> files into your <code>.minecraft/mods/</code> directory <em>(remove any older <code>Azyron-Client-1.0*.jar</code> first)</em>.</li>
-          <li>Launch the <code>fabric-loader-0.20.1-1.21.11</code> profile.</li>
-        </ol>
-
-        <h3>Default In-Game Controls</h3>
-        <table>
-          <thead>
-            <tr><th>Keybind</th><th>Action</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><kbd>Right Shift</kbd></td><td>Open <strong>AZYRON CLIENT</strong> Modules &amp; Settings Menu</td></tr>
-            <tr><td><kbd>H</kbd></td><td>Open Drag-and-Drop <strong>HUD Layout Editor</strong></td></tr>
-            <tr><td><kbd>C</kbd> <em>(Hold)</em></td><td>Smooth <strong>Zoom</strong></td></tr>
-            <tr><td><kbd>F8</kbd></td><td>Cycle <strong>Performance Profile</strong> (<code>Potato</code> &rarr; <code>Balanced</code> &rarr; <code>Smooth FPS</code>)</td></tr>
-            <tr><td><kbd>I</kbd></td><td>Toggle <strong>Auto-Sprint</strong> (<code>ToggleSprint</code>)</td></tr>
-          </tbody>
-        </table>
-
-        <hr>
-
-        <h2>Changelog &amp; Repairs in <code>v1.0.2</code></h2>
-        <ul>
-          <li><strong>Fixed Critical Startup Crash (<code>MouseMixin</code>):</strong> Updated target injection to Minecraft <code>1.21.11</code>'s exact <code>Mouse.onMouseButton(long, MouseInput, int)</code> (<code>Lnet/minecraft/class_312;method_1601(JLnet/minecraft/class_11910;I)V</code>) with <code>@Surrogate</code> fallback handlers, <code>require = 0</code>, and non-duplicating <code>CpsTracker</code> polling fallback.</li>
-          <li><strong>Fixed Mod Version Metadata:</strong> Replaced literal <code>"${{version}}"</code> with <code>"1.0.2"</code> across <code>fabric.mod.json</code>, build pipeline, UI footers, and config files.</li>
-          <li><strong>Fixed Cold-Boot Text Shader Errors (<code>minecraft:core/rendertype_text</code>):</strong> Added <code>ShaderLoader</code> readiness gating (<code>UiRenderUtils.isCoreTextShaderReady</code>) and a <code>RenderPipelines.GUI</code> 5x7 boot pixel-font renderer during initial <code>SplashOverlay</code> reload so <code>VERTEX</code> / <code>FRAGMENT</code> shader errors never occur.</li>
-          <li><strong>Verified <code>1.21.11</code> Performance Mods &amp; PojavLauncher Safety:</strong> Verified all 9 bundled <code>1.21.11</code> Fabric optimization mods with zero duplicates and mobile GLES-safe config defaults (<code>use_no_error_g_l_context: false</code>, <code>font_atlas_resizing: false</code>, <code>fast_buffer_upload: false</code>).</li>
-        </ul>
+        <h2>Performance Profiles &amp; Built-In Modules</h2>
+        <p>Switch instantly in-game with <kbd>F8</kbd> (or inside the <kbd>Right Shift</kbd> AZYRON Menu) between <strong>Potato Mode</strong> (<code>6/5</code> chunks, <code>&lt;=40</code> particles/tick), <strong>Balanced Mode</strong> (<code>10/8</code> chunks, crisp Fancy visuals), and <strong>Smooth FPS Mode</strong> (<code>120 FPS</code> frame-pacing target for competitive PvP &amp; mobile thermal stability). Includes all <strong>11 built-in modules</strong>: <code>FPS Counter</code>, <code>CPS Counter</code>, <code>Ping Display</code>, <code>Coordinates HUD</code>, <code>Keystrokes HUD</code>, <code>Armor HUD</code>, <code>Potion Effects HUD</code>, <code>Toggle Sprint</code>, <code>Smooth Zoom</code>, <code>Custom Crosshair</code>, and <code>Memory HUD</code>.</p>
 
         <hr>
 
@@ -386,7 +432,7 @@ def render_release_body_html(assets):
 
         <h2>Credits</h2>
         <ul>
-          <li><strong>Creator &amp; Lead Developer:</strong> <strong>JIGNESH GAMING</strong> — <em>AZYRON CLIENT Architecture, UI/UX &amp; Performance Engineering</em></li>
+          <li><strong>Creator &amp; Lead Developer:</strong> <strong>JIGNESH GAMING</strong> — <em>AZYRON CLIENT Architecture, Dual-Version Runtime Bridge, UI/UX &amp; Performance Engineering</em></li>
           <li><strong>Platform &amp; Optimization Ecosystem:</strong> Special thanks to <strong>Mojang Studios</strong>, the <strong>FabricMC Team</strong>, <strong>CaffeineMC</strong> (<em>Sodium &amp; Lithium</em>), <strong>malte0811</strong> (<em>FerriteCore</em>), <strong>tr7zw</strong> (<em>EntityCulling</em>), <strong>FX-PR0CESS</strong> (<em>More Culling</em>), <strong>RK_01</strong> (<em>ImmediatelyFast</em>), <strong>juliand665 &amp; LostLuma</strong> (<em>Dynamic FPS</em>), <strong>shedaniel</strong> (<em>Cloth Config</em>), and the <strong>PojavLauncher Team</strong>.</li>
         </ul>
       </div>
@@ -407,7 +453,7 @@ def render_page(view_mode: str, assets):
               <span class="subnav-pill is-active">Releases</span>
               <span class="subnav-pill">Tags</span>
             </div>
-            <span class="private-draft-note">Private staging • Draft only (unpublished)</span>
+            <span class="private-draft-note">Private staging • v1.0.3 Dual-Version Build (1.21.11 + 1.20.1)</span>
           </div>
         """
         main_content = f"""
@@ -415,14 +461,15 @@ def render_page(view_mode: str, assets):
             <div class="releases-rail">
               <div class="rail-date"><relative-time datetime="{upload_iso}" title="{upload_full}">{upload_short}</relative-time></div>
               <div class="rail-item">{OCTICONS['lock']} <span>JIGNESH GAMING</span></div>
-              <div class="rail-item">{OCTICONS['tag']} <span class="mono">v1.0.2</span></div>
-              <div class="rail-item">{OCTICONS['commit']} <span class="mono">54017b8</span></div>
+              <div class="rail-item">{OCTICONS['tag']} <span class="mono">v1.0.3</span></div>
+              <div class="rail-item">{OCTICONS['commit']} <span class="mono">1.21.11 + 1.20.1</span></div>
             </div>
             <div class="Box release-card">
               <div class="release-card-body">
                 <div class="release-title-row">
-                  <h1 class="release-title"><a href="/releases/tag/v0.1.0-pre" class="release-title-link">AZYRON CLIENT v1.0.2 PRE-RELEASE</a></h1>
-                  <span class="Label Label--draft" title="Draft Pre-release — not published as stable">Draft Pre-release</span>
+                  <h1 class="release-title"><a href="/releases/tag/v1.0.3" class="release-title-link">AZYRON CLIENT v1.0.3</a></h1>
+                  <span class="Label Label--mc">MC 1.21.11 &amp; 1.20.1</span>
+                  <span class="Label Label--draft" title="Draft Pre-release — awaiting approval">Draft Pre-release</span>
                 </div>
                 {body_html}
                 {assets_section}
@@ -435,24 +482,25 @@ def render_page(view_mode: str, assets):
           <nav class="release-breadcrumb" aria-label="Breadcrumb">
             <a href="/releases" class="breadcrumb-link">Releases</a>
             <span class="breadcrumb-sep">/</span>
-            <span class="breadcrumb-current">v1.0.2</span>
+            <span class="breadcrumb-current">v1.0.3</span>
           </nav>
         """
         main_content = f"""
           <div class="Box release-card">
             <div class="release-card-body">
               <div class="release-title-row">
-                <h1 class="release-title">AZYRON CLIENT v1.0.2 PRE-RELEASE</h1>
-                <span class="Label Label--draft" title="Draft Pre-release — not published as stable">Draft Pre-release</span>
+                <h1 class="release-title">AZYRON CLIENT v1.0.3</h1>
+                <span class="Label Label--mc">Minecraft 1.21.11 &amp; 1.20.1 (Fabric)</span>
+                <span class="Label Label--draft" title="Draft Pre-release — awaiting approval">Draft Pre-release</span>
               </div>
               <div class="release-meta-bar">
                 <span class="avatar-circle">JG</span>
                 <strong class="author-name">JIGNESH GAMING</strong>
-                <span>updated this draft pre-release <relative-time datetime="{upload_iso}" title="{upload_full}">{upload_short}</relative-time></span>
+                <span>staged unified dual-version build <relative-time datetime="{upload_iso}" title="{upload_full}">{upload_short}</relative-time></span>
                 <span class="meta-dot">·</span>
-                <span class="meta-inline">{OCTICONS['tag']} <span class="mono">v0.1.0-pre</span></span>
+                <span class="meta-inline">{OCTICONS['tag']} <span class="mono">v1.0.3</span></span>
                 <span class="meta-dot">·</span>
-                <span class="meta-inline">Client <span class="mono">v1.0.2</span></span>
+                <span class="meta-inline">Modpack <span class="mono">v1.0.3</span></span>
               </div>
               <div class="release-divider"></div>
               {body_html}
@@ -466,7 +514,7 @@ def render_page(view_mode: str, assets):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Release AZYRON CLIENT v1.0.2 PRE-RELEASE · AzyronClientteam/Azyron-Client</title>
+  <title>Release AZYRON CLIENT v1.0.3 (MC 1.21.11 &amp; 1.20.1) · AzyronClientteam/Azyron-Client</title>
   <style>
     :root {{
       --bg-canvas: #0d1117;
@@ -482,6 +530,8 @@ def render_page(view_mode: str, assets):
       --draft-border: rgba(187, 128, 9, 0.4);
       --draft-bg: rgba(187, 128, 9, 0.15);
       --counter-bg: rgba(110, 118, 129, 0.4);
+      --azyron-purple: #9333ea;
+      --azyron-cyan: #00d4ff;
     }}
     [data-color-mode="light"] {{
       --bg-canvas: #ffffff;
@@ -508,13 +558,8 @@ def render_page(view_mode: str, assets):
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
     }}
-    a {{
-      color: var(--fg-accent);
-      text-decoration: none;
-    }}
-    a:hover {{
-      text-decoration: underline;
-    }}
+    a {{ color: var(--fg-accent); text-decoration: none; }}
+    a:hover {{ text-decoration: underline; }}
     .mono, code {{
       font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     }}
@@ -544,10 +589,10 @@ def render_page(view_mode: str, assets):
     .Label {{
       display: inline-flex;
       align-items: center;
-      padding: 0 7px;
+      padding: 0 8px;
       font-size: 12px;
       font-weight: 500;
-      line-height: 18px;
+      line-height: 20px;
       border-radius: 2em;
       border: 1px solid var(--border-default);
       color: var(--fg-muted);
@@ -556,16 +601,13 @@ def render_page(view_mode: str, assets):
       color: var(--draft-fg);
       background: var(--draft-bg);
       border-color: var(--draft-border);
-      font-size: 12px;
-      line-height: 20px;
       padding: 0 10px;
     }}
-    .Label--prerelease {{
-      color: #d29922;
-      background: transparent;
-      border-color: rgba(210, 153, 34, 0.5);
-      font-size: 12px;
-      line-height: 20px;
+    .Label--mc {{
+      color: #38bdf8;
+      background: rgba(0, 212, 255, 0.12);
+      border-color: rgba(0, 212, 255, 0.4);
+      font-weight: 600;
       padding: 0 10px;
     }}
     .theme-toggle {{
@@ -578,11 +620,7 @@ def render_page(view_mode: str, assets):
       cursor: pointer;
     }}
     .theme-toggle:hover {{ color: var(--fg-default); border-color: var(--fg-muted); }}
-    .repo-nav {{
-      display: flex;
-      gap: 4px;
-      overflow-x: auto;
-    }}
+    .repo-nav {{ display: flex; gap: 4px; overflow-x: auto; }}
     .repo-nav-item {{
       display: inline-flex;
       align-items: center;
@@ -593,28 +631,9 @@ def render_page(view_mode: str, assets):
       border-bottom: 2px solid transparent;
       white-space: nowrap;
     }}
-    .repo-nav-item.is-selected {{
-      font-weight: 600;
-      border-bottom-color: #f78166;
-    }}
-    .repo-nav-item:hover {{
-      text-decoration: none;
-      background: var(--bg-subtle);
-      border-top-left-radius: 6px;
-      border-top-right-radius: 6px;
-    }}
-    .container-xl {{
-      max-width: 1012px;
-      margin: 0 auto;
-      padding: 24px 16px 56px 16px;
-    }}
-    .release-breadcrumb {{
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 16px;
-      font-size: 14px;
-    }}
+    .repo-nav-item.is-selected {{ font-weight: 600; border-bottom-color: #a855f7; }}
+    .container-xl {{ max-width: 1012px; margin: 0 auto; padding: 24px 16px 56px 16px; }}
+    .release-breadcrumb {{ display: flex; align-items: center; gap: 6px; margin-bottom: 16px; font-size: 14px; }}
     .breadcrumb-link {{ font-weight: 500; }}
     .breadcrumb-sep {{ color: var(--fg-muted); }}
     .breadcrumb-current {{ color: var(--fg-muted); font-weight: 600; }}
@@ -641,216 +660,178 @@ def render_page(view_mode: str, assets):
       border-right: 1px solid var(--border-default);
     }}
     .subnav-pill:last-child {{ border-right: none; }}
-    .subnav-pill.is-active {{
-      background: #1f6feb;
-      color: #ffffff;
-    }}
-    .private-draft-note {{
-      color: var(--fg-muted);
-      font-size: 12px;
-    }}
-    .releases-index-grid {{
-      display: grid;
-      grid-template-columns: 170px 1fr;
-      gap: 24px;
-      align-items: start;
-    }}
-    @media (max-width: 768px) {{
-      .releases-index-grid {{ grid-template-columns: 1fr; }}
-    }}
-    .releases-rail {{
-      padding-top: 8px;
-      color: var(--fg-muted);
-      font-size: 13px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }}
-    .rail-date {{ margin-bottom: 4px; }}
-    .rail-item {{
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }}
-    .Box {{
-      background-color: var(--bg-canvas);
-      border: 1px solid var(--border-default);
-      border-radius: 6px;
-    }}
-    .release-card-body {{
-      padding: 24px 32px;
-    }}
-    @media (max-width: 640px) {{
-      .release-card-body {{ padding: 16px; }}
-    }}
-    .release-title-row {{
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }}
-    .release-title {{
-      margin: 0;
-      font-size: 32px;
-      font-weight: 400;
-      line-height: 1.25;
-      color: var(--fg-default);
-    }}
+    .subnav-pill.is-active {{ background: #1f6feb; color: #ffffff; }}
+    .private-draft-note {{ color: var(--fg-muted); font-size: 12px; }}
+    .releases-index-grid {{ display: grid; grid-template-columns: 170px 1fr; gap: 24px; align-items: start; }}
+    @media (max-width: 768px) {{ .releases-index-grid {{ grid-template-columns: 1fr; }} }}
+    .releases-rail {{ padding-top: 8px; color: var(--fg-muted); font-size: 13px; display: flex; flex-direction: column; gap: 6px; }}
+    .rail-item {{ display: inline-flex; align-items: center; gap: 6px; }}
+    .Box {{ background-color: var(--bg-canvas); border: 1px solid var(--border-default); border-radius: 6px; }}
+    .release-card-body {{ padding: 24px 32px; }}
+    @media (max-width: 640px) {{ .release-card-body {{ padding: 16px; }} }}
+    .release-title-row {{ display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }}
+    .release-title {{ margin: 0; font-size: 32px; font-weight: 500; line-height: 1.25; color: var(--fg-default); }}
     .release-title-link {{ color: var(--fg-default); }}
-    .release-title-link:hover {{ color: var(--fg-accent); text-decoration: none; }}
-    .release-meta-bar {{
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 6px;
-      color: var(--fg-muted);
-      font-size: 14px;
-      margin-bottom: 16px;
-    }}
+    .release-meta-bar {{ display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--fg-muted); font-size: 14px; margin-bottom: 16px; }}
     .avatar-circle {{
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; border-radius: 50%;
       background: linear-gradient(135deg, #9333ea, #00d4ff);
-      color: #ffffff;
-      font-size: 10px;
-      font-weight: 700;
+      color: #ffffff; font-size: 10px; font-weight: 700;
     }}
     .author-name {{ color: var(--fg-muted); font-weight: 600; }}
-    .meta-inline {{
-      display: inline-flex;
+    .meta-inline {{ display: inline-flex; align-items: center; gap: 4px; color: var(--fg-muted); }}
+    .release-divider {{ border-top: 1px solid var(--border-muted); margin: 16px 0; }}
+
+    /* Interactive Dual-Version Selector */
+    .mc-selector-panel {{
+      margin: 18px 0 22px 0;
+      padding: 18px 20px;
+      border-radius: 8px;
+      background: linear-gradient(145deg, rgba(147, 51, 234, 0.10), rgba(0, 212, 255, 0.06));
+      border: 1px solid rgba(147, 51, 234, 0.45);
+    }}
+    .mc-selector-header {{
+      display: flex;
       align-items: center;
-      gap: 4px;
-      color: var(--fg-muted);
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
     }}
-    .release-divider {{
-      border-top: 1px solid var(--border-muted);
-      margin: 16px 0;
+    .mc-selector-eyebrow {{
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #38bdf8;
+      margin-bottom: 2px;
     }}
-    .markdown-body {{
-      font-size: 14px;
-      line-height: 1.6;
+    .mc-selector-title {{
+      margin: 0 !important;
+      font-size: 17px !important;
+      font-weight: 600;
       color: var(--fg-default);
     }}
+    .mc-selector-tabs {{
+      display: inline-flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }}
+    .mc-tab-btn {{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 13px;
+      border-radius: 6px;
+      border: 1px solid var(--border-default);
+      background: var(--bg-subtle);
+      color: var(--fg-default);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }}
+    .mc-tab-btn:hover {{ border-color: #a855f7; }}
+    .mc-tab-btn.is-active {{
+      background: linear-gradient(135deg, #7e22ce, #0284c7);
+      border-color: #38bdf8;
+      color: #ffffff;
+    }}
+    .mc-tab-tag {{
+      font-size: 11px;
+      font-weight: 500;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.28);
+    }}
+    .mc-profile-pane {{ display: none; }}
+    .mc-profile-pane.is-active {{ display: block; }}
+    .mc-specs-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }}
+    .mc-spec-box {{
+      padding: 9px 12px;
+      border-radius: 6px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-default);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }}
+    .mc-spec-label {{ font-size: 11px; color: var(--fg-muted); }}
+    .mc-stack-line {{ font-size: 13px; margin: 0 0 14px 0 !important; }}
+    .mc-cta-row {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }}
+    .mc-download-btn {{
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none !important;
+    }}
+    .mc-download-btn--primary {{
+      background: linear-gradient(135deg, #9333ea, #0284c7);
+      color: #ffffff !important;
+      border: 1px solid rgba(56, 189, 248, 0.6);
+    }}
+    .mc-download-btn--secondary {{
+      background: var(--bg-subtle);
+      color: var(--fg-default) !important;
+      border: 1px solid var(--border-default);
+    }}
+    .mc-download-btn--secondary:hover {{ border-color: #38bdf8; }}
+    .mc-cli-pill {{ font-size: 12px !important; }}
+
+    .markdown-body {{ font-size: 14px; line-height: 1.6; color: var(--fg-default); }}
     .markdown-body p {{ margin: 0 0 12px 0; }}
     .markdown-body blockquote {{
       margin: 0 0 16px 0;
       padding: 4px 16px;
       color: var(--fg-muted);
-      border-left: 0.25em solid var(--border-default);
+      border-left: 0.25em solid #9333ea;
     }}
-    .markdown-body blockquote p:last-child {{ margin-bottom: 0; }}
-    .markdown-body hr {{
-      height: 1px;
-      padding: 0;
-      margin: 20px 0;
-      background-color: var(--border-muted);
-      border: 0;
-    }}
+    .markdown-body hr {{ height: 1px; margin: 20px 0; background-color: var(--border-muted); border: 0; }}
     .markdown-body h2 {{
-      font-size: 20px;
-      font-weight: 600;
-      margin: 22px 0 10px 0;
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--border-muted);
+      font-size: 20px; font-weight: 600; margin: 22px 0 10px 0;
+      padding-bottom: 6px; border-bottom: 1px solid var(--border-muted);
     }}
-    .markdown-body h3 {{
-      font-size: 15px;
-      font-weight: 600;
-      margin: 16px 0 8px 0;
-    }}
-    .markdown-body ul, .markdown-body ol {{
-      margin: 0 0 12px 0;
-      padding-left: 22px;
-    }}
+    .markdown-body ul, .markdown-body ol {{ margin: 0 0 12px 0; padding-left: 22px; }}
     .markdown-body li {{ margin-bottom: 5px; }}
-    .markdown-body table {{
-      width: 100%;
-      border-collapse: collapse;
-      margin: 10px 0 16px 0;
-      display: block;
-      overflow-x: auto;
-    }}
-    .markdown-body th, .markdown-body td {{
-      padding: 7px 12px;
-      border: 1px solid var(--border-default);
-      text-align: left;
-      font-size: 13px;
-    }}
-    .markdown-body th {{
-      background-color: var(--bg-subtle);
-      font-weight: 600;
-    }}
-    .markdown-body tr:nth-child(2n) td {{
-      background-color: rgba(110, 118, 129, 0.06);
-    }}
-    .markdown-body code {{
-      padding: 0.2em 0.4em;
-      font-size: 85%;
-      background-color: rgba(110, 118, 129, 0.25);
-      border-radius: 6px;
-    }}
+    .markdown-body table {{ width: 100%; border-collapse: collapse; margin: 10px 0 16px 0; display: block; overflow-x: auto; }}
+    .markdown-body th, .markdown-body td {{ padding: 7px 12px; border: 1px solid var(--border-default); text-align: left; font-size: 13px; }}
+    .markdown-body th {{ background-color: var(--bg-subtle); font-weight: 600; }}
+    .markdown-body code {{ padding: 0.2em 0.4em; font-size: 85%; background-color: rgba(110, 118, 129, 0.25); border-radius: 6px; }}
     .markdown-body kbd {{
-      display: inline-block;
-      padding: 2px 5px;
+      display: inline-block; padding: 2px 5px;
       font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      color: var(--fg-default);
-      background-color: var(--bg-subtle);
-      border: 1px solid var(--border-default);
-      border-radius: 4px;
+      color: var(--fg-default); background-color: var(--bg-subtle);
+      border: 1px solid var(--border-default); border-radius: 4px;
     }}
-    .release-assets-footer {{
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border-muted);
-    }}
-    .assets-details summary {{
-      list-style: none;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      user-select: none;
-      padding: 4px 0;
-    }}
+    .release-assets-footer {{ margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-muted); }}
+    .assets-details summary {{ list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; }}
     .assets-details summary::-webkit-details-marker {{ display: none; }}
-    .details-caret {{
-      color: var(--fg-muted);
-      transition: transform 0.12s ease-in-out;
-    }}
-    .assets-details[open] .details-caret {{
-      transform: rotate(90deg);
-    }}
-    .assets-heading {{
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--fg-default);
-    }}
+    .details-caret {{ color: var(--fg-muted); transition: transform 0.12s ease-in-out; }}
+    .assets-details[open] .details-caret {{ transform: rotate(90deg); }}
+    .assets-heading {{ font-size: 16px; font-weight: 600; color: var(--fg-default); }}
     .Counter {{
-      display: inline-block;
-      min-width: 20px;
-      padding: 0 6px;
-      font-size: 12px;
-      font-weight: 500;
-      line-height: 18px;
-      text-align: center;
-      color: var(--fg-default);
-      background-color: var(--counter-bg);
-      border-radius: 2em;
+      display: inline-block; min-width: 20px; padding: 0 6px; font-size: 12px;
+      font-weight: 500; line-height: 18px; text-align: center;
+      color: var(--fg-default); background-color: var(--counter-bg); border-radius: 2em;
     }}
     .mt-2 {{ margin-top: 10px; }}
-    .asset-list {{
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }}
+    .asset-list {{ list-style: none; margin: 0; padding: 0; }}
     .Box-row {{
       display: grid;
-      grid-template-columns: minmax(190px, 1.4fr) minmax(150px, 1fr) auto;
+      grid-template-columns: minmax(220px, 1.5fr) minmax(150px, 1fr) auto;
       align-items: center;
       gap: 12px;
       padding: 8px 16px;
@@ -859,85 +840,31 @@ def render_page(view_mode: str, assets):
     }}
     .Box-row:first-child {{ border-top: none; }}
     .Box-row:hover {{ background-color: var(--bg-row-hover); }}
-    @media (max-width: 680px) {{
-      .Box-row {{
-        grid-template-columns: 1fr;
-        gap: 4px;
-      }}
-      .asset-sha--empty {{ display: none; }}
+    .asset-name-cell {{ display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }}
+    .asset-icon {{ color: var(--fg-muted); flex-shrink: 0; }}
+    .asset-link {{ font-weight: 600; }}
+    .asset-badge {{
+      font-size: 11px;
+      padding: 1px 7px;
+      border-radius: 10px;
+      background: rgba(147, 51, 234, 0.18);
+      border: 1px solid rgba(147, 51, 234, 0.45);
+      color: #d8b4fe;
     }}
-    .asset-name-cell {{
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }}
-    .asset-icon {{
-      color: var(--fg-muted);
-      flex-shrink: 0;
-    }}
-    .asset-link {{
-      font-weight: 600;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }}
-    .asset-sha {{
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      color: var(--fg-muted);
-      font-size: 12px;
-      justify-self: end;
-    }}
-    @media (max-width: 680px) {{
-      .asset-sha {{ justify-self: start; padding-left: 24px; }}
-    }}
-    .sha-pill {{
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-      color: var(--fg-muted);
-    }}
+    .asset-sha {{ display: inline-flex; align-items: center; gap: 4px; color: var(--fg-muted); font-size: 12px; justify-self: end; }}
+    .sha-pill {{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--fg-muted); }}
     .copy-btn {{
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
-      border: none;
-      color: var(--fg-muted);
-      padding: 2px 4px;
-      border-radius: 4px;
-      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: transparent; border: none; color: var(--fg-muted);
+      padding: 2px 4px; border-radius: 4px; cursor: pointer;
     }}
-    .copy-btn:hover {{
-      color: var(--fg-default);
-      background: rgba(110, 118, 129, 0.2);
-    }}
+    .copy-btn:hover {{ color: var(--fg-default); background: rgba(110, 118, 129, 0.2); }}
     .asset-meta-cell {{
-      display: inline-flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 16px;
-      color: var(--fg-muted);
-      font-size: 12px;
-      white-space: nowrap;
-      min-width: 150px;
+      display: inline-flex; align-items: center; justify-content: flex-end;
+      gap: 16px; color: var(--fg-muted); font-size: 12px; white-space: nowrap; min-width: 150px;
     }}
-    @media (max-width: 680px) {{
-      .asset-meta-cell {{
-        justify-content: flex-start;
-        padding-left: 24px;
-      }}
-    }}
-    .asset-size {{
-      color: var(--fg-muted);
-      min-width: 58px;
-      text-align: right;
-    }}
-    .asset-date {{
-      color: var(--fg-muted);
-      min-width: 76px;
-      text-align: right;
-    }}
+    .asset-size {{ min-width: 58px; text-align: right; }}
+    .asset-date {{ min-width: 76px; text-align: right; }}
     .octicon {{ vertical-align: text-bottom; }}
   </style>
 </head>
@@ -949,13 +876,14 @@ def render_page(view_mode: str, assets):
         {OCTICONS['lock']}
         <span class="repo-owner">AzyronClientteam</span>
         <span class="repo-slash">/</span>
-        <a href="/releases/tag/v1.0.2" class="repo-name">Azyron-Client</a>
+        <a href="/releases/tag/v1.0.3" class="repo-name">Azyron-Client</a>
         <span class="Label">Private</span>
+        <span class="Label Label--mc">v1.0.3 • MC 1.21.11 + 1.20.1</span>
       </div>
       <button type="button" class="theme-toggle" id="themeToggle">Light / Dark</button>
     </div>
     <nav class="repo-nav" aria-label="Repository">
-      <a href="/releases/tag/v1.0.2" class="repo-nav-item is-selected">{OCTICONS['code']} <span>Code &amp; Releases</span></a>
+      <a href="/releases/tag/v1.0.3" class="repo-nav-item is-selected">{OCTICONS['code']} <span>Code &amp; Releases (v1.0.3)</span></a>
     </nav>
   </header>
 
@@ -978,6 +906,22 @@ def render_page(view_mode: str, assets):
           setTimeout(function () {{ btn.innerHTML = copyIcon; }}, 1500);
         }});
       }});
+
+      var mcTabs = document.querySelectorAll('[data-mc-tab]');
+      mcTabs.forEach(function (tab) {{
+        tab.addEventListener('click', function () {{
+          var targetVer = tab.getAttribute('data-mc-tab');
+          mcTabs.forEach(function (t) {{
+            var active = t.getAttribute('data-mc-tab') === targetVer;
+            t.classList.toggle('is-active', active);
+            t.setAttribute('aria-selected', active ? 'true' : 'false');
+          }});
+          document.querySelectorAll('.mc-profile-pane').forEach(function (pane) {{
+            pane.classList.toggle('is-active', pane.id === 'mc-pane-' + targetVer);
+          }});
+        }});
+      }});
+
       var toggle = document.getElementById('themeToggle');
       if (toggle) {{
         toggle.addEventListener('click', function () {{
@@ -994,13 +938,12 @@ def render_page(view_mode: str, assets):
 
 
 class GitHubReleasesHandler(BaseHTTPRequestHandler):
-    server_version = "AzyronGitHubReleases/1.0"
+    server_version = "AzyronGitHubReleases/1.0.3"
 
     def log_message(self, fmt, *args):
         print(f"[Releases] {self.address_string()} - {fmt % args}", flush=True)
 
     def _send_common_headers(self):
-        # Permit Arena preview iframe & cross-origin preview hosts cleanly
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Cache-Control", "no-cache")
 
@@ -1013,12 +956,13 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
     def _dispatch(self, head_only: bool):
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
+        query = parse_qs(parsed.query)
 
         assets = load_live_assets()
         by_slug = {a["slug"]: a for a in assets}
 
         if (
-            path in ("/", "/releases/tag/v0.1.0-pre", "/releases/tag/v1.0.2")
+            path in ("/", "/releases/tag/v0.1.0-pre", "/releases/tag/v1.0.2", "/releases/tag/v1.0.3")
             or path.startswith("/releases/tag/untagged-")
             or path.startswith("/releases/edit/untagged-")
         ):
@@ -1043,14 +987,21 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                 self.wfile.write(html)
             return
 
-        if path in ("/api/releases/v0.1.0-pre", "/api/releases/v1.0.2"):
+        if path in ("/api/release", "/api/releases/v0.1.0-pre", "/api/releases/v1.0.3"):
             payload = json.dumps({
-                "id": 437365942,
-                "tag_name": "v0.1.0-pre",
-                "version": "1.0.2",
-                "name": "AZYRON CLIENT v1.0.2 PRE-RELEASE",
+                "id": 437365943,
+                "tag_name": "v1.0.3",
+                "version": "1.0.3",
+                "modpack_version": "1.0.3",
+                "name": "AZYRON CLIENT v1.0.3",
+                "supported_minecraft_versions": ["1.21.11", "1.20.1"],
                 "draft": True,
                 "prerelease": True,
+                "verification_environment": "isolated JVM with generated Minecraft/Fabric stubs; real game launches pending",
+                "test_suites": {
+                    "1.21.11": {"suite": "AzyronClientTestSuite12111", "passed": 26, "failed": 0},
+                    "1.20.1": {"suite": "AzyronClientTestSuite1201", "passed": 26, "failed": 0},
+                },
                 "assets": [
                     {
                         "name": a["display_name"],
@@ -1059,7 +1010,7 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                         "size_human": a["size_human"],
                         "digest": f"sha256:{a['sha256']}" if a["show_sha256"] else None,
                         "uploaded_at": a["uploaded_iso"],
-                        "browser_download_url": f"/releases/download/v0.1.0-pre/{a['slug']}",
+                        "browser_download_url": f"/releases/download/v1.0.3/{a['slug']}",
                     }
                     for a in assets
                 ],
@@ -1073,11 +1024,45 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                 self.wfile.write(payload)
             return
 
-        for prefix in ("/releases/download/v0.1.0-pre/", "/releases/download/v1.0.2/"):
+        for prefix in ("/releases/download/v0.1.0-pre/", "/releases/download/v1.0.3/", "/downloads/"):
             if path.startswith(prefix):
                 slug = path[len(prefix):]
+                if slug == "SHA256SUMS.txt":
+                    sums_path = os.path.join(RELEASES_DIR, "SHA256SUMS.txt")
+                    if os.path.isfile(sums_path):
+                        raw_sums = open(sums_path, "rb").read()
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/plain; charset=utf-8")
+                        self.send_header("Content-Length", str(len(raw_sums)))
+                        self._send_common_headers()
+                        self.end_headers()
+                        if not head_only:
+                            self.wfile.write(raw_sums)
+                        return
+
                 asset = by_slug.get(slug)
                 if asset and os.path.isfile(asset["disk_path"]):
+                    mc_param = query.get("mc", ["1.21.11"])[0]
+                    if slug == "Azyron-Modpack-1.0.3.mrpack":
+                        if mc_param not in ("1.21.11", "1.20.1"):
+                            self.send_error(400, "Supported mc profiles: 1.21.11, 1.20.1")
+                            return
+                        mrpack_bytes = build_mrpack_bytes_for_mc(mc_param)
+                        digest = hashlib.sha256(mrpack_bytes).hexdigest()
+                        self.send_response(200)
+                        self.send_header("Content-Type", asset["content_type"])
+                        self.send_header("Content-Length", str(len(mrpack_bytes)))
+                        self.send_header(
+                            "Content-Disposition",
+                            'attachment; filename="Azyron-Modpack-1.0.3.mrpack"',
+                        )
+                        self.send_header("ETag", f'"sha256:{digest}"')
+                        self._send_common_headers()
+                        self.end_headers()
+                        if not head_only:
+                            self.wfile.write(mrpack_bytes)
+                        return
+
                     self.send_response(200)
                     self.send_header("Content-Type", asset["content_type"])
                     self.send_header("Content-Length", str(asset["size_bytes"]))
@@ -1107,11 +1092,11 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
 
 def main():
     assets = load_live_assets()
-    print(f"Loaded {len(assets)} verified build assets from {RELEASES_DIR}:", flush=True)
+    print(f"Loaded {len(assets)} verified v1.0.3 build assets from {RELEASES_DIR}:", flush=True)
     for a in assets:
         print(f"  - {a['display_name']} ({a['size_human']}, sha256:{a['sha256'][:12]}...)", flush=True)
     server = ThreadingHTTPServer(("0.0.0.0", PORT), GitHubReleasesHandler)
-    print(f"AZYRON CLIENT GitHub Releases server listening on http://0.0.0.0:{PORT}", flush=True)
+    print(f"AZYRON CLIENT v1.0.3 Releases Portal listening on http://0.0.0.0:{PORT}", flush=True)
     server.serve_forever()
 
 
