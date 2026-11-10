@@ -49,7 +49,7 @@ Default loader pins remain 0.14.22 (1.20.1) and 0.20.1 (1.21.11). Consequently M
 
 ModernFix's GitHub release metadata reports SHA-256 `5c1f852046e62a17056bb6b571164e61644076c5eb9029c92b31e337cc62c0d9`. The sandbox download followed a release-asset redirect and failed with EOF; **no successful local byte verification occurred**. The optional installer compares actual downloaded bytes against that digest at install time. It is an untested candidate, not a certified default.
 
-Modrinth API metadata retrieval did not return usable JSON here. That is a verification limitation, **not** proof that no suitable releases exist. The restricted build environment also cannot perform the normal full Fabric/Loom dependency download. No unsupported loader substitutions, fake hashes, speculative mod additions, or claim of a conflict-free launch was made.
+Modrinth API metadata retrieval did not return usable JSON here. That is a verification limitation, **not** proof that no suitable releases exist. The restricted local build environment cannot perform the normal full Fabric/Loom dependency download; subsequent real-build CI on GitHub Actions did resolve the dependencies. No unsupported loader substitutions, fake hashes, speculative mod additions, or claim of a conflict-free launch was made.
 
 ### Source-audited config corrections
 
@@ -79,7 +79,8 @@ Sources inspected using GitHub API (source inspection is not binary/runtime vali
 | Python packaging/portal/installer regression | 7 tests PASS, combined | 7 tests PASS, combined | Both active profiles, portal conversion, guards, corrupt-download atomicity |
 | Python syntax / shell syntax / `git diff --check` | PASS | PASS | Static checks only |
 | Local pack ZIP/embedded bytes/active config comparisons | PASS | PASS | Packaging integrity, not imported-game compatibility |
-| Full Fabric/Loom build and actual game launch | NOT RUN | NOT RUN | Generated helper is not a substitute |
+| Real Fabric/Loom `remapJar` CI build | FAILED: missing symbols | PASS | Actual Minecraft/Fabric dependencies, not generated stubs |
+| Actual Minecraft game launch | NOT RUN | NOT RUN | Successful compilation is not a game-launch test |
 | Real 3GB SP / multiplayer / chunk generation | NOT RUN | NOT RUN | Hardware unavailable |
 | Real 3GB 60-minute session, FPS/1% lows/RAM/GC/thermal/crash log | NOT RUN | NOT RUN | No invented measurements |
 
@@ -119,3 +120,11 @@ For **each version independently**, use a genuine Fabric build, the intended Jav
 6. Use results to select final caps/worker counts. Until then, 60+ FPS is a **target, not achieved acceptance**.
 
 **Owner approval to update the existing release was subsequently received.** Never upload the generated-stub test artifacts. Real Fabric build failures must block replacement of the public client/modpack downloads; disclose real-game and hardware-validation limits even if builds pass.
+
+## Approved release-update attempt
+
+The owner explicitly requested updating the existing public `v1.0.3` release. Source/configuration/validation changes were pushed only to `arena/a6dbb848-azyron-client`; no release binaries or source archives were committed. The build uses Loom 1.14-SNAPSHOT with Gradle 9.2.1 and a Java 21 compiler; Java 17 bytecode remains the configured output target.
+
+Real CI validation: [run 42772512030](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42772512030). The 1.21.11 `remapJar` job passed; compiling the same source against 1.20.1 failed with missing-symbol errors. The generated-stub test success therefore does **not** establish a successful independent 1.20.1 build. This is an API compatibility/compile blocker, not a measured runtime crash or evidence of missing optimization mods.
+
+The [existing release](https://github.com/AzyronClientteam/Azyron-Client/releases/tag/v1.0.3) title/notes were updated to disclose the blocker and distinguish the published older downloads from the new source. The API response was re-read to verify the update and unchanged existing asset IDs, sizes and recorded digests. **No refreshed binaries were uploaded.** Neither the version tag nor the target branch was moved to imply a tested dual-version release. A fresh anonymous download/checksum verification of new artifacts is not applicable because none were published.
