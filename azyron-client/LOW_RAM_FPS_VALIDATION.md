@@ -1,9 +1,9 @@
 # Azyron v1.0.3 — unpublished low-RAM optimization pass
 
-**Products:** Azyron Client v1.0.3 / Azyron Modpack v1.0.3  
-**Developer:** JIGNESH GAMING  
-**Targets:** Minecraft **1.20.1 Fabric** and **1.21.11 Fabric**, separately.  
-**Status:** local implementation and deterministic checks completed; real-game compatibility and hardware acceptance **NOT COMPLETE**. Nothing in this pass has been pushed, uploaded, or published. Existing public v1.0.3 assets are unchanged and do not contain these changes.
+**Products:** Azyron Client v1.0.3 / Azyron Modpack v1.0.3
+**Developer:** JIGNESH GAMING
+**Targets:** Minecraft **1.20.1 Fabric** and **1.21.11 Fabric**, separately.
+**Status:** local implementation and deterministic checks completed; real-game compatibility and hardware acceptance **NOT COMPLETE**. The owner subsequently approved updating the existing v1.0.3 release. Source/config changes were pushed on the Arena branch for real Fabric CI validation; the generated-stub binaries were not uploaded. Existing public assets remain unchanged until genuine builds pass validation.
 
 ## What changed
 
@@ -118,4 +118,4 @@ For **each version independently**, use a genuine Fabric build, the intended Jav
 5. A/B optional mods one at a time, never ModernFix/EBE/ImmediatelyFast simultaneously as the first test. Validate block/entity visibility, animations, chests/signs, save/reload, combat and visual correctness. Do not assume an absent optimization mod caused a crash.
 6. Use results to select final caps/worker counts. Until then, 60+ FPS is a **target, not achieved acceptance**.
 
-**Do not push source, upload refreshed binaries, dispatch a release workflow, edit the public release, or publish until the user approves.** Real-game validation and unresolved dependency/renderer issues must be disclosed with any approval request.
+**Owner approval to update the existing release was subsequently received.** Never upload the generated-stub test artifacts. Real Fabric build failures must block replacement of the public client/modpack downloads; disclose real-game and hardware-validation limits even if builds pass.
