@@ -149,3 +149,44 @@ jobs:
       - name: Verify downloaded artifact bytes and hashes
         working-directory: verified-download
         run: sha256sum --check SHA256SUMS.txt
+
+  attach-verified-candidates-to-existing-draft:
+    name: Attach verified native candidates to the existing draft (never publish)
+    needs: [fabric-build, prepare-candidates]
+    # One-time owner-requested update: only the next fast-forward push from the
+    # already-reviewed docs commit may attach assets. Ordinary CI and dispatches
+    # cannot publish or mutate the release. The release script also requires the
+    # exact release ID/tag and asserts draft=true before and after every change.
+    if: >-
+      github.repository == 'AzyronClientteam/Azyron-Client' &&
+      github.ref == 'refs/heads/arena/a6dbb848-azyron-client' &&
+      github.event_name == 'push' &&
+      github.event.before == '451fd8403e28fa274dcaff1a0e0fd679e69646b4' &&
+      github.event.head_commit.message == 'Attach verified native assets to existing v1.0.3 draft'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: Azyron-v1.0.3-native-candidates-NOT-PUBLISHED
+          path: candidates
+      - name: Verify exact native candidate bundle before release update
+        working-directory: candidates
+        run: sha256sum --check --strict SHA256SUMS.txt
+      - name: Attach verified files and update the existing draft only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 azyron-client/scripts/update-draft-release.py
+          --candidates candidates
+          --repo "$GITHUB_REPOSITORY"
+          --release-id 437365942
+          --tag v1.0.3
+          --run-id "$GITHUB_RUN_ID"
+          --commit "$GITHUB_SHA"
