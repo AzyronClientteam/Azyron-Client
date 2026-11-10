@@ -30,6 +30,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: python
         run: |
+          import sys
+          import traceback
+
+          def report_failure(kind, value, tb):
+              message = f"{kind.__name__}: {value}"
+              message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::error title=Exact upload failure::{message}", flush=True)
+              traceback.print_exception(kind, value, tb)
+
+          sys.excepthook = report_failure
+
           import base64
           import hashlib
           import io
