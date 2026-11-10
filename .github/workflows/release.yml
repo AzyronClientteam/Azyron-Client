@@ -1,6 +1,9 @@
 name: Build and attach PojavLauncher APK
 
 on:
+  push:
+    branches: ["arena/a6dbb848-azyron-client"]
+    paths: [".github/workflows/release.yml"]
   workflow_dispatch:
     inputs:
       apk_variant:
@@ -41,7 +44,7 @@ jobs:
           java-version: '21'
       - name: Guard existing public release and signing requirements
         env:
-          APK_VARIANT: ${{ inputs.apk_variant }}
+          APK_VARIANT: ${{ inputs.apk_variant || 'debug-noruntime' }}
         run: |
           set -euo pipefail
           gh api repos/AzyronClientteam/Azyron-Client/releases/437365942 > /tmp/release.json
@@ -80,7 +83,7 @@ jobs:
           gradle-version: '8.14.3'
       - name: Build actual APK
         env:
-          APK_VARIANT: ${{ inputs.apk_variant }}
+          APK_VARIANT: ${{ inputs.apk_variant || 'debug-noruntime' }}
         run: |
           set -euo pipefail
           mkdir -p out
