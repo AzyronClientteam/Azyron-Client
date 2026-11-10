@@ -116,7 +116,7 @@ The Gradle configuration selects the correct Yarn/Loader/Fabric API for the chos
 
 The CI preparation job depends on the entire matrix succeeding. It downloads the genuine per-version build outputs, validates metadata/class versions/mixin presence and retained HUD/menu classes, builds matching MRPacks, writes SHA-256/provenance, then downloads the candidate artifact again and checks all four file hashes. It does not call the GitHub Releases upload/publish API and has no contents-write permission.
 
-## Final standard-build acceptance and prepared candidates
+## Initial standard-build acceptance and first prepared candidates
 
 **Final run: [42776467477](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42776467477) — SUCCESS.** Candidate source commit: `97c231ea61b03d4543f101e8effa53a2994c2a99`.
 
@@ -136,4 +136,17 @@ The class-count difference is from native adapter/mixin selection, not removal o
 | `Azyron-Client-1.0.3-mc1.21.11.jar` | 234391 | `00a5743ff994e86b7b2497264fcf06a6bfb33ca9ed4534add50599f876786f40` |
 | `Azyron-Modpack-1.0.3-mc1.21.11.mrpack` | 228786 | `c035b8527361a787fa5d9178f0afa4887be2a05807c542582a85ca39ec5622f1` |
 
-No candidate was attached to the release. Existing older assets were left in place without replacement and must not be mistaken for the candidates. The release remains **draft**, with publication awaiting the owner's approval. The final report/docs commits after the candidate source commit do not alter the validated code or candidate bytes.
+## Subsequent owner-requested draft release update
+
+After the user explicitly requested an update to the existing release page, CI reran the standard native builds and packaging checks in [run 42785077400](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42785077400) from source commit `f3a566fa65a063334537cf7d2b414164b1b10d24`. Minecraft 1.20.1 and 1.21.11 both built successfully again; the 105/110 actual-classpath checks and eight packaging tests passed. The separate upload job downloaded that run's generated bundle inside GitHub Actions, rechecked its hashes and target metadata, and verified GitHub's asset digests before replacing the previous files.
+
+The existing release **437365942** now has four version-specific native files plus `SHA256SUMS.txt` and `BUILD-PROVENANCE.json` attached. The two old generic-name stub assets (IDs `729999833` and `729999953`) were removed after the replacements passed verification. The release remains **draft=true**; it was not published, and the existing Git tag reference was not moved. GitHub currently returns this draft URL: [open draft release](https://github.com/AzyronClientteam/Azyron-Client/releases/tag/untagged-cb657c3dd524580623db). Draft releases may not resolve through the public `/releases/tag/v1.0.3` route until published; the release record remains associated with tag `v1.0.3`.
+
+| Asset attached to the draft | Bytes | SHA-256 |
+|---|---:|---|
+| `Azyron-Client-1.0.3-mc1.20.1.jar` | 231812 | `5390cb332c85cd6521bf2440467e1b946ef744b71356a5936171e12157d6c7a7` |
+| `Azyron-Modpack-1.0.3-mc1.20.1.mrpack` | 226057 | `b4ff111aeb32893ab999aad8de9ee7882dfff829418754d3369e0a593d7720a2` |
+| `Azyron-Client-1.0.3-mc1.21.11.jar` | 234391 | `00a5743ff994e86b7b2497264fcf06a6bfb33ca9ed4534add50599f876786f40` |
+| `Azyron-Modpack-1.0.3-mc1.21.11.mrpack` | 228786 | `2b5fe608aff5903c1c7243184b6b465f6ecd6c3e5dbfcbb959303d2990e277be` |
+
+The earlier Actions candidate bundle remains an archived validation artifact; use the attached release assets and their current checksums above as the draft's authoritative files. No physical game/Mixin-transformation test or device FPS benchmark was added by the release update. No 60+ FPS claim is made.
