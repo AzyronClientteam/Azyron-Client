@@ -66,6 +66,18 @@ jobs:
           PY
           fi
           exit "$result"
+      - name: Expose failure context separately from compiler matchers
+        if: failure()
+        working-directory: azyron-client
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('build/validation/fabric-build.log')
+          if p.exists():
+              lines = p.read_text(errors='replace').splitlines()
+              text = '\n'.join(lines[:160])
+              safe = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print('::error title=Fabric compiler context::' + safe)
       - name: Keep diagnostic logs and genuine build outputs only
         if: always()
         uses: actions/upload-artifact@v6
