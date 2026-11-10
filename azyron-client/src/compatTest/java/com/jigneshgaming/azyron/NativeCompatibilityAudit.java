@@ -83,6 +83,18 @@ public final class NativeCompatibilityAudit {
                 List<MethodNode> found = new ArrayList<>();
                 for (Object selector : list) found.addAll(methods(target, selector.toString()));
                 check(!found.isEmpty(), name + "." + method.name + " missing injection target " + list);
+                if (a.desc.endsWith("/Inject;")) {
+                    Type[] handler = Type.getArgumentTypes(method.desc);
+                    boolean compatible = false;
+                    for (MethodNode candidate : found) {
+                        Type[] expected = Type.getArgumentTypes(candidate.desc);
+                        boolean captures = handler.length == expected.length + 1;
+                        if (captures) for (int i = 0; i < expected.length; i++) captures &= expected[i].equals(handler[i]);
+                        compatible |= handler.length == 1 || captures;
+                    }
+                    check(compatible, name + "." + method.name + " incompatible callback arguments " + method.desc
+                            + " versus " + found.stream().map(m -> m.name + m.desc).toList());
+                }
                 if (a.desc.endsWith("/Redirect;")) {
                     Object atValue = value(a, "at");
                     List<?> ats = atValue instanceof List<?> atList ? atList : List.of(atValue);

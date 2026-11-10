@@ -4,8 +4,8 @@ AZYRON CLIENT — Reproducible Modrinth (.mrpack) Builder for v1.0.3
 Supports selectable Minecraft target profiles:
   - Minecraft 1.21.11 (Fabric 0.20.1) [default]
   - Minecraft 1.20.1  (Fabric 0.14.22+) [--mc 1.20.1]
-Embeds the single unified overrides/mods/Azyron-Client-1.0.3.jar plus both pinned Modrinth
-profile manifests under profiles/modrinth.index.{1.21.11,1.20.1}.json.
+Embeds a native, version-specific client JAR and only the matching profile.
+A manifest edit cannot convert a native JAR to a different Minecraft version.
 """
 
 import argparse
@@ -59,20 +59,19 @@ def build_mrpack(jar_path: str, out_path: str, mc_version: str = "1.21.11") -> N
         if not os.path.isfile(os.path.join(directory, "options.txt")):
             raise FileNotFoundError(f"Missing low-RAM profile: {version}")
 
-    # Verify bundled unified client JAR has expanded version 1.0.3 and declares both 1.20.1 & 1.21.11
+    # Require the native target: never pair a 1.21.11 JAR with a 1.20.1 manifest.
     with zipfile.ZipFile(jar_path, "r") as jf:
         fmj = json.loads(jf.read("fabric.mod.json").decode("utf-8"))
         if "${" in json.dumps(fmj) or fmj.get("version") != "1.0.3":
             raise ValueError(f"Invalid fabric.mod.json version inside {jar_path}: {fmj.get('version')}")
         mc_dep = fmj.get("depends", {}).get("minecraft")
-        if mc_dep != ["1.20.1", "1.21.11"]:
-            raise ValueError(f"Unified client JAR must declare ['1.20.1', '1.21.11'] support, got {mc_dep}")
+        if mc_dep != [mc_version]:
+            raise ValueError(f"Native client JAR must declare only [{mc_version!r}], got {mc_dep}")
 
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     with zipfile.ZipFile(out_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
         zf.write(active_index, "modrinth.index.json")
-        zf.write(index_121, "profiles/modrinth.index.1.21.11.json")
-        zf.write(index_120, "profiles/modrinth.index.1.20.1.json")
+        zf.write(active_index, f"profiles/modrinth.index.{mc_version}.json")
         zf.write(jar_path, "overrides/mods/Azyron-Client-1.0.3.jar")
         zf.write(icon_path, "icon.png")
         # Only the client config is shared. Companion schemas must not leak from
@@ -87,6 +86,8 @@ def build_mrpack(jar_path: str, out_path: str, mc_version: str = "1.21.11") -> N
                     continue
                 zf.write(full_p, rel_p)
         for version, directory in profile_dirs.items():
+            if version != mc_version:
+                continue
             for root, _, files in sorted(os.walk(directory)):
                 for fname in sorted(files):
                     full_p = os.path.join(root, fname)

@@ -37,6 +37,10 @@ class LowRamPackaging(unittest.TestCase):
 
     def build(self, mc):
         path = self.directory / f"pack-{mc}.mrpack"
+        with zipfile.ZipFile(self.jar, "w") as z:
+            z.writestr("fabric.mod.json", json.dumps({
+                "version": "1.0.3", "depends": {"minecraft": [mc]}
+            }))
         builder.build_mrpack(str(self.jar), str(path), mc)
         return path
 
@@ -89,15 +93,28 @@ class LowRamPackaging(unittest.TestCase):
     def test_12111(self):
         self.assert_profile(self.build("1.21.11"), "1.21.11")
 
-    def test_portal_switches_configs_not_just_manifest(self):
-        source = self.build("1.21.11")
-        target = self.directory / "Azyron-Modpack-1.0.3.mrpack"
-        target.write_bytes(source.read_bytes())
+    def test_portal_selects_native_artifact(self):
+        for mc in ("1.20.1", "1.21.11"):
+            source = self.build(mc)
+            (self.directory / f"Azyron-Modpack-1.0.3-mc{mc}.mrpack").write_bytes(source.read_bytes())
         old = portal.RELEASES_DIR
         try:
             portal.RELEASES_DIR = str(self.directory)
-            converted = portal.build_mrpack_bytes_for_mc("1.20.1")
-            self.assert_profile(io.BytesIO(converted), "1.20.1")
+            for mc in ("1.20.1", "1.21.11"):
+                self.assert_profile(io.BytesIO(portal.build_mrpack_bytes_for_mc(mc)), mc)
+        finally:
+            portal.RELEASES_DIR = old
+
+    def test_native_jar_cannot_be_relabelled(self):
+        source = self.build("1.21.11")
+        (self.directory / "Azyron-Modpack-1.0.3.mrpack").write_bytes(source.read_bytes())
+        with self.assertRaisesRegex(ValueError, "Native client JAR"):
+            builder.build_mrpack(str(self.jar), str(self.directory / "wrong.mrpack"), "1.20.1")
+        old = portal.RELEASES_DIR
+        try:
+            portal.RELEASES_DIR = str(self.directory)
+            with self.assertRaisesRegex(ValueError, "unsafe"):
+                portal.build_mrpack_bytes_for_mc("1.20.1")
         finally:
             portal.RELEASES_DIR = old
 

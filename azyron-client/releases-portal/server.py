@@ -101,9 +101,14 @@ def build_mrpack_bytes_for_mc(mc_version: str) -> bytes:
     """Builds or returns Azyron-Modpack-1.0.3.mrpack with root modrinth.index.json targeting mc_version."""
     if mc_version not in ("1.21.11", "1.20.1"):
         raise ValueError("Unsupported Minecraft profile")
-    default_mrpack = os.path.join(RELEASES_DIR, "Azyron-Modpack-1.0.3.mrpack")
+    native_pack = os.path.join(RELEASES_DIR, f"Azyron-Modpack-1.0.3-mc{mc_version}.mrpack")
+    default_mrpack = native_pack if os.path.isfile(native_pack) else os.path.join(RELEASES_DIR, "Azyron-Modpack-1.0.3.mrpack")
     buf = io.BytesIO()
     with zipfile.ZipFile(default_mrpack, "r") as src_zf:
+        with zipfile.ZipFile(io.BytesIO(src_zf.read("overrides/mods/Azyron-Client-1.0.3.jar"))) as client_jar:
+            supported = json.loads(client_jar.read("fabric.mod.json"))["depends"]["minecraft"]
+            if mc_version not in supported:
+                raise ValueError("Requested native Minecraft build is not available; manifest conversion is unsafe")
         profile = src_zf.read(f"profiles/modrinth.index.{mc_version}.json")
         if src_zf.read("modrinth.index.json") == profile:
             with open(default_mrpack, "rb") as fh:
@@ -1047,7 +1052,11 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                         if mc_param not in ("1.21.11", "1.20.1"):
                             self.send_error(400, "Supported mc profiles: 1.21.11, 1.20.1")
                             return
-                        mrpack_bytes = build_mrpack_bytes_for_mc(mc_param)
+                        try:
+                            mrpack_bytes = build_mrpack_bytes_for_mc(mc_param)
+                        except (ValueError, KeyError, FileNotFoundError):
+                            self.send_error(409, "Matching native Minecraft build is not available")
+                            return
                         digest = hashlib.sha256(mrpack_bytes).hexdigest()
                         self.send_response(200)
                         self.send_header("Content-Type", asset["content_type"])
