@@ -1,18 +1,16 @@
-# Upload-only, owner-approved workflow. Never creates/publishes releases or moves tags.
+# Upload/verify assets on the owner-approved existing PUBLIC versioned release.
+# Release metadata/tag changes are made explicitly, not implicitly by this workflow.
 # Artifacts are compiled locally against stubs; actual game-launch compatibility is unverified.
-name: Upload AZYRON assets to existing draft
+name: Verify public AZYRON release assets
 
 on:
-  push:
-    branches: ["arena/a6dbb848-azyron-client"]
-    paths: [".github/workflows/upload-azyron-draft-assets.yml"]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: azyron-existing-draft-437365942
+  group: azyron-existing-release-437365942
   cancel-in-progress: false
 
 jobs:
@@ -25,7 +23,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - name: Restore actual files, upload to guarded draft, and download-verify SHA-256
+      - name: Restore files, guard versioned public release, and verify anonymous downloads
         env:
           GH_TOKEN: ${{ github.token }}
         shell: python
@@ -57,7 +55,7 @@ jobs:
           from urllib.error import HTTPError
 
           REPO = "AzyronClientteam/Azyron-Client"
-          TAG = "v0.1.0-pre"
+          TAG = "v1.0.3"
           RELEASE_ID = 437365942
           EXPECTED = {'Azyron-Client-1.0.3.jar': {'sha256': 'ffcf394824b934c3ac44dce736e698c2688f27c66654a0c1fc8c66af855548da', 'size': 209374}, 'Azyron-Modpack-1.0.3.mrpack': {'sha256': '7621755721089e2f0940004e592aa4205a40078ad2ccfd9f9c5c19fe1b8606ee', 'size': 208140}}
 
@@ -69,8 +67,8 @@ jobs:
 
           def release():
               data = json.loads(gh("api", f"repos/{REPO}/releases/{RELEASE_ID}"))
-              if data["id"] != RELEASE_ID or data["tag_name"] != TAG or data["draft"] is not True:
-                  raise RuntimeError("Release ID/tag/draft guard failed. No release mutation permitted.")
+              if data["id"] != RELEASE_ID or data["tag_name"] != TAG or data["draft"] is not False:
+                  raise RuntimeError("Release ID/tag/public guard failed. No upload permitted.")
               data["assets"] = json.loads(gh("api", f"repos/{REPO}/releases/{RELEASE_ID}/assets?per_page=100"))
               return data
 
@@ -165,16 +163,29 @@ jobs:
                               raise
                           time.sleep(attempt * 2)
           final = release()
+          page_url = f"https://github.com/{REPO}/releases/tag/{TAG}"
+          with urlopen(Request(page_url, headers={"User-Agent": "AZYRON-release-verifier"}), timeout=60) as response:
+              if response.status != 200:
+                  raise RuntimeError(f"Public release page HTTP {response.status}")
+          for asset in verified:
+              expected_url = f"https://github.com/{REPO}/releases/download/{TAG}/{asset['name']}"
+              if asset["browser_download_url"] != expected_url:
+                  raise RuntimeError("Noncanonical asset download URL")
+              # NO Authorization header: test the exact public link that users receive.
+              with urlopen(Request(expected_url, headers={"User-Agent": "AZYRON-release-verifier"}), timeout=120) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"Anonymous asset HTTP {response.status}")
+                  check_bytes(asset["name"], response.read())
           assert len(verified) == 2
           for asset in verified:
               assert any(a["id"] == asset["id"] and a["state"] == "uploaded" for a in final["assets"])
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-              summary.write("## Both existing draft assets verified\n\n")
-              summary.write("Release remains draft; these links require authorized GitHub access. No publication occurred.\n\n")
+              summary.write("## Both public release assets verified\n\n")
+              summary.write("Versioned release and both direct asset links were fetched anonymously and SHA-256 verified.\n\n")
               summary.write("This is an upload-only workflow, not real Minecraft/Fabric gameplay validation.\n\n")
               for asset in verified:
                   summary.write(f"- [{asset['name']}]({asset['browser_download_url']}) — `{EXPECTED[asset['name']]['sha256']}`\n")
-          print("SUCCESS: both assets downloaded and verified. Release remains draft.")
+          print("SUCCESS: canonical public page and both anonymous downloads verified.")
 
 # AZYRON_PAYLOAD_BEGIN
 # UEsDBBQAAAAIADtjaV0jcxMalgYAANQSAAATAAAAbW9kcmludGguaW5kZXguanNvbs2Y23IbOQ6G7/0UXa6ard3KWiZIAiTnTvHGiWd9iq1JZbK7FzyAVieW5OgQjzOVdx+0rNhORWvHc+WSSoduNgDy/xoA+4+Nptmsk+kozt/wdNZOxps/N/DP7uhZHLH82Ry1Y87TWOeby8Ofroftle4c9FTPXB8fr4b33/12cnTY7OzvvTgcNHcGzBajUZxefT/mvwutwDTHL052j04O+oc7L3rN6cHR0eDV4YvTU/k9+G1fDv06bmvLpXnVng23do9Pm92Ypm1uds5bHs8bmURz8DVU8auhB9D8rfuletCkq+aXvZdi8FXzsn+wd/iy+fvxjpzuj8t00pbt48n7+Gk/LsZ5yNNG1mLp7B+969hre84zifw/8qdp/lh+yuGLOB8ul2hSZtt1Gc5WvGi3xKGFHj1bRdF7H6dLO8uLhnE2XBr7aqZbm2GEzlAO3pLLKcVqCwRnnNNELmBkBVgtGFUIE91Yu74WQXdXe9TFkNfZVoOmFpWjJ7QUq0fnEQz7lCtpL2ZrDMWGjEgpo3wrbTOFmJBy0DVTqSkCVJYo2BqgaCqSIXasXC2mBKpOWZPQQOSKIZFxm6ugvtzMlcefvp1oXorVBTvlj4t2yuWbqfBU8OrOLsazxcXFZDqXAd9ZLZPL8fkklltFrhd2Pr+Y/by9ncu4J4pM2/F82MuT0XaJ87h97MqJH52+2l4BPNumj/3FYL5/ska5n/Tzu9qtfPzvJoKOh9P2cwe8tpqUCRt3QlzPx2xS2sVoa+VM9by4ejbKj2bERu+MqYzWAnlFvoAWNW3SMSnDlFV2qQZYz4iy2Zoa2KOxybuIQouutSAkxcbaYrkGXXLIWWiKxhQwsVIEn6qzSaHxqmilXQVWJQWvKfiiYq3aiWn5gAysIRkwSeXikIsYUAqrwF3Ck2ak3z+cpHSwd8vI9EMZ5N8n
