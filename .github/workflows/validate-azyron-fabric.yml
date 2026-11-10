@@ -153,16 +153,16 @@ jobs:
   attach-verified-candidates-to-existing-draft:
     name: Attach verified native candidates to the existing draft (never publish)
     needs: [fabric-build, prepare-candidates]
-    # One-time owner-requested update: only the next fast-forward push from the
-    # already-reviewed docs commit may attach assets. Ordinary CI and dispatches
-    # cannot publish or mutate the release. The release script also requires the
-    # exact release ID/tag and asserts draft=true before and after every change.
+    # One-time owner-requested update: only the next fast-forward push from
+    # this exact branch head and a unique commit-subject prefix may attach assets.
+    # Ordinary CI and dispatches cannot mutate the release. The release script
+    # also requires the exact release ID/tag and asserts draft=true throughout.
     if: >-
       github.repository == 'AzyronClientteam/Azyron-Client' &&
       github.ref == 'refs/heads/arena/a6dbb848-azyron-client' &&
       github.event_name == 'push' &&
-      github.event.before == '451fd8403e28fa274dcaff1a0e0fd679e69646b4' &&
-      github.event.head_commit.message == 'Attach verified native assets to existing v1.0.3 draft'
+      github.event.before == 'fb67d9f320cd82e74c10b80ecb59f5a6c42e8272' &&
+      startsWith(github.event.head_commit.message, 'Run owner-approved v1.0.3 draft asset attachment')
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     permissions:
