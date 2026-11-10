@@ -103,3 +103,18 @@ jar {
 tasks.named('remapJar') {
     archiveFileName = "Azyron-Client-${project.version}-mc${mcTarget}.jar"
 }
+
+// Separate from historical generated-stub tests: reads the actual named game
+// bytecode supplied by Loom and checks all active injection/shadow targets.
+sourceSets {
+    compatTest {
+        compileClasspath += sourceSets.main.output + configurations.compileClasspath
+        runtimeClasspath += sourceSets.main.output + configurations.runtimeClasspath
+    }
+}
+tasks.register('verifyNativeCompatibility', JavaExec) {
+    dependsOn tasks.named('classes'), tasks.named('compatTestClasses')
+    classpath = sourceSets.compatTest.runtimeClasspath
+    mainClass = 'com.jigneshgaming.azyron.NativeCompatibilityAudit'
+    args mcTarget
+}

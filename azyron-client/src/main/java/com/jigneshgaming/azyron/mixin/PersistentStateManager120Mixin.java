@@ -24,24 +24,23 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(PersistentStateManager.class)
 public abstract class PersistentStateManager120Mixin {
-    @Shadow(remap = false)
+    @Shadow
     @Final
-    private File field_17664;
+    private File directory;
 
     @Unique
     private Path azyron$resolveFile120(String id) {
-        if (this.field_17664 == null || id == null || id.isEmpty()) {
+        if (this.directory == null || id == null || id.isEmpty()) {
             return null;
         }
-        return new File(this.field_17664, id + ".dat").toPath();
+        return new File(this.directory, id + ".dat").toPath();
     }
 
     @Inject(
-            method = "method_120(Ljava/util/function/Function;Ljava/lang/String;)Lnet/minecraft/class_18;",
+            method = "readFromFile",
             at = @At("HEAD"),
             cancellable = true,
-            remap = false,
-            require = 0
+            require = 1
     )
     private <T extends PersistentState> void azyron$guardZeroBytePersistentState120(
             Function<NbtCompound, T> readFunction,
@@ -63,11 +62,10 @@ public abstract class PersistentStateManager120Mixin {
     }
 
     @Inject(
-            method = "method_17923(Ljava/lang/String;I)Lnet/minecraft/class_2487;",
+            method = "readNbt",
             at = @At("RETURN"),
             cancellable = true,
-            remap = false,
-            require = 0
+            require = 1
     )
     private void azyron$repairRaidsCompound120(
             String id,
@@ -88,10 +86,9 @@ public abstract class PersistentStateManager120Mixin {
     }
 
     @Inject(
-            method = "method_120(Ljava/util/function/Function;Ljava/lang/String;)Lnet/minecraft/class_18;",
+            method = "readFromFile",
             at = @At("RETURN"),
-            remap = false,
-            require = 0
+            require = 1
     )
     private <T extends PersistentState> void azyron$backupOnFailure120(
             Function<NbtCompound, T> readFunction,

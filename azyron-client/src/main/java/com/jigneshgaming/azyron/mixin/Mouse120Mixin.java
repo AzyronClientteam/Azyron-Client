@@ -17,8 +17,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Minecraft 1.20.1 Mouse input hook for AZYRON CLIENT CPS tracking and scroll-to-zoom.
  * Targets 1.20.1 Intermediary descriptors:
- *  - onMouseButton: method_1601(JIII)V
- *  - onMouseScroll: method_1598(JDD)V
+ *  - onMouseButton: onMouseButton
+ *  - onMouseScroll: onMouseScroll
  */
 @Mixin(Mouse.class)
 public abstract class Mouse120Mixin {
@@ -27,10 +27,9 @@ public abstract class Mouse120Mixin {
     private MinecraftClient client;
 
     @Inject(
-            method = "method_1601(JIII)V",
+            method = "onMouseButton",
             at = @At("HEAD"),
-            remap = false,
-            require = 0
+            require = 1
     )
     private void azyron$trackCpsClicks120(long window, int button, int action, int mods, CallbackInfo ci) {
         try {
@@ -48,11 +47,10 @@ public abstract class Mouse120Mixin {
     }
 
     @Inject(
-            method = "method_1598(JDD)V",
+            method = "onMouseScroll",
             at = @At("HEAD"),
             cancellable = true,
-            remap = false,
-            require = 0
+            require = 1
     )
     private void azyron$handleScrollZoom120(long window, double horizontal, double vertical, CallbackInfo ci) {
         try {

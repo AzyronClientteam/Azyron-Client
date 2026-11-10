@@ -17,13 +17,12 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(PersistentState.class)
 public abstract class PersistentState120Mixin {
     @Redirect(
-            method = "method_17919(Ljava/io/File;)V",
+            method = "save",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/class_2507;method_10630(Lnet/minecraft/class_2487;Ljava/io/File;)V"
+                    target = "Lnet/minecraft/nbt/NbtIo;writeCompressed(Lnet/minecraft/nbt/NbtCompound;Ljava/io/File;)V"
             ),
-            remap = false,
-            require = 0
+            require = 1
     )
     private void azyron$atomicSave120(NbtCompound nbt, File targetFile) throws IOException {
         if (targetFile != null && nbt != null) {

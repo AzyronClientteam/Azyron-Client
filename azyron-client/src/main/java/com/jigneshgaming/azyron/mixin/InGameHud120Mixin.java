@@ -20,9 +20,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Armour Hub (ArmorHudModule), Custom Crosshair, and Potion HUD suppression.
  *
  * Targets 1.20.1 Intermediary descriptors:
- *  - renderCrosshair:           method_1736(Lnet/minecraft/class_332;)V
- *  - renderStatusEffectOverlay: method_1765(Lnet/minecraft/class_332;)V
- *  - render:                    method_1753(Lnet/minecraft/class_332;F)V
+ *  - renderCrosshair:           renderCrosshair
+ *  - renderStatusEffectOverlay: renderStatusEffectOverlay
+ *  - render:                    render
  */
 @Mixin(InGameHud.class)
 public abstract class InGameHud120Mixin {
@@ -31,11 +31,10 @@ public abstract class InGameHud120Mixin {
     private MinecraftClient client;
 
     @Inject(
-            method = "method_1736(Lnet/minecraft/class_332;)V",
+            method = "renderCrosshair",
             at = @At("HEAD"),
             cancellable = true,
-            remap = false,
-            require = 0
+            require = 1
     )
     private void azyron$renderCustomCrosshair120(DrawContext context, CallbackInfo ci) {
         try {
@@ -59,11 +58,10 @@ public abstract class InGameHud120Mixin {
     }
 
     @Inject(
-            method = "method_1765(Lnet/minecraft/class_332;)V",
+            method = "renderStatusEffectOverlay",
             at = @At("HEAD"),
             cancellable = true,
-            remap = false,
-            require = 0
+            require = 1
     )
     private void azyron$hideVanillaEffects120(DrawContext context, CallbackInfo ci) {
         try {
@@ -80,10 +78,9 @@ public abstract class InGameHud120Mixin {
     }
 
     @Inject(
-            method = "method_1753(Lnet/minecraft/class_332;F)V",
+            method = "render",
             at = @At("TAIL"),
-            remap = false,
-            require = 0
+            require = 1
     )
     private void azyron$renderClientHud120(DrawContext context, float tickDelta, CallbackInfo ci) {
         try {

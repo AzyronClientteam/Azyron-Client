@@ -17,11 +17,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(GameRenderer.class)
 public abstract class GameRenderer120Mixin {
     @Inject(
-            method = "method_3196(Lnet/minecraft/class_4184;FZ)D",
+            method = "getFov",
             at = @At("RETURN"),
             cancellable = true,
-            remap = false,
-            require = 0
+            require = 1
     )
     private void azyron$applySmoothZoom120(
             Camera camera,

@@ -15,10 +15,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayNetworkHandler.class)
 public abstract class ClientPlayNetworkHandler120Mixin {
     @Inject(
-            method = "method_38539(IILnet/minecraft/class_6603;)V",
+            method = "loadChunk",
             at = @At("HEAD"),
-            remap = false,
-            require = 0
+            require = 1
     )
     private void azyron$onLoadChunk120(CallbackInfo ci) {
         MultiplayerPerformanceController.recordChunkLoaded120();
