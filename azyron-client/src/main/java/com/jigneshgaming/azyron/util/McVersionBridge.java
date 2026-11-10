@@ -26,13 +26,10 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.util.Identifier;
 
 /**
- * Unified Minecraft 1.20.1 + 1.21.11 Fabric compatibility bridge for AZYRON CLIENT v1.0.3.
- *
- * Pre-resolves runtime MethodHandles once at startup so a single Azyron-Client-1.0.3.jar
- * (compiled to Java 17 bytecode, classfile v61.0) runs natively on both:
- *  - Minecraft 1.21.11 (Fabric, Java 21+)
- *  - Minecraft 1.20.1  (Fabric, Java 17+)
- * with zero per-frame reflection allocations and zero missing Intermediary symbol references.
+ * Shared compatibility helpers for the independently compiled native 1.20.1 and
+ * 1.21.11 variants. Native API calls are isolated in MinecraftVersionApi.
+ * Reflection fallbacks are cached for differing optional UI/NBT APIs; they do not
+ * establish cross-version compatibility of a single JAR. Use the matching artifact.
  */
 public final class McVersionBridge {
 
