@@ -10,7 +10,6 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.session.Session;
 
 /**
  * Cross-platform runtime compatibility layer for Desktop (Windows/macOS/Linux) and
@@ -166,15 +165,8 @@ public final class PlatformCompat {
      * Does NOT modify or bypass Microsoft authentication; online MSA tokens return false so Realms
      * continues to authenticate normally.
      */
-    public static boolean isOfflineOrLocalSession(Session session) {
-        if (session == null) {
-            return true;
-        }
-        try {
-            return isOfflineOrLocalToken(session.getAccessToken(), session.getXuid());
-        } catch (Throwable ignored) {
-            return true;
-        }
+    public static boolean isOfflineOrLocalSession(Object session) {
+        return MinecraftVersionApi.isOfflineOrLocalSession(session);
     }
 
     public static boolean isOfflineOrLocalToken(String accessToken, Optional<String> xuid) {

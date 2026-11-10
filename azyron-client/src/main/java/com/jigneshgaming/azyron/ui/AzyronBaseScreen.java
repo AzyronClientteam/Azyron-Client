@@ -49,7 +49,6 @@ public abstract class AzyronBaseScreen extends Screen implements AzyronInteracti
     }
 
     /** Minecraft 1.21.11 Element.mouseScrolled(double, double, double, double) -> method_25401(DDDD)Z */
-    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         return azyronMouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }

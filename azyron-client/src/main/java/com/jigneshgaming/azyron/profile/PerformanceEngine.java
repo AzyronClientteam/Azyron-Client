@@ -13,7 +13,8 @@ import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.option.GraphicsMode;
 import net.minecraft.entity.Entity;
-import net.minecraft.particle.ParticlesMode;
+import com.jigneshgaming.azyron.util.MinecraftVersionApi;
+import com.jigneshgaming.azyron.profile.PerformanceProfile.ParticleQuality;
 
 /**
  * Coordinates AZYRON CLIENT performance profiles, automatic 3GB–8GB RAM hardware calibration,
@@ -122,7 +123,7 @@ public final class PerformanceEngine {
             if (tier == MemoryOptimizer.RamTier.TIER_3GB) {
                 McVersionBridge.setGraphicsMode(opts, GraphicsMode.FAST);
                 opts.getCloudRenderMode().setValue(CloudRenderMode.OFF);
-                opts.getParticles().setValue(ParticlesMode.MINIMAL);
+                MinecraftVersionApi.setParticles(opts, ParticleQuality.MINIMAL);
                 opts.getEntityShadows().setValue(false);
                 opts.getAo().setValue(false);
                 McVersionBridge.setVignette(opts, false);
@@ -201,7 +202,7 @@ public final class PerformanceEngine {
             GameOptions opts = client.options;
             try {
                 McVersionBridge.setGraphicsMode(opts, profile.getGraphicsMode());
-                opts.getParticles().setValue(profile.getParticlesMode());
+                MinecraftVersionApi.setParticles(opts, profile.getParticlesMode());
                 opts.getCloudRenderMode().setValue(profile.getCloudRenderMode());
                 opts.getViewDistance().setValue(profile.getViewDistance());
                 opts.getSimulationDistance().setValue(profile.getSimulationDistance());

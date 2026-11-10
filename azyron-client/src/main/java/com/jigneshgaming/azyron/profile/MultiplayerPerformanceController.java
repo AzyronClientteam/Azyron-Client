@@ -6,8 +6,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.DisconnectedScreen;
 import net.minecraft.client.gui.screen.ProgressScreen;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
-import net.minecraft.client.gui.screen.world.LevelLoadingScreen;
+import com.jigneshgaming.azyron.util.MinecraftVersionApi;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.ExperienceOrbEntity;
@@ -48,8 +47,7 @@ public final class MultiplayerPerformanceController {
         if (screen == null) {
             return false;
         }
-        if (screen instanceof LevelLoadingScreen
-                || screen instanceof ConnectScreen
+        if (MinecraftVersionApi.isLoadingOrConnectingScreen(screen)
                 || screen instanceof ProgressScreen
                 || screen instanceof DisconnectedScreen) {
             return true;
@@ -182,7 +180,7 @@ public final class MultiplayerPerformanceController {
             return;
         }
 
-        boolean loadingScreen = client != null && client.currentScreen instanceof LevelLoadingScreen;
+        boolean loadingScreen = client != null && MinecraftVersionApi.isLevelLoadingScreen(client.currentScreen);
         MemoryOptimizer.RamTier tier = MemoryOptimizer.detectRamTier();
 
         long budgetNs;

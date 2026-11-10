@@ -141,7 +141,7 @@ public final class ArmorHudModule extends HudModule {
                 context.drawItem(stack, 5, ry);
                 // Minecraft 1.21.11: DrawContext.drawItemBar (method_64860) is private;
                 // use public DrawContext.drawStackOverlay (method_51431) for durability bar, stack count & cooldowns.
-                context.drawStackOverlay(client.textRenderer, stack, 5, ry);
+                com.jigneshgaming.azyron.util.MinecraftVersionApi.drawStackOverlay(context, client.textRenderer, stack, 5, ry);
             } catch (Throwable t) {
                 // Log rate-limited diagnostic and draw clean fallback marker if a modded server item model fails
                 com.jigneshgaming.azyron.profile.MultiplayerPerformanceController

@@ -1,5 +1,5 @@
 plugins {
-	id 'fabric-loom' version '1.14-SNAPSHOT'
+	id 'fabric-loom' version '1.14.10'
 	id 'maven-publish'
 }
 
@@ -8,6 +8,22 @@ group = project.maven_group
 
 base {
 	archivesName = project.archives_base_name
+}
+
+// Compile native adapters and mixins against the selected target, never against
+// a synthetic union of APIs. Optimization/features remain in shared main sources.
+def mcTarget = project.minecraft_version.toString()
+if (!(mcTarget in ['1.20.1', '1.21.11'])) {
+    throw new GradleException("Unsupported Minecraft target: ${mcTarget}")
+}
+def legacyTarget = mcTarget == '1.20.1'
+def modernOnlyMixins = ['ChunkBatchSizeCalculatorMixin', 'GameRendererMixin',
+        'InGameHudMixin', 'MouseMixin', 'PersistentStateManagerMixin',
+        'RealmsAvailabilityMixin', 'Screen121Mixin', 'EntityRenderManagerMixin']
+sourceSets.main.java.srcDir(legacyTarget ? 'src/mc1201/java' : 'src/mc12111/java')
+sourceSets.main.java.exclude { entry ->
+    def name = entry.file.name.replace('.java', '')
+    legacyTarget ? modernOnlyMixins.contains(name) : name.endsWith('120Mixin')
 }
 
 repositories {
@@ -31,6 +47,7 @@ dependencies {
 
 processResources {
 	inputs.property "version", project.version
+    inputs.property "minecraftTarget", mcTarget
 
 	filesMatching("fabric.mod.json") {
 		expand "version": inputs.properties.version
@@ -41,11 +58,28 @@ processResources {
 		if (fmj.exists() && fmj.text.contains('${')) {
 			throw new GradleException("Unexpanded placeholder remaining in fabric.mod.json")
 		}
+        def metadata = new groovy.json.JsonSlurper().parse(fmj)
+        metadata.depends.minecraft = [mcTarget]
+        metadata.depends.java = legacyTarget ? '>=17' : '>=21'
+        metadata.name = 'Azyron Client v1.0.3'
+        fmj.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata)) + '\n'
+        def mixinFile = file("${destinationDir}/azyron-client.mixins.json")
+        def config = new groovy.json.JsonSlurper().parse(mixinFile)
+        config.client.add('EntityRenderDispatcher120Mixin')
+        ['mixins', 'client'].each { key ->
+            config[key] = config[key].findAll { name ->
+                legacyTarget ? !modernOnlyMixins.contains(name) : !name.endsWith('120Mixin')
+            }
+        }
+        // Loom's Mixin extension remaps annotation targets directly; no legacy AP refmap is generated.
+        config.remove('refmap')
+        mixinFile.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(config)) + '\n'
+
 	}
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 17
+	it.options.release = legacyTarget ? 17 : 21
 	it.options.encoding = "UTF-8"
 	it.options.compilerArgs += ["-Xmaxerrs", "1000"]
 }
@@ -53,8 +87,8 @@ tasks.withType(JavaCompile).configureEach {
 java {
 	withSourcesJar()
 
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
+	sourceCompatibility = legacyTarget ? JavaVersion.VERSION_17 : JavaVersion.VERSION_21
+	targetCompatibility = legacyTarget ? JavaVersion.VERSION_17 : JavaVersion.VERSION_21
 }
 
 jar {
@@ -63,4 +97,9 @@ jar {
 	from("LICENSE") {
 		rename { "${it}_${inputs.properties.archivesName}" }
 	}
+}
+
+// Distinct files prevent accidental cross-version replacement.
+tasks.named('remapJar') {
+    archiveFileName = "Azyron-Client-${project.version}-mc${mcTarget}.jar"
 }

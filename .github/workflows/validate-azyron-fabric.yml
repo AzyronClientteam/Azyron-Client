@@ -3,7 +3,11 @@ name: Validate real Azyron Fabric builds
 on:
   push:
     branches: ["arena/a6dbb848-azyron-client"]
-    paths: [".github/workflows/validate-azyron-fabric.yml"]
+    paths:
+      - .github/workflows/validate-azyron-fabric.yml
+      - azyron-client/build.gradle
+      - azyron-client/src/**
+      - azyron-client/scripts/build-modpack.py
   workflow_dispatch:
 
 permissions:

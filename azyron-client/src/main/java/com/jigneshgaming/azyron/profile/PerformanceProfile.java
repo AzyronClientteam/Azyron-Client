@@ -2,7 +2,6 @@ package com.jigneshgaming.azyron.profile;
 
 import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.option.GraphicsMode;
-import net.minecraft.particle.ParticlesMode;
 
 /**
  * Three engineered AZYRON CLIENT performance profiles.
@@ -12,7 +11,7 @@ public enum PerformanceProfile {
             "Potato Mode",
             "Maximum FPS boost. Minimal particles, low graphics & aggressive culling.",
             GraphicsMode.FAST,
-            ParticlesMode.MINIMAL,
+            ParticleQuality.MINIMAL,
             CloudRenderMode.OFF,
             6,
             5,
@@ -31,7 +30,7 @@ public enum PerformanceProfile {
             "Balanced Mode",
             "Balanced high FPS & crisp Minecraft visuals for everyday play.",
             GraphicsMode.FANCY,
-            ParticlesMode.DECREASED,
+            ParticleQuality.DECREASED,
             CloudRenderMode.FAST,
             10,
             8,
@@ -50,7 +49,7 @@ public enum PerformanceProfile {
             "Smooth FPS Mode",
             "Prioritizes ultra-stable frame pacing, 1% lows & zero micro-stutter.",
             GraphicsMode.FAST,
-            ParticlesMode.DECREASED,
+            ParticleQuality.DECREASED,
             CloudRenderMode.FAST,
             8,
             6,
@@ -66,10 +65,12 @@ public enum PerformanceProfile {
             28.0
     );
 
+    public enum ParticleQuality { ALL, DECREASED, MINIMAL }
+
     private final String displayName;
     private final String summary;
     private final GraphicsMode graphicsMode;
-    private final ParticlesMode particlesMode;
+    private final ParticleQuality particlesMode;
     private final CloudRenderMode cloudRenderMode;
     private final int viewDistance;
     private final int simulationDistance;
@@ -88,7 +89,7 @@ public enum PerformanceProfile {
             String displayName,
             String summary,
             GraphicsMode graphicsMode,
-            ParticlesMode particlesMode,
+            ParticleQuality particlesMode,
             CloudRenderMode cloudRenderMode,
             int viewDistance,
             int simulationDistance,
@@ -125,7 +126,7 @@ public enum PerformanceProfile {
     public String getDisplayName() { return displayName; }
     public String getSummary() { return summary; }
     public GraphicsMode getGraphicsMode() { return graphicsMode; }
-    public ParticlesMode getParticlesMode() { return particlesMode; }
+    public ParticleQuality getParticlesMode() { return particlesMode; }
     public CloudRenderMode getCloudRenderMode() { return cloudRenderMode; }
     public int getViewDistance() { return viewDistance; }
     public int getSimulationDistance() { return simulationDistance; }
