@@ -161,8 +161,8 @@ jobs:
       github.repository == 'AzyronClientteam/Azyron-Client' &&
       github.ref == 'refs/heads/arena/a6dbb848-azyron-client' &&
       github.event_name == 'push' &&
-      github.event.before == 'fb67d9f320cd82e74c10b80ecb59f5a6c42e8272' &&
-      startsWith(github.event.head_commit.message, 'Run owner-approved v1.0.3 draft asset attachment')
+      github.event.before == '8271a45ce0e85e915102cda3d89e41819dc7d29e' &&
+      startsWith(github.event.head_commit.message, 'Finalize approved v1.0.3 release assets')
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     permissions:

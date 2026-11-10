@@ -232,7 +232,10 @@ def main():
         gh(["api", "--method", "DELETE", f"repos/{args.repo}/releases/assets/{asset['id']}"])
 
     body = release_body(provenance, hashes, args.run_id, args.commit)
-    payload = json.dumps({"name": "Azyron Client v1.0.3", "body": body, "draft": True})
+    # Keep the release associated with the existing real v1.0.3 tag. Omitting
+    # tag_name on a draft update can restore GitHub's generated untagged tag.
+    payload = json.dumps({"name": "Azyron Client v1.0.3", "tag_name": args.tag,
+                          "body": body, "draft": True})
     updated = json.loads(gh([
         "api", "--method", "PATCH", f"repos/{args.repo}/releases/{args.release_id}", "--input", "-"
     ], stdin=payload))
