@@ -47,9 +47,11 @@ jobs:
           FABRIC: ${{ matrix.fabric }}
         run: |
           set -uo pipefail
+          set +e
           mkdir -p build/validation
           gradle --no-daemon --console=plain remapJar -Pminecraft_version="$MC" -Pyarn_mappings="$YARN" -Ploader_version="$LOADER" -Pfabric_version="$FABRIC" > build/validation/fabric-build.log 2>&1
           result=$?
+          set -e
           tail -120 build/validation/fabric-build.log
           if [ "$result" -ne 0 ]; then
             python3 - <<'PY'
