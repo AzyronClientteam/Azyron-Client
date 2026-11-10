@@ -1,5 +1,7 @@
 # Azyron v1.0.3 — unpublished low-RAM optimization pass
 
+> **Historical optimization-pass report.** The subsequent native-build repair supersedes the old failed-build/unpublished-source status below. See [COMPATIBILITY_1201_BUILD_REPORT.md](COMPATIBILITY_1201_BUILD_REPORT.md) for the complete compiler inventory, real per-version builds and current draft/candidate status. Do not use old stub-test binaries under `releases/` as release candidates.
+
 **Products:** Azyron Client v1.0.3 / Azyron Modpack v1.0.3
 **Developer:** JIGNESH GAMING
 **Targets:** Minecraft **1.20.1 Fabric** and **1.21.11 Fabric**, separately.
