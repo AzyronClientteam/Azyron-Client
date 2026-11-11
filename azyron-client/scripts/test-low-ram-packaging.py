@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Offline packaging/schema tests. Fixture JAR is NOT a runnable game mod."""
+"""Offline packaging/schema tests. Fixture JARs are NOT runnable game mods."""
+import hashlib
 import importlib.util
 import json
 import os
@@ -10,6 +11,8 @@ import unittest
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
+VERSION = "1.0.4"
+TARGETS = ("1.20.1", "1.21.11")
 
 
 def load(name, path):
@@ -20,6 +23,7 @@ def load(name, path):
 
 
 builder = load("pack_builder", ROOT / "scripts/build-modpack.py")
+bundles = load("candidate_bundles", ROOT / "scripts/prepare-native-candidates.py")
 portal = load("release_portal", ROOT / "releases-portal/server.py")
 
 
@@ -28,31 +32,43 @@ class LowRamPackaging(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.directory = Path(self.tmp.name)
-        self.jar = self.directory / "fixture.jar"
-        with zipfile.ZipFile(self.jar, "w") as z:
-            z.writestr("fabric.mod.json", json.dumps({
-                "version": "1.0.3", "depends": {"minecraft": ["1.20.1", "1.21.11"]}
-            }))
+        self.jars = {}
+        self.packs = {}
+        self.create_native_profiles()
 
-    def build(self, mc):
-        path = self.directory / f"pack-{mc}.mrpack"
-        with zipfile.ZipFile(self.jar, "w") as z:
-            z.writestr("fabric.mod.json", json.dumps({
-                "version": "1.0.3", "depends": {"minecraft": [mc]}
-            }))
-        builder.build_mrpack(str(self.jar), str(path), mc)
-        return path
+    def create_native_profiles(self):
+        for mc in TARGETS:
+            jar = self.directory / f"Azyron-Client-{VERSION}-mc{mc}.jar"
+            metadata = {
+                "id": "azyron-client",
+                "version": VERSION,
+                "name": f"AZYRON CLIENT v{VERSION}",
+                "authors": ["JIGNESH GAMING"],
+                "depends": {
+                    "minecraft": [mc],
+                    "java": ">=17" if mc == "1.20.1" else ">=21",
+                },
+            }
+            with zipfile.ZipFile(jar, "w") as archive:
+                archive.writestr("fabric.mod.json", json.dumps(metadata))
+                archive.writestr("fixture.txt", "Synthetic packaging fixture only; not a compiled mod.\n")
+            self.jars[mc] = jar
+            pack = self.directory / f"Azyron-Modpack-{VERSION}-mc{mc}.mrpack"
+            builder.build_mrpack(str(jar), str(pack), mc)
+            self.packs[mc] = pack
 
     def assert_profile(self, pack, mc):
         with zipfile.ZipFile(pack) as z:
             self.assertIsNone(z.testzip())
             self.assertEqual(len(z.namelist()), len(set(z.namelist())))
             index = json.loads(z.read("modrinth.index.json"))
+            self.assertEqual(index["versionId"], VERSION)
             self.assertEqual(index["dependencies"]["minecraft"], mc)
-            self.assertEqual(index["name"], "Azyron Modpack v1.0.3")
+            self.assertEqual(index["name"], f"Azyron Modpack v{VERSION}")
             paths = [f["path"] for f in index["files"]]
             self.assertEqual(len(paths), len(set(paths)))
             config = json.loads(z.read("overrides/config/azyron-client.json"))
+            self.assertEqual(config["configVersion"], VERSION)
             self.assertEqual(config["selectedMcVersion"], mc)
             self.assertEqual(config["activeProfile"], "POTATO")
             self.assertTrue(config["customMainMenuEnabled"])
@@ -79,55 +95,89 @@ class LowRamPackaging(unittest.TestCase):
                 self.assertEqual(state["graphics_state"], "default")
                 self.assertIn("show_toasts", state)
                 self.assertIn("volume_multiplier" if mc == "1.20.1" else "volume_multipliers", state)
-            # No guessed schemas for unrelated mods; let installed versions own defaults.
             configs = {n for n in z.namelist() if n.startswith("overrides/config/")}
-            self.assertEqual(configs, {"overrides/config/azyron-client.json",
-                                      "overrides/config/sodium-options.json", "overrides/config/dynamic_fps.json"})
+            self.assertEqual(configs, {
+                "overrides/config/azyron-client.json",
+                "overrides/config/sodium-options.json",
+                "overrides/config/dynamic_fps.json",
+            })
             self.assertEqual([n for n in z.namelist() if n.startswith("overrides/mods/")],
-                             ["overrides/mods/Azyron-Client-1.0.3.jar"])
+                             [f"overrides/mods/Azyron-Client-{VERSION}.jar"])
 
-    def test_native_default_paths_are_version_specific(self):
-        for mc in ("1.20.1", "1.21.11"):
+    def test_native_default_paths(self):
+        for mc in TARGETS:
             with self.subTest(mc=mc):
                 self.assertEqual(Path(builder.default_native_jar_path(mc)).name,
-                                 f"Azyron-Client-1.0.3-mc{mc}.jar")
+                                 f"Azyron-Client-{VERSION}-mc{mc}.jar")
                 self.assertEqual(Path(builder.default_modpack_path(mc)).name,
-                                 f"Azyron-Modpack-1.0.3-mc{mc}.mrpack")
+                                 f"Azyron-Modpack-{VERSION}-mc{mc}.mrpack")
 
-    def test_1201(self):
-        self.assert_profile(self.build("1.20.1"), "1.20.1")
+    def test_1201_profile_schema(self):
+        self.assert_profile(self.packs["1.20.1"], "1.20.1")
 
-    def test_12111(self):
-        self.assert_profile(self.build("1.21.11"), "1.21.11")
+    def test_12111_profile_schema(self):
+        self.assert_profile(self.packs["1.21.11"], "1.21.11")
 
-    def test_portal_selects_native_artifact(self):
-        for mc in ("1.20.1", "1.21.11"):
-            source = self.build(mc)
-            (self.directory / f"Azyron-Client-1.0.3-mc{mc}.jar").write_bytes(self.jar.read_bytes())
-            (self.directory / f"Azyron-Modpack-1.0.3-mc{mc}.mrpack").write_bytes(source.read_bytes())
+    def test_bundle_builds_exactly_two_user_download_archives(self):
+        output = self.directory / "bundles"
+        provenance = bundles.assemble_download_bundles(
+            self.jars, self.packs, output, run_id="fixture", commit="fixture"
+        )
+        client_name = f"Azyron-Client-v{VERSION}.zip"
+        pack_name = f"Azyron-Modpack-v{VERSION}.zip"
+        self.assertEqual({p.name for p in output.glob("*.zip")}, {client_name, pack_name})
+        self.assertTrue((output / "SHA256SUMS.txt").is_file())
+        self.assertTrue((output / "BUILD-PROVENANCE.json").is_file())
+        for path in (output / client_name, output / pack_name):
+            with zipfile.ZipFile(path) as archive:
+                self.assertIsNone(archive.testzip())
+                self.assertIn("README.txt", archive.namelist())
+                self.assertEqual(len([n for n in archive.namelist() if n.startswith("1.20.1/")]), 1)
+                self.assertEqual(len([n for n in archive.namelist() if n.startswith("1.21.11/")]), 1)
+        with zipfile.ZipFile(output / client_name) as archive:
+            self.assertEqual(archive.read(f"1.20.1/Azyron-Client-{VERSION}-mc1.20.1.jar"), self.jars["1.20.1"].read_bytes())
+            self.assertEqual(archive.read(f"1.21.11/Azyron-Client-{VERSION}-mc1.21.11.jar"), self.jars["1.21.11"].read_bytes())
+        with zipfile.ZipFile(output / pack_name) as archive:
+            for mc in TARGETS:
+                internal = f"{mc}/Azyron-Modpack-{VERSION}-mc{mc}.mrpack"
+                self.assertEqual(archive.read(internal), self.packs[mc].read_bytes())
+        self.assertEqual(set(provenance["downloads"]), {"client", "modpack"})
+        sums = (output / "SHA256SUMS.txt").read_text()
+        self.assertEqual(len(sums.splitlines()), 2)
+        for line in sums.splitlines():
+            expected, filename = line.split("  ", 1)
+            self.assertEqual(hashlib.sha256((output / filename).read_bytes()).hexdigest(), expected)
+
+    def test_portal_serves_only_the_two_bundle_assets(self):
+        output = self.directory / "bundles"
+        bundles.assemble_download_bundles(self.jars, self.packs, output)
         old = portal.RELEASES_DIR
         try:
-            portal.RELEASES_DIR = str(self.directory)
+            portal.RELEASES_DIR = str(output)
             assets = portal.load_live_assets()
             self.assertEqual({asset["display_name"] for asset in assets}, {
-                "Azyron-Client-1.0.3-mc1.20.1.jar",
-                "Azyron-Modpack-1.0.3-mc1.20.1.mrpack",
-                "Azyron-Client-1.0.3-mc1.21.11.jar",
-                "Azyron-Modpack-1.0.3-mc1.21.11.mrpack",
+                f"Azyron-Client-v{VERSION}.zip",
+                f"Azyron-Modpack-v{VERSION}.zip",
             })
+            self.assertEqual(len(assets), 2)
             for asset in assets:
-                self.assertEqual(asset["minecraft_target"], "1.20.1" if "1.20.1" in asset["display_name"] else "1.21.11")
+                self.assertEqual(Path(asset["display_name"]).suffix, ".zip")
         finally:
             portal.RELEASES_DIR = old
 
     def test_native_jar_cannot_be_relabelled(self):
-        self.build("1.21.11")
+        wrong = self.directory / "wrong-target.jar"
+        with zipfile.ZipFile(wrong, "w") as archive:
+            archive.writestr("fabric.mod.json", json.dumps({
+                "id": "azyron-client", "version": VERSION,
+                "depends": {"minecraft": ["1.21.11"]},
+            }))
         with self.assertRaisesRegex(ValueError, "Native client JAR"):
-            builder.build_mrpack(str(self.jar), str(self.directory / "wrong.mrpack"), "1.20.1")
+            builder.build_mrpack(str(wrong), str(self.directory / "wrong.mrpack"), "1.20.1")
 
     def test_reject_unknown_target(self):
         with self.assertRaises(ValueError):
-            self.build("1.21.4")
+            builder.build_mrpack(str(self.jars["1.21.11"]), str(self.directory / "unknown.mrpack"), "1.21.4")
 
     def test_installer_guards_before_download(self):
         script = str(ROOT / "releases/download-dependencies.sh")
@@ -139,7 +189,6 @@ class LowRamPackaging(unittest.TestCase):
             self.assertFalse((self.directory / "mods").exists())
 
     def test_installer_rejects_corrupt_bytes_atomically(self):
-        # Fake transport exercises installer hashing, without contacting any host.
         bin_dir = self.directory / "bin"
         bin_dir.mkdir()
         curl = bin_dir / "curl"

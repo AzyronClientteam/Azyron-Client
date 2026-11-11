@@ -39,7 +39,7 @@ public final class AzyronConfig {
     }
 
     public static final class ConfigData {
-        public String configVersion = "1.0.3";
+        public String configVersion = "1.0.4";
         public String selectedMcVersion = McVersionBridge.getActiveMcVersionString();
         public String activeProfile = MemoryOptimizer.getRecommendedProfileForHardware().name();
         public boolean customMainMenuEnabled = true;
@@ -89,7 +89,7 @@ public final class AzyronConfig {
                 if (this.data.selectedMcVersion == null || this.data.selectedMcVersion.isBlank()) {
                     this.data.selectedMcVersion = McVersionBridge.getActiveMcVersionString();
                 }
-                this.data.configVersion = "1.0.3";
+                this.data.configVersion = "1.0.4";
                 if (this.data.discordInviteUrl == null || this.data.discordInviteUrl.isBlank()) {
                     this.data.discordInviteUrl = "https://discord.gg/jigneshgaming";
                 }

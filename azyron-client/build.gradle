@@ -62,7 +62,7 @@ processResources {
         metadata.depends.minecraft = [mcTarget]
         metadata.depends.fabricloader = legacyTarget ? '>=0.14.22' : '>=0.20.1'
         metadata.depends.java = legacyTarget ? '>=17' : '>=21'
-        metadata.name = 'AZYRON CLIENT v1.0.3'
+        metadata.name = 'AZYRON CLIENT v1.0.4'
         fmj.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata)) + '\n'
         def mixinFile = file("${destinationDir}/azyron-client.mixins.json")
         def config = new groovy.json.JsonSlurper().parse(mixinFile)

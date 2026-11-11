@@ -1,7 +1,7 @@
-"""Portal integration checks using synthetic metadata-only fixture JARs.
+"""Portal tests use synthetic metadata-only fixtures; never release candidates.
 
-The fixtures exercise the download routes and target guards; they are not runnable
-Minecraft mods and do not validate Fabric compatibility or gameplay.
+The fixture JARs are not compiled Minecraft mods and do not validate Fabric,
+game launch, Mixin application, gameplay, or performance.
 """
 import hashlib
 import importlib.util
@@ -18,17 +18,19 @@ import zipfile
 import server
 
 ROOT = Path(__file__).resolve().parents[1]
+VERSION = "1.0.4"
+TARGETS = ("1.20.1", "1.21.11")
 
 
-def load_builder():
-    path = ROOT / "scripts/build-modpack.py"
-    spec = importlib.util.spec_from_file_location("portal_test_pack_builder", path)
+def load_module(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-builder = load_builder()
+builder = load_module("portal_test_pack_builder", ROOT / "scripts/build-modpack.py")
+bundles = load_module("portal_test_bundles", ROOT / "scripts/prepare-native-candidates.py")
 
 
 class PortalTests(unittest.TestCase):
@@ -36,22 +38,32 @@ class PortalTests(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.tmp.cleanup)
-        cls.releases = Path(cls.tmp.name) / "releases"
+        cls.root = Path(cls.tmp.name)
+        cls.releases = cls.root / "releases"
         cls.releases.mkdir()
         cls.original_releases_dir = server.RELEASES_DIR
-        server.RELEASES_DIR = str(cls.releases)
 
-        for mc in ("1.20.1", "1.21.11"):
-            jar = cls.releases / f"Azyron-Client-1.0.3-mc{mc}.jar"
+        jars, packs = {}, {}
+        for mc in TARGETS:
+            java = ">=17" if mc == "1.20.1" else ">=21"
+            jar = cls.root / f"Azyron-Client-{VERSION}-mc{mc}.jar"
+            metadata = {
+                "id": "azyron-client",
+                "version": VERSION,
+                "name": f"AZYRON CLIENT v{VERSION}",
+                "authors": ["JIGNESH GAMING"],
+                "depends": {"minecraft": [mc], "java": java},
+            }
             with zipfile.ZipFile(jar, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-                archive.writestr("fabric.mod.json", json.dumps({
-                    "id": "azyron-client",
-                    "version": "1.0.3",
-                    "depends": {"minecraft": [mc]},
-                }))
-            pack = cls.releases / f"Azyron-Modpack-1.0.3-mc{mc}.mrpack"
+                archive.writestr("fabric.mod.json", json.dumps(metadata))
+                archive.writestr("fixture.txt", "Synthetic metadata fixture; not a compiled Fabric mod.\n")
+            jars[mc] = jar
+            pack = cls.root / f"Azyron-Modpack-{VERSION}-mc{mc}.mrpack"
             builder.build_mrpack(str(jar), str(pack), mc)
+            packs[mc] = pack
 
+        bundles.assemble_download_bundles(jars, packs, cls.releases, run_id="fixture", commit="fixture")
+        server.RELEASES_DIR = str(cls.releases)
         cls.httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.GitHubReleasesHandler)
         cls.thread = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
         cls.thread.start()
@@ -64,31 +76,34 @@ class PortalTests(unittest.TestCase):
         cls.thread.join()
         server.RELEASES_DIR = cls.original_releases_dir
 
-    def test_pages_show_matching_native_pairs(self):
-        for path in ("/", "/releases", "/releases/tag/v1.0.3"):
+    def test_pages_offer_exactly_two_bundle_download_links(self):
+        expected = {f"Azyron-Client-v{VERSION}.zip", f"Azyron-Modpack-v{VERSION}.zip"}
+        for path in ("/", "/releases", f"/releases/tag/v{VERSION}"):
             with self.subTest(path=path), urlopen(self.base + path) as response:
                 html = response.read().decode()
-                self.assertIn('data-mc-tab="1.20.1"', html)
-                self.assertIn('data-mc-tab="1.21.11"', html)
-                self.assertIn("AZYRON CLIENT v1.0.3", html)
+                self.assertIn(f"AZYRON CLIENT v{VERSION}", html)
                 self.assertIn("JIGNESH GAMING", html)
-                self.assertIn("generated Minecraft/Fabric stubs", html)
-                for mc in ("1.20.1", "1.21.11"):
-                    self.assertIn(f"Azyron-Client-1.0.3-mc{mc}.jar", html)
-                    self.assertIn(f"Azyron-Modpack-1.0.3-mc{mc}.mrpack", html)
-                self.assertNotIn("Selectable Minecraft Version Profile", html)
+                self.assertIn("Draft Pre-release", html)
+                self.assertIn("neither is a cross-version JAR or profile", html)
+                self.assertNotIn("data-mc-tab=", html)
+                download_links = [line for line in html.splitlines() if 'href="/releases/download/v1.0.4/' in line]
+                self.assertEqual(len(download_links), 2)
+                self.assertEqual({name for name in expected if name in "\n".join(download_links)}, expected)
+                self.assertIn("1.20.1/Azyron-Client-1.0.4-mc1.20.1.jar", html)
+                self.assertIn("1.21.11/Azyron-Client-1.0.4-mc1.21.11.jar", html)
+                self.assertIn("1.20.1/Azyron-Modpack-1.0.4-mc1.20.1.mrpack", html)
+                self.assertIn("1.21.11/Azyron-Modpack-1.0.4-mc1.21.11.mrpack", html)
 
-    def test_api_and_all_native_assets(self):
+    def test_api_and_exactly_two_bundle_assets(self):
         with urlopen(self.base + "/api/release") as response:
             release = json.load(response)
-        self.assertEqual(release["supported_minecraft_versions"], ["1.21.11", "1.20.1"])
+        self.assertEqual(release["tag_name"], "v1.0.4")
+        self.assertEqual(release["version"], VERSION)
+        self.assertEqual(release["developer"], "JIGNESH GAMING")
+        self.assertEqual(release["supported_minecraft_versions"], list(TARGETS))
         self.assertTrue(release["draft"])
-        self.assertIn("historical generated-stub suites", release["verification_environment"])
-        expected = {
-            f"Azyron-Client-1.0.3-mc{mc}.jar" for mc in ("1.20.1", "1.21.11")
-        } | {
-            f"Azyron-Modpack-1.0.3-mc{mc}.mrpack" for mc in ("1.20.1", "1.21.11")
-        }
+        self.assertEqual(release["gameplay_and_device_benchmarks"], "NOT RUN")
+        expected = {f"Azyron-Client-v{VERSION}.zip", f"Azyron-Modpack-v{VERSION}.zip"}
         self.assertEqual({asset["name"] for asset in release["assets"]}, expected)
         for asset in release["assets"]:
             with self.subTest(asset=asset["name"]), urlopen(self.base + asset["browser_download_url"]) as response:
@@ -97,58 +112,73 @@ class PortalTests(unittest.TestCase):
                 self.assertEqual("sha256:" + hashlib.sha256(data).hexdigest(), asset["digest"])
                 with zipfile.ZipFile(io.BytesIO(data)) as archive:
                     self.assertIsNone(archive.testzip())
-                    if asset["name"].endswith(".jar"):
-                        metadata = json.loads(archive.read("fabric.mod.json"))
-                        mc = asset["name"].split("-mc", 1)[1].removesuffix(".jar")
-                        self.assertEqual(metadata["depends"]["minecraft"], [mc])
+                    self.assertIn("README.txt", archive.namelist())
+                    self.assertEqual(len([name for name in archive.namelist() if name.startswith("1.20.1/")]), 1)
+                    self.assertEqual(len([name for name in archive.namelist() if name.startswith("1.21.11/")]), 1)
 
-    def test_native_packs_and_get_head_metadata(self):
-        for mc in ("1.20.1", "1.21.11"):
-            filename = f"Azyron-Modpack-1.0.3-mc{mc}.mrpack"
-            url = self.base + f"/releases/download/v1.0.3/{filename}"
-            with self.subTest(mc=mc), urlopen(url) as response:
-                data = response.read()
-                etag = response.headers["ETag"]
-                self.assertEqual(response.headers["Content-Disposition"], f'attachment; filename="{filename}"')
-            with zipfile.ZipFile(io.BytesIO(data)) as pack:
-                self.assertIsNone(pack.testzip())
-                self.assertEqual(json.loads(pack.read("modrinth.index.json"))["dependencies"]["minecraft"], mc)
-                embedded = pack.read("overrides/mods/Azyron-Client-1.0.3.jar")
-                with zipfile.ZipFile(io.BytesIO(embedded)) as jar:
-                    metadata = json.loads(jar.read("fabric.mod.json"))
-                    self.assertEqual(metadata["depends"]["minecraft"], [mc])
-            with urlopen(Request(url, method="HEAD")) as response:
-                self.assertEqual(response.headers["ETag"], etag)
-                self.assertEqual(int(response.headers["Content-Length"]), len(data))
-                self.assertEqual(response.read(), b"")
-
-    def test_query_cannot_switch_a_native_pack_target(self):
-        filename = "Azyron-Modpack-1.0.3-mc1.21.11.mrpack"
-        url = self.base + f"/releases/download/v1.0.3/{filename}?mc=1.20.1"
+    def test_client_bundle_has_two_matching_native_payloads_and_head_metadata(self):
+        filename = f"Azyron-Client-v{VERSION}.zip"
+        url = self.base + f"/releases/download/v{VERSION}/{filename}"
         with urlopen(url) as response:
             data = response.read()
-        with zipfile.ZipFile(io.BytesIO(data)) as pack:
-            self.assertEqual(json.loads(pack.read("modrinth.index.json"))["dependencies"]["minecraft"], "1.21.11")
+            etag = response.headers["ETag"]
+            self.assertEqual(response.headers["Content-Disposition"], f'attachment; filename="{filename}"')
+        with zipfile.ZipFile(io.BytesIO(data)) as bundle:
+            for mc in TARGETS:
+                name = f"{mc}/Azyron-Client-{VERSION}-mc{mc}.jar"
+                with zipfile.ZipFile(io.BytesIO(bundle.read(name))) as jar:
+                    metadata = json.loads(jar.read("fabric.mod.json"))
+                    self.assertEqual(metadata["depends"]["minecraft"], [mc])
+        with urlopen(Request(url, method="HEAD")) as response:
+            self.assertEqual(response.headers["ETag"], etag)
+            self.assertEqual(int(response.headers["Content-Length"]), len(data))
+            self.assertEqual(response.read(), b"")
 
-    def test_rejects_wrong_target_and_missing_asset(self):
-        jar = self.releases / "Azyron-Client-1.0.3-mc1.20.1.jar"
-        original = jar.read_bytes()
+    def test_modpack_bundle_keeps_two_standard_single_version_profiles(self):
+        filename = f"Azyron-Modpack-v{VERSION}.zip"
+        url = self.base + f"/releases/download/v{VERSION}/{filename}?mc=1.20.1"
+        with urlopen(url) as response:
+            bundle_bytes = response.read()
+        with zipfile.ZipFile(io.BytesIO(bundle_bytes)) as bundle:
+            self.assertEqual(len(bundle.namelist()), 3)
+            for mc in TARGETS:
+                pack_name = f"{mc}/Azyron-Modpack-{VERSION}-mc{mc}.mrpack"
+                with zipfile.ZipFile(io.BytesIO(bundle.read(pack_name))) as pack:
+                    index = json.loads(pack.read("modrinth.index.json"))
+                    self.assertEqual(index["versionId"], VERSION)
+                    self.assertEqual(index["dependencies"]["minecraft"], mc)
+                    embedded = pack.read(f"overrides/mods/Azyron-Client-{VERSION}.jar")
+                    with zipfile.ZipFile(io.BytesIO(embedded)) as jar:
+                        metadata = json.loads(jar.read("fabric.mod.json"))
+                        self.assertEqual(metadata["depends"]["minecraft"], [mc])
+
+    def test_rejects_wrong_target_and_unknown_asset(self):
+        bundle_path = self.releases / f"Azyron-Client-v{VERSION}.zip"
+        original = bundle_path.read_bytes()
         try:
-            with zipfile.ZipFile(jar, "w") as archive:
+            with zipfile.ZipFile(io.BytesIO(original)) as archive:
+                entries = {name: archive.read(name) for name in archive.namelist()}
+            jar_name = f"1.20.1/Azyron-Client-{VERSION}-mc1.20.1.jar"
+            wrong = io.BytesIO()
+            with zipfile.ZipFile(wrong, "w") as archive:
                 archive.writestr("fabric.mod.json", json.dumps({
-                    "id": "azyron-client",
-                    "version": "1.0.3",
-                    "depends": {"minecraft": ["1.21.11"]},
+                    "id": "azyron-client", "version": VERSION,
+                    "name": f"AZYRON CLIENT v{VERSION}", "authors": ["JIGNESH GAMING"],
+                    "depends": {"minecraft": ["1.21.11"], "java": ">=21"},
                 }))
+            entries[jar_name] = wrong.getvalue()
+            with zipfile.ZipFile(bundle_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                for name, data in entries.items():
+                    archive.writestr(name, data)
             with self.assertRaisesRegex(ValueError, "Native JAR target mismatch"):
                 server.load_live_assets()
         finally:
-            jar.write_bytes(original)
+            bundle_path.write_bytes(original)
 
         with self.assertRaises(HTTPError) as caught:
-            urlopen(self.base + "/downloads/not-a-native-asset.jar")
+            urlopen(self.base + "/downloads/not-a-v1.0.4-bundle.zip")
         self.assertEqual(caught.exception.code, 404)
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(verbosity=2)

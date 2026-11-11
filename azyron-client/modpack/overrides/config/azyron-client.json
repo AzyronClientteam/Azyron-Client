@@ -1,5 +1,6 @@
 {
-  "configVersion": "1.0.2",
+  "configVersion": "1.0.4",
+  "selectedMcVersion": "1.21.11",
   "activeProfile": "BALANCED",
   "customMainMenuEnabled": true,
   "customLoadingScreenEnabled": true,

@@ -1,109 +1,72 @@
-# AZYRON CLIENT v1.0.3
-
-> **Verification scope (draft):** The two suites passed 26/26 checks each in isolated JVMs with generated Minecraft/Fabric stubs, **not actual Minecraft/Fabric installations**. Stress/soak checks simulate work, not elapsed gameplay. The 74-class mapping audit checks class/member-name presence; it does not validate full member owner/descriptors or Mixin application. Real Desktop and Android/PojavLauncher launch, rendering, world-load and multiplayer testing remain pending. These results do not establish crash-free runtime compatibility.
-
+# AZYRON CLIENT v1.0.4
 
 > **AZYRON CLIENT – PERFORMANCE. SMOOTHNESS. STYLE.**
-> **Client:** **AZYRON CLIENT v1.0.3** • **Developer:** **JIGNESH GAMING**
-> **Native downloads:** separate Minecraft `1.20.1` and `1.21.11` Fabric JAR/MRPack pairs.
-> **Compatibility:** **Minecraft `1.21.11` (Fabric)** & **Minecraft `1.20.1` (Fabric)** — use the matching native downloads.
-> **Supported platforms:** Desktop (Windows / Linux / macOS) and Android through PojavLauncher.
-
----
+>
+> **Developer:** JIGNESH GAMING
+> **Downloads:** one Client bundle and one Modpack bundle; each contains native payloads for both supported Minecraft versions.
 
 ## Overview
 
-**AZYRON CLIENT v1.0.3** by **JIGNESH GAMING** is a Fabric client distributed as separate native JAR and Modrinth `.mrpack` pairs for Minecraft `1.20.1` and `1.21.11`. The standard launcher selects the running game version; install only its matching pair. Version-specific builds use their target game APIs. The configured low-memory profile is a target, not a measured FPS guarantee.
+**AZYRON CLIENT v1.0.4** is a Fabric client for Minecraft **1.20.1** and **1.21.11**. The shared client features include the Mods Menu, HUD editor, Armour Hub, cosmetics, and performance profiles. Version-specific Fabric adapters, mappings, dependencies, and mixin sets are built and checked separately for each game version.
 
----
+The supplied download is a bundle, not a cross-version binary. Download each bundle once, extract it, then use only the folder for the Minecraft version selected in your launcher.
 
-## Standard Launcher Downloads
+## Downloads
 
-Use the JAR and Modrinth pack for the same Minecraft version. Each native JAR and `.mrpack` targets exactly one game version; there is no universal client binary.
+| Download | File | Contents |
+|---|---|---|
+| **Client bundle** | `Azyron-Client-v1.0.4.zip` | Native Fabric client JAR for 1.20.1 and native Fabric client JAR for 1.21.11 |
+| **Modpack bundle** | `Azyron-Modpack-v1.0.4.zip` | Standard Modrinth `.mrpack` profile for 1.20.1 and standard Modrinth `.mrpack` profile for 1.21.11 |
 
-| Minecraft target | Native client JAR | Matching Modrinth pack |
-| :--- | :--- | :--- |
-| **1.20.1 Fabric** | `Azyron-Client-1.0.3-mc1.20.1.jar` | `Azyron-Modpack-1.0.3-mc1.20.1.mrpack` |
-| **1.21.11 Fabric** | `Azyron-Client-1.0.3-mc1.21.11.jar` | `Azyron-Modpack-1.0.3-mc1.21.11.mrpack` |
+Extract the relevant target folder and install its JAR or import its `.mrpack`. Do not mix the 1.20.1 and 1.21.11 contents. The GitHub release remains a **draft** until the developer approves publication.
 
-The existing v1.0.3 release remains a draft and now carries the verified target-specific pairs from [CI run 42953223121](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42953223121). Native build/package success does not establish game launch, gameplay, or hardware performance. See [the native build report](COMPATIBILITY_1201_BUILD_REPORT.md).
+## Supported targets
 
----
+| Minecraft | Loader | Java | Build dependencies |
+|---|---|---:|---|
+| **1.20.1** | Fabric Loader 0.14.22+ | 17+ | Yarn `1.20.1+build.10`, Fabric API `0.88.1+1.20.1` |
+| **1.21.11** | Fabric Loader 0.20.1+ | 21+ | Yarn `1.21.11+build.6`, Fabric API `0.141.6+1.21.11` |
 
+The two profile folders use equivalent low-memory game settings and version-appropriate companion-mod schemas. The client applies the same shared HUD, Armour Hub, Mods Menu, and FPS optimization code, with target-specific adapters where Minecraft APIs differ.
 
-## Supported Minecraft Versions
+## Existing features
 
-| Minecraft Version | Mod Loader | Java Runtime | Companion Optimization Stack |
-| :--- | :--- | :--- | :--- |
-| **Minecraft `1.21.11` (Fabric)** | Fabric Loader `0.20.1` (`>=0.17.3`) | **Java 21+** (`Internal-21` on Pojav) | Fabric API `0.141.6+1.21.11` • Sodium `0.8.14` • Lithium `0.21.4` • FerriteCore `8.2.0` • EntityCulling `1.11.3` • MoreCulling `1.6.2` • DynamicFPS `3.11.6` |
-| **Minecraft `1.20.1` (Fabric)** | Fabric Loader `0.14.22+` | **Java 17+** (`Internal-17` or `Internal-21`) | Fabric API `0.88.1+1.20.1` • Sodium `0.5.3` • Lithium `0.11.2` • FerriteCore `6.0.0` • EntityCulling `1.6.2` • MoreCulling `0.19.0` • DynamicFPS `3.2.1` |
+- **Mods Menu:** `Right Shift` or the in-game pause-menu entry.
+- **HUD editor:** `H`, with draggable widgets, scaling, and layout controls.
+- **Armour Hub:** armor and main-hand display with durability information.
+- **HUD modules:** FPS/frame-time, CPS, ping, coordinates, keystrokes, potion effects, crosshair, memory, sprint, and zoom.
+- **Performance profiles:** Potato, Balanced, and Smooth FPS, with hardware-aware memory limits and adaptive safeguards.
 
----
+The low-memory defaults target up to 6 view / 5 simulation chunks and a 60 FPS cap. Those are configuration targets—not evidence of achieved FPS or reduced RAM use.
 
-## Core Client Features
+## Validation limits
 
-### 1. Client Menu (`Right Shift` + Pause Menu Button) & HUD Editor (`H`)
-- Press **`Right Shift`** (or tap **`AZYRON CLIENT v1.0.3`** in the Escape Pause Menu) to open the existing AZYRON client menu.
-- Filter modules by category (**All Mods**, **HUD Widgets**, **Gameplay**, **Visuals**, **FPS Profiles**, **Client Options**) or search in real time.
-- Click **`HUD Editor`** (or press **`H`**) to drag and reposition any HUD widget with magnetic center snap guides, scroll-wheel scaling (`0.50x – 2.00x`), grid snap toggle, and one-click layout reset.
+The 1.20.1 and 1.21.11 native Fabric/Loom builds and actual-classpath audits run separately in CI. Their success verifies compilation and the targeted classpath/mixin configuration; it does **not** prove game startup, complete runtime Mixin application, gameplay stability, Android/Pojav compatibility, or FPS performance. See [TESTING_REPORT_v1.0.4.md](TESTING_REPORT_v1.0.4.md) for current results. No gameplay or hardware-performance result is claimed unless recorded there as measured.
 
-### 2. Built-In Functional Modules (11 Modules)
-| Module | Category | Features |
-| :--- | :--- | :--- |
-| **FPS Counter** | HUD | Live FPS, **1% Low FPS**, and optional frame-time (`ms`) readout |
-| **CPS Counter** | HUD | Real-time Left & Right Clicks Per Second (`LMB | RMB`) + animated burst bar (mouse & Pojav touch compatible) |
-| **Ping Display** | HUD | Live server latency (`ms`) with green / amber / crimson connection quality color-coding |
-| **Coordinates HUD** | HUD | `X / Y / Z`, 8-way compass + axis indicator (`N (-Z)`, `E (+X)`, etc.), Chunk `XY`, and optional Nether/Overworld `x8` ratio |
-| **Keystrokes HUD** | HUD | Smooth press-glow interpolated `W A S D`, `LMB / RMB` with live CPS, and `Spacebar` tiles |
-| **Armor HUD** | HUD | Equipped Helmet, Chestplate, Leggings, Boots & Mainhand item icons with durability `%` or points and low-durability alerts |
-| **Potion Effects HUD** | HUD | Active status effects sorted by duration, Roman numeral amplifiers, `MM:SS` timers, `<10s` expiring blink, and optional vanilla icon suppression |
-| **Toggle Sprint** | HUD / Gameplay | Hands-free automatic sprinting (`I` to toggle) with `[Sprinting (Toggled)]` HUD status badge |
-| **Zoom** | Gameplay | Smooth interpolated optical zoom (Hold **`C`**) with mouse scroll-wheel dynamic magnification (`1.5x – 25x`) |
-| **Custom Crosshair** | Visual | 5 competitive styles (`Cross`, `Circle-Cross`, `Dot`, `Chevron`, `Box`), dynamic sprint expansion, dark outline & crimson entity-target highlight |
-| **Memory HUD** | HUD | Live JVM heap usage (`%` & `MB`) and real-time allocation rate (`MB/s`) |
+## Build from source
 
-### 3. Engineered Performance Profiles (`F8` or FPS Profiles Tab)
-- **Potato Mode**: low-overhead settings — `FAST` graphics, `MINIMAL` particles, clouds `OFF`, up to `6` view / `5` simulation chunks, `50%` entity distance, shadows/AO/vignette `OFF`, and a `40` particles/tick limit.
-- **Balanced Mode**: `FANCY` graphics, `DECREASED` particles, `FAST` clouds, up to `10/8` view/simulation chunks, and a `180` particles/tick limit.
-- **Smooth FPS Mode**: `FAST` graphics, up to `8/6` view/simulation chunks, a configured `120 FPS` cap, and dynamic particle throttling when frame times rise.
-
-On the 3GB tier, the client targets at most `6/5` chunks and a `60 FPS` cap. These are configuration targets, not measured or guaranteed frame rates; no 3GB device benchmark is available.
-
----
-
-## Default Keybindings
-
-| Key | Action |
-| :--- | :--- |
-| **`Right Shift`** | Open **AZYRON CLIENT v1.0.3** menu (also accessible from the Escape Pause Menu) |
-| **`H`** | Open **Interactive HUD Editor** (also accessible from the Pause Menu) |
-| **`C`** *(Hold)* | **Smooth Optic Zoom** (scroll wheel adjusts magnification while held) |
-| **`F8`** | Cycle **Performance Profile** (`Potato Mode` → `Balanced Mode` → `Smooth FPS Mode`) |
-| **`I`** | Toggle **Toggle Sprint** ON / OFF |
-
----
-
-## Building Separate Native Pairs
-
-Run each target independently from `azyron-client/`. Preserve/copy the first JAR before `clean` removes it for the second build:
+Run each native build independently from `azyron-client/`, preserving the first output before running `clean` for the second:
 
 ```bash
 ./gradlew clean build -Pminecraft_version=1.20.1
-python3 scripts/build-modpack.py --mc 1.20.1
-cp build/libs/Azyron-Client-1.0.3-mc1.20.1.jar releases/
+mkdir -p /tmp/azyron-v1.0.4-native
+cp build/libs/Azyron-Client-1.0.4-mc1.20.1.jar /tmp/azyron-v1.0.4-native/
 
 ./gradlew clean build -Pminecraft_version=1.21.11
-python3 scripts/build-modpack.py --mc 1.21.11
-cp build/libs/Azyron-Client-1.0.3-mc1.21.11.jar releases/
+cp build/libs/Azyron-Client-1.0.4-mc1.21.11.jar /tmp/azyron-v1.0.4-native/
+
+python3 scripts/prepare-native-candidates.py \
+  --inputs /tmp/azyron-v1.0.4-native \
+  --out /tmp/azyron-v1.0.4-download-bundles \
+  --run-id local --commit "$(git rev-parse HEAD)"
 ```
 
-These are build/package commands, not gameplay tests. Run separate Fabric launcher instances and install only the JAR and `.mrpack` pair matching that instance. For dependency download instructions, see [DEPENDENCIES.md](DEPENDENCIES.md).
+The preparation script expects both real target builds and refuses a target-mismatched JAR. Its bundle/ZIP checks are packaging checks, not game tests.
 
----
+## Documentation
 
-## Documentation Index
-
-- **[PojavLauncher & Desktop Installation Guide (`1.21.11` & `1.20.1`)](POJAVLAUNCHER_INSTALLATION.md)**
-- **[Dependencies & Optimization Stacks (`1.21.11` & `1.20.1`)](DEPENDENCIES.md)**
-- **[Release Notes (`v1.0.3`)](RELEASE_NOTES_v1.0.3.md)**
-- **[Validation Status & Testing Scope](TESTING_REPORT.md)**
+- [Release notes — v1.0.4](RELEASE_NOTES_v1.0.4.md)
+- [Validation report — v1.0.4](TESTING_REPORT_v1.0.4.md)
+- [Installation guide](POJAVLAUNCHER_INSTALLATION.md)
+- [Dependency and optimization matrix](DEPENDENCIES.md)
+- [Modpack bundle manifest](modpack/MODPACK_MANIFEST.md)

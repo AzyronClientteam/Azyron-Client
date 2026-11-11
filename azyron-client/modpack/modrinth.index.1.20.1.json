@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "game": "minecraft",
-  "versionId": "1.0.3",
-  "name": "Azyron Modpack v1.0.3",
+  "versionId": "1.0.4",
+  "name": "Azyron Modpack v1.0.4",
   "summary": "AZYRON CLIENT by JIGNESH GAMING. 1.20.1 Fabric low-RAM profile; hardware validation pending, no guaranteed FPS.",
   "files": [
     {

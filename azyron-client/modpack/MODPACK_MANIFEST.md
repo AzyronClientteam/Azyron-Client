@@ -1,32 +1,37 @@
-# AZYRON CLIENT v1.0.3 — Native Modrinth Profiles
+# AZYRON CLIENT v1.0.4 — Modpack Bundle
 
-This directory is the source for two **separate standard Modrinth packs**. Each pack contains one native client JAR and one matching Minecraft/Fabric profile. Use the pair for the game version selected in the launcher; a manifest edit cannot convert a JAR built for another Minecraft version.
+The public **Modpack bundle** is one ZIP download, `Azyron-Modpack-v1.0.4.zip`. It contains two standard Modrinth profiles so the player can import the profile matching their launcher instance:
 
-| Minecraft target | Source index | Native JAR | Pack output |
+| Folder in bundle | Import file | Minecraft target | Runtime |
 |---|---|---|---|
-| **1.20.1 Fabric** | `modrinth.index.1.20.1.json` | `Azyron-Client-1.0.3-mc1.20.1.jar` | `Azyron-Modpack-1.0.3-mc1.20.1.mrpack` |
-| **1.21.11 Fabric** | `modrinth.index.json` | `Azyron-Client-1.0.3-mc1.21.11.jar` | `Azyron-Modpack-1.0.3-mc1.21.11.mrpack` |
+| `1.20.1/` | `Azyron-Modpack-1.0.4-mc1.20.1.mrpack` | Minecraft 1.20.1 Fabric | Java 17+ |
+| `1.21.11/` | `Azyron-Modpack-1.0.4-mc1.21.11.mrpack` | Minecraft 1.21.11 Fabric | Java 21+ |
 
-## Target-matched contents
+Each inner `.mrpack` is a separate native Modrinth profile; it contains exactly one Minecraft version and its matching client JAR. The outer bundle is the single user download. A manifest edit cannot convert one native JAR or `.mrpack` to another game version.
 
-- Each index pins its own Minecraft version, Fabric Loader, Fabric API, and optimization-mod versions. `DEPENDENCIES.md` lists the pins and checksums.
-- `overrides/config/` contains shared Azyron settings. The version-specific profile folders provide matching `options.txt` and companion config schemas.
-- `icon.png` is the existing Azyron modpack icon.
-- The pack builder verifies that the input JAR declares **exactly** the selected Minecraft target and embeds the unmodified JAR bytes. It rejects cross-version relabeling.
-- The 1.20.1 and 1.21.11 profiles are alternatives, not two versions selected from inside one pack.
+## Target-specific contents
+
+- Each index pins the exact Minecraft version, Fabric Loader/API, and compatible optimization-mod versions.
+- The 1.20.1 and 1.21.11 profiles use the same low-memory options (render 6, simulation 5, 60 FPS cap) and the corresponding config schemas for their companion mods.
+- Both include the existing AZYRON CLIENT features and shared performance-profile configuration; game-specific adapters are compiled and checked separately.
+- `scripts/build-modpack.py` verifies the client JAR's declared Minecraft version, the index, and the embedded JAR bytes before writing an `.mrpack`.
 
 ## Build
 
-Run from `azyron-client/`, with the actual Gradle/Minecraft dependencies available:
+From `azyron-client/`, build each native JAR separately and use `scripts/prepare-native-candidates.py` to create the two public download bundles:
 
 ```bash
 ./gradlew clean build -Pminecraft_version=1.20.1
-python3 scripts/build-modpack.py --mc 1.20.1
-cp build/libs/Azyron-Client-1.0.3-mc1.20.1.jar releases/
+mkdir -p /tmp/azyron-v1.0.4-native
+cp build/libs/Azyron-Client-1.0.4-mc1.20.1.jar /tmp/azyron-v1.0.4-native/
 
 ./gradlew clean build -Pminecraft_version=1.21.11
-python3 scripts/build-modpack.py --mc 1.21.11
-cp build/libs/Azyron-Client-1.0.3-mc1.21.11.jar releases/
+cp build/libs/Azyron-Client-1.0.4-mc1.21.11.jar /tmp/azyron-v1.0.4-native/
+
+python3 scripts/prepare-native-candidates.py \
+  --inputs /tmp/azyron-v1.0.4-native \
+  --out /tmp/azyron-v1.0.4-download-bundles \
+  --run-id local --commit "$(git rev-parse HEAD)"
 ```
 
-The builder reads the matching native JAR from `build/libs/` and writes the versioned `.mrpack` under `releases/`. These build/package checks do not test a game launch or provide FPS/RAM benchmarks. Physical-device, renderer, multiplayer, and stability validation remain separate acceptance work; the 60+ FPS at six chunks goal is not a measured result.
+The generated bundles include a short README and keep each native target in its own folder. ZIP integrity and metadata checks do not constitute game-launch, gameplay, or performance tests.

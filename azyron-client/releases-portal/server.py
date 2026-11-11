@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-AZYRON CLIENT v1.0.3 — version-specific standard Fabric downloads (draft portal).
-Each Minecraft target has its own native JAR and matching Modrinth pack. The portal
-never rewrites one target's manifest to make a cross-version artifact.
+AZYRON CLIENT v1.0.4 — draft portal with exactly two bundle downloads.
+The Client ZIP and Modpack ZIP each carry separate native payloads for both
+Minecraft targets; neither bundle contains a cross-version JAR or MRPack.
 """
 
 from datetime import datetime, timezone
@@ -17,55 +17,31 @@ import zipfile
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RELEASES_DIR = os.path.join(BASE_DIR, "releases")
 PORT = int(os.environ.get("PORT", "8080"))
+VERSION = "1.0.4"
+TARGETS = ("1.20.1", "1.21.11")
 
 ASSET_DEFINITIONS = [
     {
-        "slug": "Azyron-Client-1.0.3-mc1.20.1.jar",
-        "display_name": "Azyron-Client-1.0.3-mc1.20.1.jar",
-        "download_filename": "Azyron-Client-1.0.3-mc1.20.1.jar",
-        "disk_filename": "Azyron-Client-1.0.3-mc1.20.1.jar",
-        "content_type": "application/java-archive",
-        "icon": "package",
+        "slug": "Azyron-Client-v1.0.4.zip",
+        "display_name": "Azyron-Client-v1.0.4.zip",
+        "download_filename": "Azyron-Client-v1.0.4.zip",
+        "disk_filename": "Azyron-Client-v1.0.4.zip",
+        "content_type": "application/zip",
+        "icon": "zip",
         "show_sha256": True,
-        "badge": "Native • Minecraft 1.20.1 Fabric",
-        "minecraft_target": "1.20.1",
-        "artifact_kind": "jar",
+        "badge": "Client bundle • two native targets",
+        "artifact_kind": "client_bundle",
     },
     {
-        "slug": "Azyron-Modpack-1.0.3-mc1.20.1.mrpack",
-        "display_name": "Azyron-Modpack-1.0.3-mc1.20.1.mrpack",
-        "download_filename": "Azyron-Modpack-1.0.3-mc1.20.1.mrpack",
-        "disk_filename": "Azyron-Modpack-1.0.3-mc1.20.1.mrpack",
-        "content_type": "application/octet-stream",
-        "icon": "package",
+        "slug": "Azyron-Modpack-v1.0.4.zip",
+        "display_name": "Azyron-Modpack-v1.0.4.zip",
+        "download_filename": "Azyron-Modpack-v1.0.4.zip",
+        "disk_filename": "Azyron-Modpack-v1.0.4.zip",
+        "content_type": "application/zip",
+        "icon": "zip",
         "show_sha256": True,
-        "badge": "Native • Minecraft 1.20.1 Fabric",
-        "minecraft_target": "1.20.1",
-        "artifact_kind": "mrpack",
-    },
-    {
-        "slug": "Azyron-Client-1.0.3-mc1.21.11.jar",
-        "display_name": "Azyron-Client-1.0.3-mc1.21.11.jar",
-        "download_filename": "Azyron-Client-1.0.3-mc1.21.11.jar",
-        "disk_filename": "Azyron-Client-1.0.3-mc1.21.11.jar",
-        "content_type": "application/java-archive",
-        "icon": "package",
-        "show_sha256": True,
-        "badge": "Native • Minecraft 1.21.11 Fabric",
-        "minecraft_target": "1.21.11",
-        "artifact_kind": "jar",
-    },
-    {
-        "slug": "Azyron-Modpack-1.0.3-mc1.21.11.mrpack",
-        "display_name": "Azyron-Modpack-1.0.3-mc1.21.11.mrpack",
-        "download_filename": "Azyron-Modpack-1.0.3-mc1.21.11.mrpack",
-        "disk_filename": "Azyron-Modpack-1.0.3-mc1.21.11.mrpack",
-        "content_type": "application/octet-stream",
-        "icon": "package",
-        "show_sha256": True,
-        "badge": "Native • Minecraft 1.21.11 Fabric",
-        "minecraft_target": "1.21.11",
-        "artifact_kind": "mrpack",
+        "badge": "Modpack bundle • two native profiles",
+        "artifact_kind": "modpack_bundle",
     },
 ]
 
@@ -82,6 +58,63 @@ def format_github_size(num_bytes: int) -> str:
 
 
 
+def _read_client_metadata(jar_bytes: bytes, mc: str, label: str) -> dict:
+    with zipfile.ZipFile(io.BytesIO(jar_bytes), "r") as jar:
+        bad = jar.testzip()
+        if bad is not None:
+            raise ValueError(f"Corrupt native JAR payload: {label}: {bad}")
+        metadata = json.loads(jar.read("fabric.mod.json"))
+        if metadata.get("id") != "azyron-client" or metadata.get("version") != VERSION:
+            raise ValueError(f"Unexpected native client metadata: {label}")
+        if metadata.get("name") != f"AZYRON CLIENT v{VERSION}":
+            raise ValueError(f"Unexpected AZYRON display name: {label}")
+        if metadata.get("depends", {}).get("minecraft") != [mc]:
+            raise ValueError(f"Native JAR target mismatch: {label}")
+        java = ">=17" if mc == "1.20.1" else ">=21"
+        if metadata.get("depends", {}).get("java") != java:
+            raise ValueError(f"Native JAR Java target mismatch: {label}")
+        if "JIGNESH GAMING" not in metadata.get("authors", []):
+            raise ValueError(f"Developer credit missing from {label}")
+        return metadata
+
+
+def validate_bundle(item: dict, data: bytes) -> None:
+    with zipfile.ZipFile(io.BytesIO(data), "r") as bundle:
+        bad = bundle.testzip()
+        if bad is not None:
+            raise ValueError(f"Corrupt bundle {item['display_name']}: {bad}")
+        names = set(bundle.namelist())
+        expected = {"README.txt"}
+        for mc in TARGETS:
+            if item["artifact_kind"] == "client_bundle":
+                expected.add(f"{mc}/Azyron-Client-{VERSION}-mc{mc}.jar")
+            else:
+                expected.add(f"{mc}/Azyron-Modpack-{VERSION}-mc{mc}.mrpack")
+        if names != expected:
+            raise ValueError(f"Unexpected files in {item['display_name']}: {sorted(names)}")
+
+        for mc in TARGETS:
+            if item["artifact_kind"] == "client_bundle":
+                jar_name = f"{mc}/Azyron-Client-{VERSION}-mc{mc}.jar"
+                _read_client_metadata(bundle.read(jar_name), mc, jar_name)
+                continue
+
+            pack_name = f"{mc}/Azyron-Modpack-{VERSION}-mc{mc}.mrpack"
+            pack_bytes = bundle.read(pack_name)
+            with zipfile.ZipFile(io.BytesIO(pack_bytes), "r") as pack:
+                bad = pack.testzip()
+                if bad is not None:
+                    raise ValueError(f"Corrupt target MRPack {pack_name}: {bad}")
+                index = json.loads(pack.read("modrinth.index.json"))
+                if index.get("versionId") != VERSION:
+                    raise ValueError(f"MRPack version mismatch: {pack_name}")
+                if index.get("dependencies", {}).get("minecraft") != mc:
+                    raise ValueError(f"MRPack target mismatch: {pack_name}")
+                embedded_name = f"overrides/mods/Azyron-Client-{VERSION}.jar"
+                embedded = pack.read(embedded_name)
+                _read_client_metadata(embedded, mc, f"{pack_name}:{embedded_name}")
+
+
 def load_live_assets():
     enriched = []
     for item in ASSET_DEFINITIONS:
@@ -91,22 +124,7 @@ def load_live_assets():
         stat = os.stat(disk_path)
         with open(disk_path, "rb") as fh:
             data = fh.read()
-        target = item.get("minecraft_target")
-        if target:
-            with zipfile.ZipFile(io.BytesIO(data), "r") as archive:
-                if item["artifact_kind"] == "jar":
-                    metadata = json.loads(archive.read("fabric.mod.json"))
-                    if metadata.get("depends", {}).get("minecraft") != [target]:
-                        raise ValueError(f"Native JAR target mismatch: {item['display_name']}")
-                else:
-                    index = json.loads(archive.read("modrinth.index.json"))
-                    if index.get("dependencies", {}).get("minecraft") != target:
-                        raise ValueError(f"Native MRPack target mismatch: {item['display_name']}")
-                    embedded = archive.read("overrides/mods/Azyron-Client-1.0.3.jar")
-                    with zipfile.ZipFile(io.BytesIO(embedded), "r") as client_jar:
-                        metadata = json.loads(client_jar.read("fabric.mod.json"))
-                        if metadata.get("depends", {}).get("minecraft") != [target]:
-                            raise ValueError(f"Embedded JAR target mismatch: {item['display_name']}")
+        validate_bundle(item, data)
         digest = hashlib.sha256(data).hexdigest()
         dt = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
         enriched.append({
@@ -193,13 +211,13 @@ OCTICONS = {
 
 def render_assets_box(assets):
     rows_html = []
-    for a in assets:
-        icon_svg = OCTICONS["package"] if a["icon"] == "package" else OCTICONS["zip"]
-        href = f"/releases/download/v1.0.3/{a['slug']}"
-        badge_html = f'<span class="asset-badge">{a["badge"]}</span>' if a.get("badge") else ""
-        if a["show_sha256"]:
-            full_sha = f"sha256:{a['sha256']}"
-            short_sha = f"sha256:{a['sha256'][:8]}…"
+    for asset in assets:
+        icon_svg = OCTICONS["package"] if asset["icon"] == "package" else OCTICONS["zip"]
+        href = f"/releases/download/v{VERSION}/{asset['slug']}"
+        badge_html = f'<span class="asset-badge">{asset["badge"]}</span>' if asset.get("badge") else ""
+        if asset["show_sha256"]:
+            full_sha = f"sha256:{asset['sha256']}"
+            short_sha = f"sha256:{asset['sha256'][:8]}…"
             sha_html = f"""
               <div class="asset-sha" title="{full_sha}">
                 <span class="sha-pill">{short_sha}</span>
@@ -210,22 +228,20 @@ def render_assets_box(assets):
             """
         else:
             sha_html = '<div class="asset-sha asset-sha--empty"></div>'
-
         rows_html.append(f"""
           <li class="Box-row asset-row">
             <div class="asset-name-cell">
               {icon_svg}
-              <a href="{href}" class="asset-link">{a['display_name']}</a>
+              <a href="{href}" class="asset-link">{asset['display_name']}</a>
               {badge_html}
             </div>
             {sha_html}
             <div class="asset-meta-cell">
-              <span class="asset-size">{a['size_human']}</span>
-              <relative-time datetime="{a['uploaded_iso']}" title="{a['uploaded_full']}" class="asset-date">{a['uploaded_short']}</relative-time>
+              <span class="asset-size">{asset['size_human']}</span>
+              <relative-time datetime="{asset['uploaded_iso']}" title="{asset['uploaded_full']}" class="asset-date">{asset['uploaded_short']}</relative-time>
             </div>
           </li>
         """)
-
     return f"""
       <div class="release-assets-footer" id="release-assets">
         <details class="assets-details" open>
@@ -235,108 +251,55 @@ def render_assets_box(assets):
             <span class="Counter">{len(assets)}</span>
           </summary>
           <div class="Box Box--condensed mt-2">
-            <ul class="asset-list">
-              {''.join(rows_html)}
-            </ul>
+            <ul class="asset-list">{''.join(rows_html)}</ul>
           </div>
         </details>
       </div>
     """
 
 
-def render_version_selector_widget():
+def render_bundle_overview_widget():
     return """
-      <section class="mc-selector-panel" aria-label="Minecraft compatibility and native downloads">
+      <section class="mc-selector-panel" aria-label="AZYRON CLIENT bundle contents">
         <div class="mc-selector-header">
           <div>
-            <div class="mc-selector-eyebrow">VERSION-SPECIFIC STANDARD LAUNCHER FILES • v1.0.3</div>
-            <h3 class="mc-selector-title">Choose the Matching Minecraft Version (Fabric)</h3>
-          </div>
-          <div class="mc-selector-tabs" role="tablist">
-            <button type="button" class="mc-tab-btn is-active" data-mc-tab="1.21.11" role="tab" aria-selected="true">
-              Minecraft 1.21.11 <span class="mc-tab-tag">Fabric 0.20.1</span>
-            </button>
-            <button type="button" class="mc-tab-btn" data-mc-tab="1.20.1" role="tab" aria-selected="false">
-              Minecraft 1.20.1 <span class="mc-tab-tag">Fabric 0.14.22+</span>
-            </button>
+            <div class="mc-selector-eyebrow">TWO DOWNLOAD BUNDLES • TWO NATIVE TARGETS</div>
+            <h3 class="mc-selector-title">AZYRON CLIENT v1.0.4</h3>
           </div>
         </div>
-
-        <div class="mc-profile-pane is-active" id="mc-pane-1.21.11">
-          <div class="mc-specs-grid">
-            <div class="mc-spec-box"><span class="mc-spec-label">Client</span><strong>AZYRON CLIENT v1.0.3</strong></div>
-            <div class="mc-spec-box"><span class="mc-spec-label">Compatibility</span><strong>1.21.11 • Fabric 0.20.1</strong></div>
-            <div class="mc-spec-box"><span class="mc-spec-label">Java Runtime</span><strong>OpenJDK 21+</strong></div>
-            <div class="mc-spec-box"><span class="mc-spec-label">Download type</span><strong>Native JAR + matching MRPack</strong></div>
-          </div>
-          <p class="mc-stack-line">
-            <strong>Pinned 1.21.11 dependencies:</strong>
-            <code>Fabric API 0.141.6+1.21.11</code> · <code>Sodium 0.8.14</code> · <code>Lithium 0.21.4</code> ·
-            <code>FerriteCore 8.2.0</code> · <code>EntityCulling 1.11.3</code> · <code>MoreCulling 1.6.2</code> ·
-            <code>Cloth Config 21.11.153</code> · <code>Dynamic FPS 3.11.6</code>
-          </p>
-          <div class="mc-cta-row">
-            <a class="mc-download-btn mc-download-btn--primary" href="/releases/download/v1.0.3/Azyron-Client-1.0.3-mc1.21.11.jar">
-              Download Azyron-Client-1.0.3-mc1.21.11.jar
-            </a>
-            <a class="mc-download-btn mc-download-btn--secondary" href="/releases/download/v1.0.3/Azyron-Modpack-1.0.3-mc1.21.11.mrpack">
-              Download Azyron-Modpack-1.0.3-mc1.21.11.mrpack
-            </a>
-            <code class="mc-cli-pill">./releases/download-dependencies.sh --mc 1.21.11</code>
-          </div>
-          <p class="mc-stack-line">Use these two files only with Minecraft 1.21.11. The game version is selected by your launcher.</p>
-        </div>
-
-        <div class="mc-profile-pane" id="mc-pane-1.20.1">
-          <div class="mc-specs-grid">
-            <div class="mc-spec-box"><span class="mc-spec-label">Client</span><strong>AZYRON CLIENT v1.0.3</strong></div>
-            <div class="mc-spec-box"><span class="mc-spec-label">Compatibility</span><strong>1.20.1 • Fabric 0.14.22+</strong></div>
-            <div class="mc-spec-box"><span class="mc-spec-label">Java Runtime</span><strong>OpenJDK 17+ (or 21)</strong></div>
-            <div class="mc-spec-box"><span class="mc-spec-label">Download type</span><strong>Native JAR + matching MRPack</strong></div>
-          </div>
-          <p class="mc-stack-line">
-            <strong>Pinned 1.20.1 dependencies:</strong>
-            <code>Fabric API 0.88.1+1.20.1</code> · <code>Sodium 0.5.3</code> · <code>Lithium 0.11.2</code> ·
-            <code>FerriteCore 6.0.0</code> · <code>EntityCulling 1.6.2</code> · <code>MoreCulling 0.19.0</code> ·
-            <code>Cloth Config 11.1.106</code> · <code>Dynamic FPS 3.2.1</code>
-          </p>
-          <div class="mc-cta-row">
-            <a class="mc-download-btn mc-download-btn--primary" href="/releases/download/v1.0.3/Azyron-Client-1.0.3-mc1.20.1.jar">
-              Download Azyron-Client-1.0.3-mc1.20.1.jar
-            </a>
-            <a class="mc-download-btn mc-download-btn--secondary" href="/releases/download/v1.0.3/Azyron-Modpack-1.0.3-mc1.20.1.mrpack">
-              Download Azyron-Modpack-1.0.3-mc1.20.1.mrpack
-            </a>
-            <code class="mc-cli-pill">./releases/download-dependencies.sh --mc 1.20.1</code>
-          </div>
-          <p class="mc-stack-line">Use these two files only with Minecraft 1.20.1. The game version is selected by your launcher.</p>
-        </div>
+        <table>
+          <thead><tr><th>Launcher version</th><th>Native client file</th><th>Modrinth profile</th><th>Java</th></tr></thead>
+          <tbody>
+            <tr><td>Minecraft 1.20.1 Fabric</td><td><code>1.20.1/Azyron-Client-1.0.4-mc1.20.1.jar</code></td><td><code>1.20.1/Azyron-Modpack-1.0.4-mc1.20.1.mrpack</code></td><td>17+</td></tr>
+            <tr><td>Minecraft 1.21.11 Fabric</td><td><code>1.21.11/Azyron-Client-1.0.4-mc1.21.11.jar</code></td><td><code>1.21.11/Azyron-Modpack-1.0.4-mc1.21.11.mrpack</code></td><td>21+</td></tr>
+          </tbody>
+        </table>
+        <p class="mc-stack-line">Download each product once from the two Assets below. Extract the ZIP and use only the native folder matching your launcher version. Neither JAR nor MRPack is universal.</p>
       </section>
     """
 
 
-
 def render_release_body_html(assets):
     sha_rows = "".join(
-        f'<tr><td><code>{a["display_name"]}</code></td><td><code>{a["size_bytes"]:,} B</code> (<code>{a["size_human"]}</code>)</td><td><code>{a["sha256"]}</code></td></tr>'
-        for a in assets
-        if a["show_sha256"]
+        f'<tr><td><code>{asset["display_name"]}</code></td><td><code>{asset["size_bytes"]:,} B</code> (<code>{asset["size_human"]}</code>)</td><td><code>{asset["sha256"]}</code></td></tr>'
+        for asset in assets
+        if asset["show_sha256"]
     )
-    selector_html = render_version_selector_widget()
+    bundle_html = render_bundle_overview_widget()
     return f"""
       <div class="markdown-body">
         <blockquote>
-          <p><strong>AZYRON CLIENT v1.0.3</strong> by <strong>JIGNESH GAMING</strong>. Standard Fabric launcher downloads are provided as two separate native JAR/MRPack pairs: Minecraft <code>1.20.1</code> and <code>1.21.11</code>. Select the game in your launcher and use only its matching pair; there is no universal JAR or multi-version installer.</p>
+          <p><strong>AZYRON CLIENT v1.0.4</strong> by <strong>JIGNESH GAMING</strong>. This release provides exactly two download archives: one Client bundle ZIP and one Modpack bundle ZIP. Each carries separate native 1.20.1 and 1.21.11 Fabric payloads; neither is a cross-version JAR or profile.</p>
         </blockquote>
 
-        {selector_html}
+        {bundle_html}
 
         <table>
           <thead><tr><th>Specification</th><th>Details</th></tr></thead>
           <tbody>
-            <tr><td><strong>Client</strong></td><td><strong>AZYRON CLIENT v1.0.3</strong> by <strong>JIGNESH GAMING</strong></td></tr>
-            <tr><td><strong>Native targets</strong></td><td>Minecraft <code>1.20.1</code> Fabric and Minecraft <code>1.21.11</code> Fabric; each has its own JAR and MRPack.</td></tr>
-            <tr><td><strong>Java runtime</strong></td><td><code>1.20.1</code>: Java 17+; <code>1.21.11</code>: Java 21+.</td></tr>
+            <tr><td><strong>Client archive</strong></td><td><code>Azyron-Client-v1.0.4.zip</code></td></tr>
+            <tr><td><strong>Modpack archive</strong></td><td><code>Azyron-Modpack-v1.0.4.zip</code></td></tr>
+            <tr><td><strong>Native build dependencies</strong></td><td>1.20.1: Java 17, Yarn 1.20.1+build.10, Loader 0.14.22+, Fabric API 0.88.1+1.20.1. 1.21.11: Java 21, Yarn 1.21.11+build.6, Loader 0.20.1+, Fabric API 0.141.6+1.21.11.</td></tr>
             <tr><td><strong>Release status</strong></td><td><code>Draft</code>. Do not publish without owner approval.</td></tr>
           </tbody>
         </table>
@@ -344,24 +307,24 @@ def render_release_body_html(assets):
         <hr>
         <h2>Build and compatibility notes</h2>
         <ul>
-          <li>Native builds compile against their selected Minecraft, Yarn, Loader and Fabric API dependencies. The pack builder verifies that the embedded client JAR and Modrinth index target the same Minecraft version.</li>
-          <li>The shared client retains its existing Mods Menu, HUD, Armour Hub, cosmetics and performance profiles. The game version is selected in the launcher, not by an in-game profile selector.</li>
-          <li>See <code>COMPATIBILITY_1201_BUILD_REPORT.md</code> for native build/audit history and exact package hashes. Historical 26/26 suites used generated Minecraft/Fabric stubs; they are not game-launch tests.</li>
+          <li>The project builds Minecraft 1.20.1 and 1.21.11 separately against their own mappings, Loader/API dependencies and target-specific mixins.</li>
+          <li>The shared Mods Menu, HUD, Armour Hub, cosmetics and performance profile code is retained for both native targets.</li>
+          <li>Each target's Modrinth profile contains one matching game version and the exact native client JAR. The outer ZIP bundles only these separately verifiable files.</li>
+          <li>See <code>TESTING_REPORT_v1.0.4.md</code> for native build status and validation limits. Historical generated-stub checks are not native game validation.</li>
         </ul>
 
         <hr>
         <h2>Performance profile configuration</h2>
-        <p>The low-memory profile configures up to <code>6</code> view / <code>5</code> simulation chunks and a <code>60 FPS</code> cap for the 3GB tier. These are configuration targets, not measured framerates. No 60+ FPS, RAM reduction, crash-free or long-session stability claim is made. Device startup, Mixin application, multiplayer, renderer compatibility and FPS/RAM benchmarks remain untested.</p>
+        <p>The low-memory profiles use equivalent configuration targets: up to <code>6</code> view / <code>5</code> simulation chunks and a <code>60 FPS</code> cap. These are settings, not measured framerates or RAM results. No game launch, gameplay, device, renderer, FPS, or RAM benchmark is claimed.</p>
 
         <hr>
-        <h2>Artifact SHA-256 checksums</h2>
+        <h2>Archive SHA-256 checksums</h2>
         <table>
-          <thead><tr><th>Asset filename</th><th>Size</th><th>SHA-256</th></tr></thead>
+          <thead><tr><th>Download archive</th><th>Size</th><th>SHA-256</th></tr></thead>
           <tbody>{sha_rows}</tbody>
         </table>
       </div>
     """
-
 
 
 def render_page(view_mode: str, assets):
@@ -378,7 +341,7 @@ def render_page(view_mode: str, assets):
               <span class="subnav-pill is-active">Releases</span>
               <span class="subnav-pill">Tags</span>
             </div>
-            <span class="private-draft-note">Private draft • v1.0.3 native builds for 1.20.1 and 1.21.11</span>
+            <span class="private-draft-note">Private draft • v1.0.4 native builds for 1.20.1 and 1.21.11</span>
           </div>
         """
         main_content = f"""
@@ -386,12 +349,12 @@ def render_page(view_mode: str, assets):
             <div class="releases-rail">
               <div class="rail-date"><relative-time datetime="{upload_iso}" title="{upload_full}">{upload_short}</relative-time></div>
               <div class="rail-item">{OCTICONS['lock']} <span>JIGNESH GAMING</span></div>
-              <div class="rail-item">{OCTICONS['tag']} <span class="mono">v1.0.3</span></div>
+              <div class="rail-item">{OCTICONS['tag']} <span class="mono">v1.0.4</span></div>
             </div>
             <div class="Box release-card">
               <div class="release-card-body">
                 <div class="release-title-row">
-                  <h1 class="release-title"><a href="/releases/tag/v1.0.3" class="release-title-link">AZYRON CLIENT v1.0.3</a></h1>
+                  <h1 class="release-title"><a href="/releases/tag/v1.0.4" class="release-title-link">AZYRON CLIENT v1.0.4</a></h1>
                   <span class="Label Label--draft" title="Draft Pre-release — awaiting approval">Draft Pre-release</span>
                 </div>
                 {body_html}
@@ -405,14 +368,14 @@ def render_page(view_mode: str, assets):
           <nav class="release-breadcrumb" aria-label="Breadcrumb">
             <a href="/releases" class="breadcrumb-link">Releases</a>
             <span class="breadcrumb-sep">/</span>
-            <span class="breadcrumb-current">v1.0.3</span>
+            <span class="breadcrumb-current">v1.0.4</span>
           </nav>
         """
         main_content = f"""
           <div class="Box release-card">
             <div class="release-card-body">
               <div class="release-title-row">
-                <h1 class="release-title">AZYRON CLIENT v1.0.3</h1>
+                <h1 class="release-title">AZYRON CLIENT v1.0.4</h1>
                 <span class="Label Label--draft" title="Draft Pre-release — awaiting approval">Draft Pre-release</span>
               </div>
               <div class="release-meta-bar">
@@ -420,9 +383,9 @@ def render_page(view_mode: str, assets):
                 <strong class="author-name">JIGNESH GAMING</strong>
                 <span>staged version-specific native builds <relative-time datetime="{upload_iso}" title="{upload_full}">{upload_short}</relative-time></span>
                 <span class="meta-dot">·</span>
-                <span class="meta-inline">{OCTICONS['tag']} <span class="mono">v1.0.3</span></span>
+                <span class="meta-inline">{OCTICONS['tag']} <span class="mono">v1.0.4</span></span>
                 <span class="meta-dot">·</span>
-                <span class="meta-inline">Modpack <span class="mono">v1.0.3</span></span>
+                <span class="meta-inline">Modpack <span class="mono">v1.0.4</span></span>
               </div>
               <div class="release-divider"></div>
               {body_html}
@@ -436,7 +399,7 @@ def render_page(view_mode: str, assets):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AZYRON CLIENT v1.0.3 · AzyronClientteam/Azyron-Client</title>
+  <title>AZYRON CLIENT v1.0.4 · AzyronClientteam/Azyron-Client</title>
   <style>
     :root {{
       --bg-canvas: #0d1117;
@@ -798,13 +761,13 @@ def render_page(view_mode: str, assets):
         {OCTICONS['lock']}
         <span class="repo-owner">AzyronClientteam</span>
         <span class="repo-slash">/</span>
-        <a href="/releases/tag/v1.0.3" class="repo-name">Azyron-Client</a>
+        <a href="/releases/tag/v1.0.4" class="repo-name">Azyron-Client</a>
         <span class="Label">Private</span>
       </div>
       <button type="button" class="theme-toggle" id="themeToggle">Light / Dark</button>
     </div>
     <nav class="repo-nav" aria-label="Repository">
-      <a href="/releases/tag/v1.0.3" class="repo-nav-item is-selected">{OCTICONS['code']} <span>Code &amp; Releases (v1.0.3)</span></a>
+      <a href="/releases/tag/v1.0.4" class="repo-nav-item is-selected">{OCTICONS['code']} <span>Code &amp; Releases (v1.0.4)</span></a>
     </nav>
   </header>
 
@@ -859,7 +822,7 @@ def render_page(view_mode: str, assets):
 
 
 class GitHubReleasesHandler(BaseHTTPRequestHandler):
-    server_version = "AzyronGitHubReleases/1.0.3"
+    server_version = "AzyronGitHubReleases/1.0.4"
 
     def log_message(self, fmt, *args):
         print(f"[Releases] {self.address_string()} - {fmt % args}", flush=True)
@@ -882,7 +845,7 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
         by_slug = {a["slug"]: a for a in assets}
 
         if (
-            path in ("/", "/releases/tag/v0.1.0-pre", "/releases/tag/v1.0.2", "/releases/tag/v1.0.3")
+            path in ("/", "/releases/tag/v0.1.0-pre", "/releases/tag/v1.0.2", "/releases/tag/v1.0.4")
             or path.startswith("/releases/tag/untagged-")
             or path.startswith("/releases/edit/untagged-")
         ):
@@ -907,21 +870,17 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                 self.wfile.write(html)
             return
 
-        if path in ("/api/release", "/api/releases/v0.1.0-pre", "/api/releases/v1.0.3"):
+        if path in ("/api/release", "/api/releases/v0.1.0-pre", "/api/releases/v1.0.4"):
             payload = json.dumps({
-                "id": 437365942,
-                "tag_name": "v1.0.3",
-                "version": "1.0.3",
-                "modpack_version": "1.0.3",
-                "name": "AZYRON CLIENT v1.0.3",
-                "supported_minecraft_versions": ["1.21.11", "1.20.1"],
+                "id": None,
+                "tag_name": "v1.0.4",
+                "version": "1.0.4",
+                "modpack_version": "1.0.4",
+                "name": "AZYRON CLIENT v1.0.4",
+                "supported_minecraft_versions": ["1.20.1", "1.21.11"],
+                "developer": "JIGNESH GAMING",
                 "draft": True,
-                "verification_environment": "historical generated-stub suites; native build report is separate; game/device launch and benchmarks pending",
-                "historical_stub_suites": {
-                    "scope": "generated Minecraft/Fabric stubs; historical, not native-build or gameplay acceptance",
-                    "1.21.11": {"suite": "AzyronClientTestSuite12111", "passed": 26, "failed": 0},
-                    "1.20.1": {"suite": "AzyronClientTestSuite1201", "passed": 26, "failed": 0},
-                },
+                "verification_environment": "v1.0.4 native CI build status is recorded separately; game/device launch and benchmarks NOT RUN",
                 "gameplay_and_device_benchmarks": "NOT RUN",
                 "assets": [
                     {
@@ -931,7 +890,7 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                         "size_human": a["size_human"],
                         "digest": f"sha256:{a['sha256']}" if a["show_sha256"] else None,
                         "uploaded_at": a["uploaded_iso"],
-                        "browser_download_url": f"/releases/download/v1.0.3/{a['slug']}",
+                        "browser_download_url": f"/releases/download/v1.0.4/{a['slug']}",
                     }
                     for a in assets
                 ],
@@ -945,23 +904,9 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
                 self.wfile.write(payload)
             return
 
-        for prefix in ("/releases/download/v0.1.0-pre/", "/releases/download/v1.0.3/", "/downloads/"):
+        for prefix in ("/releases/download/v0.1.0-pre/", "/releases/download/v1.0.4/", "/downloads/"):
             if path.startswith(prefix):
                 slug = path[len(prefix):]
-                if slug == "SHA256SUMS.txt":
-                    sums_path = os.path.join(RELEASES_DIR, slug)
-                    if os.path.isfile(sums_path):
-                        with open(sums_path, "rb") as fh:
-                            raw_sums = fh.read()
-                        self.send_response(200)
-                        self.send_header("Content-Type", "text/plain; charset=utf-8")
-                        self.send_header("Content-Length", str(len(raw_sums)))
-                        self.send_header("Content-Disposition", 'attachment; filename="SHA256SUMS.txt"')
-                        self._send_common_headers()
-                        self.end_headers()
-                        if not head_only:
-                            self.wfile.write(raw_sums)
-                        return
                 asset = by_slug.get(slug)
                 if asset and os.path.isfile(asset["disk_path"]):
                     self.send_response(200)
@@ -993,11 +938,11 @@ class GitHubReleasesHandler(BaseHTTPRequestHandler):
 
 def main():
     assets = load_live_assets()
-    print(f"Loaded {len(assets)} verified v1.0.3 build assets from {RELEASES_DIR}:", flush=True)
+    print(f"Loaded {len(assets)} verified v1.0.4 build assets from {RELEASES_DIR}:", flush=True)
     for a in assets:
         print(f"  - {a['display_name']} ({a['size_human']}, sha256:{a['sha256'][:12]}...)", flush=True)
     server = ThreadingHTTPServer(("0.0.0.0", PORT), GitHubReleasesHandler)
-    print(f"AZYRON CLIENT v1.0.3 Releases Portal listening on http://0.0.0.0:{PORT}", flush=True)
+    print(f"AZYRON CLIENT v1.0.4 Releases Portal listening on http://0.0.0.0:{PORT}", flush=True)
     server.serve_forever()
 
 

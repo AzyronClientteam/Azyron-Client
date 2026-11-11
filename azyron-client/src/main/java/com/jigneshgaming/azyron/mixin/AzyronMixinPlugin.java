@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
 /**
- * Version-selective SpongePowered Mixin configuration plugin for AZYRON CLIENT v1.0.3.
+ * Version-selective SpongePowered Mixin configuration plugin for AZYRON CLIENT v1.0.4.
  *
  * Dynamically enables:
  *  - Shared Mixins across both Minecraft 1.21.11 and Minecraft 1.20.1

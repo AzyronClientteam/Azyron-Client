@@ -6,8 +6,16 @@ on:
     paths:
       - .github/workflows/validate-azyron-fabric.yml
       - azyron-client/build.gradle
+      - azyron-client/gradle.properties
       - azyron-client/src/**
+      - azyron-client/modpack/**
       - azyron-client/scripts/*.py
+      - azyron-client/releases-portal/**
+      - azyron-client/README.md
+      - azyron-client/DEPENDENCIES.md
+      - azyron-client/POJAVLAUNCHER_INSTALLATION.md
+      - azyron-client/RELEASE_NOTES_v1.0.4.md
+      - azyron-client/TESTING_REPORT_v1.0.4.md
   workflow_dispatch:
 
 permissions:
@@ -104,7 +112,7 @@ jobs:
           if-no-files-found: warn
 
   prepare-candidates:
-    name: Prepare candidates only after BOTH native builds pass
+    name: Package two native download bundles (not a release)
     needs: fabric-build
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -116,81 +124,27 @@ jobs:
         with:
           pattern: fabric-validation-*
           path: validation-inputs
-      - name: Offline packaging regression tests
+      - name: Offline packaging regression tests (synthetic fixtures only)
         run: python3 azyron-client/scripts/test-low-ram-packaging.py
-      - name: Prepare exact native JARs and matching MRPacks (no release upload)
+      - name: Prepare bundles from both genuine native builds
         run: |
-          python3 azyron-client/scripts/prepare-native-candidates.py --inputs validation-inputs --out candidates --run-id "$GITHUB_RUN_ID" --commit "$GITHUB_SHA"
+          python3 azyron-client/scripts/prepare-native-candidates.py \
+            --inputs validation-inputs \
+            --out candidates \
+            --run-id "$GITHUB_RUN_ID" \
+            --commit "$GITHUB_SHA"
           cd candidates
-          sha256sum --check SHA256SUMS.txt
-      - name: Record candidate provenance in a readable check
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: python
-        run: |
-          import json, os, subprocess
-          from pathlib import Path
-          payload = {'name': 'Prepared native candidates', 'head_sha': os.environ['GITHUB_SHA'],
-                     'status': 'completed', 'conclusion': 'neutral',
-                     'output': {'title': 'Both native builds passed; NOT published',
-                                'summary': 'JIGNESH GAMING — owner approval required before publication. Hardware FPS tests NOT RUN.',
-                                'text': '```json\n' + Path('candidates/BUILD-PROVENANCE.json').read_text() + '\n```'}}
-          subprocess.run(['gh', 'api', '--method', 'POST', 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/check-runs', '--input', '-'],
-                         input=json.dumps(payload), text=True, stdout=subprocess.DEVNULL, check=True)
-      - uses: actions/upload-artifact@v6
+          sha256sum --check --strict SHA256SUMS.txt
+      - name: Upload validation artifact only — no GitHub release changes
+        uses: actions/upload-artifact@v6
         with:
-          name: Azyron-v1.0.3-native-candidates-NOT-PUBLISHED
+          name: Azyron-v1.0.4-native-bundles-NOT-PUBLISHED
           path: candidates/
           retention-days: 14
       - uses: actions/download-artifact@v7
         with:
-          name: Azyron-v1.0.3-native-candidates-NOT-PUBLISHED
+          name: Azyron-v1.0.4-native-bundles-NOT-PUBLISHED
           path: verified-download
       - name: Verify downloaded artifact bytes and hashes
         working-directory: verified-download
-        run: sha256sum --check SHA256SUMS.txt
-
-  attach-verified-candidates-to-existing-draft:
-    name: Attach verified native candidates to the existing draft (never publish)
-    needs: [fabric-build, prepare-candidates]
-    # This exact next push is the owner's approved refresh of verified v1.0.3
-    # draft assets. It runs only after both native builds and candidate checks
-    # pass. The exact parent + commit prefix make it one-time; the updater also
-    # enforces the release ID/tag and draft=true before and after each API action.
-    if: >-
-      github.repository == 'AzyronClientteam/Azyron-Client' &&
-      github.ref == 'refs/heads/arena/a6dbb848-azyron-client' &&
-      github.event_name == 'push' &&
-      (
-        (github.event.before == '8271a45ce0e85e915102cda3d89e41819dc7d29e' &&
-         startsWith(github.event.head_commit.message, 'Finalize approved v1.0.3 release assets')) ||
-        (github.event.before == '714b6da70cddfbab0b3abdec241304d9261e5106' &&
-         startsWith(github.event.head_commit.message, 'Attach verified v1.0.3 draft assets after CI'))
-      )
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    permissions:
-      actions: read
-      contents: write
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: false
-      - uses: actions/download-artifact@v7
-        with:
-          name: Azyron-v1.0.3-native-candidates-NOT-PUBLISHED
-          path: candidates
-      - name: Verify exact native candidate bundle before release update
-        working-directory: candidates
         run: sha256sum --check --strict SHA256SUMS.txt
-      - name: Attach verified files and update the existing draft only
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >-
-          python3 azyron-client/scripts/update-draft-release.py
-          --candidates candidates
-          --repo "$GITHUB_REPOSITORY"
-          --release-id 437365942
-          --tag v1.0.3
-          --run-id "$GITHUB_RUN_ID"
-          --commit "$GITHUB_SHA"

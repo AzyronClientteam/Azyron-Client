@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AZYRON CLIENT — Reproducible Modrinth (.mrpack) Builder for v1.0.3
+AZYRON CLIENT — Reproducible Modrinth (.mrpack) Builder for v1.0.4
 Builds separate standard Modrinth packs for native Minecraft targets:
   - Minecraft 1.21.11 (Fabric 0.20.1)
   - Minecraft 1.20.1  (Fabric 0.14.22+) [--mc 1.20.1]
@@ -16,14 +16,13 @@ import zipfile
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CLIENT_ROOT = os.path.dirname(SCRIPT_DIR)
 MODPACK_SRC = os.path.join(CLIENT_ROOT, "modpack")
-RELEASES_DIR = os.path.join(CLIENT_ROOT, "releases")
 
 
 def validate_index(index_path: str, expected_mc: str) -> None:
     with open(index_path, "r", encoding="utf-8") as fh:
         idx = json.load(fh)
-    if idx.get("versionId") != "1.0.3":
-        raise ValueError(f"{index_path} must declare versionId 1.0.3 (got {idx.get('versionId')})")
+    if idx.get("versionId") != "1.0.4":
+        raise ValueError(f"{index_path} must declare versionId 1.0.4 (got {idx.get('versionId')})")
     deps = idx.get("dependencies", {})
     if deps.get("minecraft") != expected_mc:
         raise ValueError(f"{index_path} must target Minecraft {expected_mc} (got {deps.get('minecraft')})")
@@ -41,13 +40,13 @@ def validate_index(index_path: str, expected_mc: str) -> None:
 def default_native_jar_path(mc_version: str) -> str:
     if mc_version not in ("1.20.1", "1.21.11"):
         raise ValueError("Unsupported Minecraft version")
-    return os.path.join(CLIENT_ROOT, "build", "libs", f"Azyron-Client-1.0.3-mc{mc_version}.jar")
+    return os.path.join(CLIENT_ROOT, "build", "libs", f"Azyron-Client-1.0.4-mc{mc_version}.jar")
 
 
 def default_modpack_path(mc_version: str) -> str:
     if mc_version not in ("1.20.1", "1.21.11"):
         raise ValueError("Unsupported Minecraft version")
-    return os.path.join(RELEASES_DIR, f"Azyron-Modpack-1.0.3-mc{mc_version}.mrpack")
+    return os.path.join(CLIENT_ROOT, "build", "modpack-profiles", f"Azyron-Modpack-1.0.4-mc{mc_version}.mrpack")
 
 
 def build_mrpack(jar_path: str, out_path: str, mc_version: str = "1.21.11") -> None:
@@ -74,7 +73,7 @@ def build_mrpack(jar_path: str, out_path: str, mc_version: str = "1.21.11") -> N
     # Require the native target: never pair a 1.21.11 JAR with a 1.20.1 manifest.
     with zipfile.ZipFile(jar_path, "r") as jf:
         fmj = json.loads(jf.read("fabric.mod.json").decode("utf-8"))
-        if "${" in json.dumps(fmj) or fmj.get("version") != "1.0.3":
+        if "${" in json.dumps(fmj) or fmj.get("version") != "1.0.4":
             raise ValueError(f"Invalid fabric.mod.json version inside {jar_path}: {fmj.get('version')}")
         mc_dep = fmj.get("depends", {}).get("minecraft")
         if mc_dep != [mc_version]:
@@ -84,7 +83,7 @@ def build_mrpack(jar_path: str, out_path: str, mc_version: str = "1.21.11") -> N
     with zipfile.ZipFile(out_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
         zf.write(active_index, "modrinth.index.json")
         zf.write(active_index, f"profiles/modrinth.index.{mc_version}.json")
-        zf.write(jar_path, "overrides/mods/Azyron-Client-1.0.3.jar")
+        zf.write(jar_path, "overrides/mods/Azyron-Client-1.0.4.jar")
         zf.write(icon_path, "icon.png")
         # Only the client config is shared. Companion schemas must not leak from
         # one MC version to the other; unsupported optimizers use upstream defaults.
@@ -113,7 +112,7 @@ def build_mrpack(jar_path: str, out_path: str, mc_version: str = "1.21.11") -> N
         if bad is not None:
             raise RuntimeError(f"Corrupt entry in generated mrpack: {bad}")
         mod_jars = [n for n in zf.namelist() if n.startswith("overrides/mods/") and n.endswith(".jar")]
-        if mod_jars != ["overrides/mods/Azyron-Client-1.0.3.jar"]:
+        if mod_jars != ["overrides/mods/Azyron-Client-1.0.4.jar"]:
             raise RuntimeError(f"Unexpected overrides/mods contents: {mod_jars}")
     print(f"Built structurally checked mrpack (MC {mc_version}): {out_path} ({os.path.getsize(out_path)} bytes)")
 

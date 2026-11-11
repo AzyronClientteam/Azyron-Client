@@ -17,7 +17,7 @@ import net.minecraft.client.gui.screen.world.SelectWorldScreen;
 import net.minecraft.text.Text;
 
 /**
- * Original Azyron-branded main menu for AZYRON CLIENT v1.0.3.
+ * Original Azyron-branded main menu for AZYRON CLIENT v1.0.4.
  * Renders live 3D Minecraft Panorama + ambient purple/electric-blue starfield + complete navigation.
  */
 public final class AzyronMainMenuScreen extends AzyronBaseScreen {
