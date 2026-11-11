@@ -26,7 +26,7 @@ Use the JAR and Modrinth pack for the same Minecraft version. Each native JAR an
 | **1.20.1 Fabric** | `Azyron-Client-1.0.3-mc1.20.1.jar` | `Azyron-Modpack-1.0.3-mc1.20.1.mrpack` |
 | **1.21.11 Fabric** | `Azyron-Client-1.0.3-mc1.21.11.jar` | `Azyron-Modpack-1.0.3-mc1.21.11.mrpack` |
 
-The GitHub draft contains native pairs from the prior verified build. Working-tree changes are not part of those assets until rebuilt and explicitly verified. See [the native build report](COMPATIBILITY_1201_BUILD_REPORT.md).
+The draft still contains native pairs from the prior verified build. Current source changes have now passed both native builds and package checks in [CI run 42948465997](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42948465997); its candidates have not yet replaced the attached assets. See [the native build report](COMPATIBILITY_1201_BUILD_REPORT.md).
 
 ---
 

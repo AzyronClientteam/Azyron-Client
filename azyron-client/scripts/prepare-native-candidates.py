@@ -79,7 +79,7 @@ def prepare(inputs, output, run_id, commit):
               "targets": reports}
     (output / "BUILD-PROVENANCE.json").write_text(json.dumps(result, indent=2) + "\n")
     (output / "README.txt").write_text(
-        "Azyron Client v1.0.3 / Azyron Modpack v1.0.3\nDeveloper: JIGNESH GAMING\n"
+        "AZYRON CLIENT v1.0.3 native builds\nDeveloper: JIGNESH GAMING\n"
         "Native candidates, one JAR + one MRPack per Minecraft version. Do not mix them.\n"
         "Built against real Minecraft/Fabric; structural compatibility checks are not gameplay testing.\n"
         "No 3GB/60+ FPS hardware results. Render 6, conservative simulation 5.\n"

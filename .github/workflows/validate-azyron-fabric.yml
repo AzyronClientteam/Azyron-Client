@@ -153,16 +153,20 @@ jobs:
   attach-verified-candidates-to-existing-draft:
     name: Attach verified native candidates to the existing draft (never publish)
     needs: [fabric-build, prepare-candidates]
-    # One-time owner-requested update: only the next fast-forward push from
-    # this exact branch head and a unique commit-subject prefix may attach assets.
-    # Ordinary CI and dispatches cannot mutate the release. The release script
-    # also requires the exact release ID/tag and asserts draft=true throughout.
+    # This exact next push is the owner's approved refresh of verified v1.0.3
+    # draft assets. It runs only after both native builds and candidate checks
+    # pass. The exact parent + commit prefix make it one-time; the updater also
+    # enforces the release ID/tag and draft=true before and after each API action.
     if: >-
       github.repository == 'AzyronClientteam/Azyron-Client' &&
       github.ref == 'refs/heads/arena/a6dbb848-azyron-client' &&
       github.event_name == 'push' &&
-      github.event.before == '8271a45ce0e85e915102cda3d89e41819dc7d29e' &&
-      startsWith(github.event.head_commit.message, 'Finalize approved v1.0.3 release assets')
+      (
+        (github.event.before == '8271a45ce0e85e915102cda3d89e41819dc7d29e' &&
+         startsWith(github.event.head_commit.message, 'Finalize approved v1.0.3 release assets')) ||
+        (github.event.before == '714b6da70cddfbab0b3abdec241304d9261e5106' &&
+         startsWith(github.event.head_commit.message, 'Attach verified v1.0.3 draft assets after CI'))
+      )
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     permissions:

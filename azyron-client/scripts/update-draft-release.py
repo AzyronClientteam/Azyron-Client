@@ -149,7 +149,7 @@ def validate_prior_assets(release):
 
 
 def release_body(provenance, hashes, run_id, commit):
-    return f"""# Azyron Client v1.0.3 / Azyron Modpack v1.0.3
+    return f"""# AZYRON CLIENT v1.0.3
 
 **Developer: JIGNESH GAMING**
 
@@ -157,7 +157,7 @@ def release_body(provenance, hashes, run_id, commit):
 
 ## Downloads
 
-Use the JAR and MRPack for the same Minecraft version. The old generic-name stub assets have been removed to avoid confusion.
+Use the JAR and MRPack for the same Minecraft version. Each file is native to exactly one target; there is no universal JAR or multi-version installer.
 
 | Minecraft | Client JAR | Modpack | SHA-256 (JAR) | SHA-256 (MRPack) |
 |---|---|---|---|---|
@@ -170,7 +170,7 @@ Use the JAR and MRPack for the same Minecraft version. The old generic-name stub
 
 - Minecraft **1.20.1 Fabric**: standard Gradle `build` passed; 105 actual-classpath compatibility checks passed; Java 17 output.
 - Minecraft **1.21.11 Fabric**: standard Gradle `build` passed; 110 actual-classpath compatibility checks passed; Java 21 output.
-- Eight packaging/installer regression tests passed.
+- Nine offline packaging/installer regression tests passed.
 - [Successful CI run {run_id}](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/{run_id}) — validated source commit `{commit}`.
 - Builds used real Minecraft/Yarn/Fabric dependencies, not generated stubs. Version-specific adapters preserve native APIs while shared HUD, Armour Hub, Mods Menu, input, cosmetics and FPS code remain in the project.
 - [Complete compatibility report](https://github.com/AzyronClientteam/Azyron-Client/blob/arena/a6dbb848-azyron-client/azyron-client/COMPATIBILITY_1201_BUILD_REPORT.md).
@@ -234,7 +234,7 @@ def main():
     body = release_body(provenance, hashes, args.run_id, args.commit)
     # Keep the release associated with the existing real v1.0.3 tag. Omitting
     # tag_name on a draft update can restore GitHub's generated untagged tag.
-    payload = json.dumps({"name": "Azyron Client v1.0.3", "tag_name": args.tag,
+    payload = json.dumps({"name": "AZYRON CLIENT v1.0.3", "tag_name": args.tag,
                           "body": body, "draft": True})
     updated = json.loads(gh([
         "api", "--method", "PATCH", f"repos/{args.repo}/releases/{args.release_id}", "--input", "-"

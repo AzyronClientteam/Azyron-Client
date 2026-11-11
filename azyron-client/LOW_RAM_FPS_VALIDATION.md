@@ -5,7 +5,7 @@
 **Products:** AZYRON CLIENT v1.0.3 and its version-specific Modrinth packs
 **Developer:** JIGNESH GAMING
 **Targets:** Minecraft **1.20.1 Fabric** and **1.21.11 Fabric**, separately.
-**Status:** implementation/configuration claims below are historical; real-game compatibility and hardware acceptance are **NOT COMPLETE**. Earlier native CI passed for both targets and verified pairs were attached to the existing draft. The current source/portal changes postdate that CI run and have not yet been rebuilt. The release must remain a draft; no unverified replacement or removal of release assets is allowed.
+**Status:** implementation/configuration claims below are historical; real-game compatibility and hardware acceptance are **NOT COMPLETE**. Current source changes passed real Fabric/Loom builds, actual-classpath audits, and native candidate packaging in [CI run 42948465997](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42948465997). The existing release draft still has earlier native files; current candidates were not attached by that run. The release must remain a draft, and assets may be replaced only with the verified native candidate pairs.
 
 ## What changed
 
@@ -101,7 +101,7 @@ JVM tests ran via the existing temporary generated-stub helper `/tmp/azyron_tool
 
 ## Current post-edit checks
 
-The current packaging and portal code passed **9/9** offline packaging tests and **5/5** portal integration tests. Portal fixtures are synthetic metadata-only JAR/MRPack pairs and do not test native builds or gameplay. Python byte-compilation and the dependency installer shell syntax check also passed. There is no `java`/`javac` executable in the sandbox, so no Gradle/Loom build was run for the current edits; actual launches and hardware measurements remain pending.
+Current source passed [real Fabric/Loom CI run 42948465997](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42948465997), commit `714b6da70cddfbab0b3abdec241304d9261e5106`: 1.20.1 built with 105 actual-classpath audit checks; 1.21.11 built with 110; CI packaging tests passed **9/9** and produced four target-matched candidate files. CI verified the downloaded candidate artifact hashes. The current packaging and portal code also passed **9/9** offline packaging tests and **5/5** local portal integration tests. Portal fixtures are synthetic metadata-only JAR/MRPack pairs and do not test native builds or gameplay. Python byte-compilation and the dependency installer shell syntax check passed. The sandbox itself has no `java`/`javac`, so these native builds ran in CI. Game launches, actual Mixin application, multiplayer/device behavior, and hardware measurements remain pending.
 
 ## Local packaging
 
@@ -135,4 +135,4 @@ An earlier run, [42772512030](https://github.com/AzyronClientteam/Azyron-Client/
 
 The latest read-only API check returned release ID `437365942`, `tag_name=v1.0.3`, `draft=true`, the untagged draft URL, and four version-specific JAR/MRPack assets. It also returned a non-null historical `published_at`; this does not establish that the release is currently published. Do not publish or modify assets without fresh validation and owner authorization.
 
-**The current working-tree edits postdate run 42785077400.** No current-source Fabric build, game launch, or device benchmark has been performed. The existing four release assets are historical native outputs and do not contain these edits. Rebuild and validate both native pairs before any replacement; keep the release a draft. Generated-stub artifacts are never release candidates.
+**Current-source native builds and candidate packaging passed in run 42948465997**, but no game launch or device benchmark has been performed. The existing four release assets are from the earlier verified build and do not contain these edits; the new candidates are a separate, checksum-verified Actions artifact. Keep the release a draft and use only the verified native pairs for any authorized replacement. Generated-stub artifacts are never release candidates.

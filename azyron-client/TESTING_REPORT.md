@@ -6,9 +6,18 @@
 
 ## Current working tree
 
-**The current edits have not passed a native build or game launch.** The last successful native CI run predates the current working-tree Java/UI, Gradle metadata, packaging, portal, and documentation changes. A passing earlier build must not be treated as validation of these edits.
+The current Java/UI and Gradle metadata changes passed a fresh real Fabric/Loom build and actual-classpath audit for both targets in [CI run 42948465997](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42948465997), source commit `714b6da70cddfbab0b3abdec241304d9261e5106`. Both build jobs and candidate preparation succeeded. The resulting version-specific native pairs passed target/metadata/embedded-byte checks and the CI artifact was downloaded and checksum-verified inside GitHub Actions. The release-attachment job was skipped by the one-time safety guard; the existing draft assets have not been changed by this run.
 
-The local sandbox has no `java` or `javac` executable, so Gradle builds could not be run locally. The required native acceptance check is still a fresh real Fabric/Loom build and actual-classpath audit for both targets, followed by validation of the resulting matching JAR/MRPack pairs.
+The local sandbox has no `java` or `javac`, so the native builds ran in GitHub Actions rather than locally. These build and package results still do **not** validate game startup, full Mixin transformation, gameplay, renderer compatibility, stability, or FPS/RAM performance.
+
+## Current native CI result
+
+| Target | Native build | Actual-classpath audit | Output |
+|---|---:|---:|---|
+| Minecraft 1.20.1 / Fabric | PASS | 105 checks passed | Java 17 / class-file 61; 73 client classes |
+| Minecraft 1.21.11 / Fabric | PASS | 110 checks passed | Java 21 / class-file 65; 74 client classes |
+
+CI passed all **9/9** packaging/installer tests and prepared the four version-matched candidates. Artifact: [`Azyron-v1.0.3-native-candidates-NOT-PUBLISHED`](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42948465997/artifacts/13823284559), 858,122 bytes, expires 2026-11-25. Its SHA-256 manifest and provenance were verified in the CI runner after download. This artifact is not a release and does not contain game-play benchmark results.
 
 ## Earlier native CI result (baseline only)
 
@@ -55,10 +64,8 @@ No Minecraft launch, physical-device test, or fresh FPS/RAM/stability benchmark 
 
 The 3GB profile's six-view/five-simulation-chunk and 60 FPS-cap configuration is a **target/configuration**, not an achieved frame rate. **60+ FPS at six chunks is not verified or promised.** No crash-free, stability, RAM-reduction, or measured-performance claim is made. Multiplayer simulation distance remains controlled by the server.
 
-## Required final validation
+## Remaining validation and release gates
 
-1. Run a fresh actual Fabric/Loom build and actual-classpath audit for Minecraft 1.20.1 and 1.21.11 after the current source changes.
-2. Build one native JAR and one matching `.mrpack` per target. Check each JAR's exact Minecraft/Java metadata and class version; check each pack's manifest, embedded JAR bytes, config, hashes, and ZIP integrity.
-3. Launch each target with its matching Fabric Loader/API and dependencies; verify startup/Mixin application, menus, HUD, Armour Hub, controls, worlds, and multiplayer.
-4. Separately test Android/PojavLauncher and measure FPS, frame times, heap/RSS, GC, thermals, and stability on a documented compatible device. Do not report the 60+ FPS goal as achieved without those measurements.
-5. Keep the existing release a draft. Do not replace/remove old assets until both native pairs pass build/package validation, and do not publish without owner approval.
+1. Launch each native target with its matching Fabric Loader/API and dependencies; verify startup/Mixin application, menus, HUD, Armour Hub, controls, worlds, and multiplayer.
+2. Separately test Android/PojavLauncher and measure FPS, frame times, heap/RSS, GC, thermals, and stability on a documented compatible device. Do not report the 60+ FPS goal as achieved without those measurements.
+3. The existing release remains a draft. Its currently attached four assets predate commit `714b6da`; only the verified candidates from run 42948465997 are eligible for replacement. Keep it a draft and do not publish without owner approval.
