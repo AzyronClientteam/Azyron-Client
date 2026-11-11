@@ -1,0 +1,27 @@
+# Gradle & Fabric Loom
+.gradle/
+build/
+out/
+bin/
+run/
+.loom/
+
+# IDE metadata
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS & local secrets (never commit credentials or keys)
+.DS_Store
+Thumbs.db
+local.properties
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore

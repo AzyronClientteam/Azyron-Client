@@ -1,0 +1,196 @@
+name: Validate real Azyron Fabric builds
+
+on:
+  push:
+    branches: ["arena/a6dbb848-azyron-client"]
+    paths:
+      - .github/workflows/validate-azyron-fabric.yml
+      - azyron-client/build.gradle
+      - azyron-client/src/**
+      - azyron-client/scripts/*.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  fabric-build:
+    if: github.repository == 'AzyronClientteam/Azyron-Client' && github.ref == 'refs/heads/arena/a6dbb848-azyron-client'
+    name: Fabric ${{ matrix.minecraft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - minecraft: '1.20.1'
+            yarn: '1.20.1+build.10'
+            loader: '0.14.22'
+            fabric: '0.88.1+1.20.1'
+          - minecraft: '1.21.11'
+            yarn: '1.21.11+build.6'
+            loader: '0.20.1'
+            fabric: '0.141.6+1.21.11'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: '9.2.1'
+      - name: Compile against actual Minecraft and Fabric (no generated stubs)
+        id: compile
+        working-directory: azyron-client
+        env:
+          MC: ${{ matrix.minecraft }}
+          YARN: ${{ matrix.yarn }}
+          LOADER: ${{ matrix.loader }}
+          FABRIC: ${{ matrix.fabric }}
+        run: |
+          set -uo pipefail
+          set +e
+          mkdir -p build/validation
+          gradle --no-daemon --console=plain build -Pminecraft_version="$MC" -Pyarn_mappings="$YARN" -Ploader_version="$LOADER" -Pfabric_version="$FABRIC" > build/validation/fabric-build.log 2>&1
+          result=$?
+          set -e
+          tail -120 build/validation/fabric-build.log
+          if [ "$result" -ne 0 ]; then
+            python3 - <<'PY'
+          from pathlib import Path
+          lines = Path('build/validation/fabric-build.log').read_text(errors='replace').splitlines()
+          errors = [s for s in lines if any(t in s.lower() for t in ('error', 'what went wrong', 'could not', 'failed', 'exception', 'requires'))][:16]
+          if not errors:
+              errors = lines[-40:]
+          for line in errors:
+              safe = line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print('::error title=Real Fabric build failed::' + safe)
+          PY
+          fi
+          exit "$result"
+      - name: Store complete compiler diagnostics in a readable check
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MC: ${{ matrix.minecraft }}
+          BUILD_OUTCOME: ${{ steps.compile.outcome }}
+        shell: python
+        run: |
+          import json, os, subprocess
+          from pathlib import Path
+          path = Path('azyron-client/build/validation/fabric-build.log')
+          text = path.read_text(errors='replace') if path.exists() else 'No Gradle log produced.'
+          for part, offset in enumerate(range(0, max(1, len(text)), 48000), 1):
+              payload = {'name': f"Compiler diagnostics {os.environ['MC']} part {part}",
+                         'head_sha': os.environ['GITHUB_SHA'], 'status': 'completed', 'conclusion': 'neutral',
+                         'output': {'title': 'Real Fabric compiler diagnostics',
+                                    'summary': 'Build outcome: ' + os.environ['BUILD_OUTCOME'],
+                                    'text': '```text\n' + text[offset:offset+48000] + '\n```'}}
+              subprocess.run(['gh', 'api', '--method', 'POST',
+                              'repos/' + os.environ['GITHUB_REPOSITORY'] + '/check-runs', '--input', '-'],
+                             input=json.dumps(payload), text=True, stdout=subprocess.DEVNULL, check=True)
+      - name: Keep diagnostic logs and genuine build outputs only
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: fabric-validation-${{ matrix.minecraft }}
+          path: |
+            azyron-client/build/validation/fabric-build.log
+            azyron-client/build/libs/*.jar
+          if-no-files-found: warn
+
+  prepare-candidates:
+    name: Prepare candidates only after BOTH native builds pass
+    needs: fabric-build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: fabric-validation-*
+          path: validation-inputs
+      - name: Offline packaging regression tests
+        run: python3 azyron-client/scripts/test-low-ram-packaging.py
+      - name: Prepare exact native JARs and matching MRPacks (no release upload)
+        run: |
+          python3 azyron-client/scripts/prepare-native-candidates.py --inputs validation-inputs --out candidates --run-id "$GITHUB_RUN_ID" --commit "$GITHUB_SHA"
+          cd candidates
+          sha256sum --check SHA256SUMS.txt
+      - name: Record candidate provenance in a readable check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: python
+        run: |
+          import json, os, subprocess
+          from pathlib import Path
+          payload = {'name': 'Prepared native candidates', 'head_sha': os.environ['GITHUB_SHA'],
+                     'status': 'completed', 'conclusion': 'neutral',
+                     'output': {'title': 'Both native builds passed; NOT published',
+                                'summary': 'JIGNESH GAMING — owner approval required before publication. Hardware FPS tests NOT RUN.',
+                                'text': '```json\n' + Path('candidates/BUILD-PROVENANCE.json').read_text() + '\n```'}}
+          subprocess.run(['gh', 'api', '--method', 'POST', 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/check-runs', '--input', '-'],
+                         input=json.dumps(payload), text=True, stdout=subprocess.DEVNULL, check=True)
+      - uses: actions/upload-artifact@v6
+        with:
+          name: Azyron-v1.0.3-native-candidates-NOT-PUBLISHED
+          path: candidates/
+          retention-days: 14
+      - uses: actions/download-artifact@v7
+        with:
+          name: Azyron-v1.0.3-native-candidates-NOT-PUBLISHED
+          path: verified-download
+      - name: Verify downloaded artifact bytes and hashes
+        working-directory: verified-download
+        run: sha256sum --check SHA256SUMS.txt
+
+  attach-verified-candidates-to-existing-draft:
+    name: Attach verified native candidates to the existing draft (never publish)
+    needs: [fabric-build, prepare-candidates]
+    # This exact next push is the owner's approved refresh of verified v1.0.3
+    # draft assets. It runs only after both native builds and candidate checks
+    # pass. The exact parent + commit prefix make it one-time; the updater also
+    # enforces the release ID/tag and draft=true before and after each API action.
+    if: >-
+      github.repository == 'AzyronClientteam/Azyron-Client' &&
+      github.ref == 'refs/heads/arena/a6dbb848-azyron-client' &&
+      github.event_name == 'push' &&
+      (
+        (github.event.before == '8271a45ce0e85e915102cda3d89e41819dc7d29e' &&
+         startsWith(github.event.head_commit.message, 'Finalize approved v1.0.3 release assets')) ||
+        (github.event.before == '714b6da70cddfbab0b3abdec241304d9261e5106' &&
+         startsWith(github.event.head_commit.message, 'Attach verified v1.0.3 draft assets after CI'))
+      )
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: Azyron-v1.0.3-native-candidates-NOT-PUBLISHED
+          path: candidates
+      - name: Verify exact native candidate bundle before release update
+        working-directory: candidates
+        run: sha256sum --check --strict SHA256SUMS.txt
+      - name: Attach verified files and update the existing draft only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 azyron-client/scripts/update-draft-release.py
+          --candidates candidates
+          --repo "$GITHUB_REPOSITORY"
+          --release-id 437365942
+          --tag v1.0.3
+          --run-id "$GITHUB_RUN_ID"
+          --commit "$GITHUB_SHA"

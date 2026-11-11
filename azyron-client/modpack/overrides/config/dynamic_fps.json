@@ -1,0 +1,26 @@
+{
+  "idle": {
+    "timeout": 180,
+    "condition": "none"
+  },
+  "battery_tracker": {
+    "enabled": false
+  },
+  "states": {
+    "unfocused": {
+      "frame_rate_target": 15,
+      "volume_multipliers": {
+        "master": 0.25
+      }
+    },
+    "invisible": {
+      "frame_rate_target": 1,
+      "volume_multipliers": {
+        "master": 0.0
+      }
+    },
+    "abandoned": {
+      "frame_rate_target": 10
+    }
+  }
+}

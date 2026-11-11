@@ -1,0 +1,14 @@
+renderDistance:6
+simulationDistance:5
+maxFps:60
+enableVsync:false
+graphicsMode:0
+particles:2
+renderClouds:false
+entityShadows:false
+ao:false
+biomeBlendRadius:0
+mipmapLevels:0
+entityDistanceScaling:0.5
+textBackgroundOpacity:0.5
+backgroundForChatOnly:true

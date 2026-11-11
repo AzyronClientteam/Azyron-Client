@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "azyron-client",
+  "version": "1.0.3",
+  "name": "AZYRON CLIENT v1.0.3",
+  "description": "Performance profiles, customizable HUD, Armour Hub, Mods Menu, zoom and cosmetics. By JIGNESH GAMING.",
+  "authors": [
+    "JIGNESH GAMING"
+  ],
+  "contact": {
+    "homepage": "https://github.com/AzyronClientteam/Azyron-Client",
+    "sources": "https://github.com/AzyronClientteam/Azyron-Client",
+    "issues": "https://github.com/AzyronClientteam/Azyron-Client/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/azyron/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.jigneshgaming.azyron.AzyronClient"
+    ]
+  },
+  "mixins": [
+    "azyron-client.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.14.22",
+    "minecraft": [
+      "1.20.1",
+      "1.21.11"
+    ],
+    "java": ">=17",
+    "fabric-api": "*"
+  },
+  "recommends": {
+    "sodium": "*",
+    "lithium": "*",
+    "ferritecore": "*",
+    "entityculling": "*",
+    "moreculling": "*",
+    "dynamic_fps": "*"
+  }
+}
