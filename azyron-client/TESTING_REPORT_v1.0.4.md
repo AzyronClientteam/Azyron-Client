@@ -4,24 +4,35 @@
 **Download format:** one Client bundle ZIP and one Modpack bundle ZIP; each contains native payloads for both targets.
 **Targets:** Minecraft 1.20.1 Fabric and Minecraft 1.21.11 Fabric.
 
-## Native build and packaging status — PASSED
+## Native build and bundle status — PASSED
 
-GitHub Actions run [42959203065](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42959203065), commit [`4accb54`](https://github.com/AzyronClientteam/Azyron-Client/commit/4accb54fdabee903c901d1f529b0bd26f0dad66d), completed successfully. Each target ran a separate Gradle Fabric/Loom `build` against real Minecraft/Yarn/Fabric dependencies. The normal `check` task also ran the actual-classpath compatibility audit; both matrix jobs passed. No generated Minecraft/Fabric stubs were used for these builds.
+GitHub Actions run [42960143679](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42960143679), source commit [`073a99f`](https://github.com/AzyronClientteam/Azyron-Client/commit/073a99ffe7dae42000aba7078207c27597a742e4), completed successfully. Each target ran a separate Gradle Fabric/Loom `build` against real Minecraft/Yarn/Fabric dependencies. The normal `check` task also ran the actual-classpath compatibility audit; both matrix jobs passed. No generated Minecraft/Fabric stubs were used for these builds.
 
 | Target | Native Fabric/Loom build | Actual-classpath audit | Native package |
 |---|---|---|---|
 | Minecraft 1.20.1 / Fabric | **PASSED** | **PASSED** | Java 17 JAR + matching 1.20.1 `.mrpack` |
 | Minecraft 1.21.11 / Fabric | **PASSED** | **PASSED** | Java 21 JAR + matching 1.21.11 `.mrpack` |
 
-The candidate job also passed native JAR/mixin/bytecode checks, exact JAR-to-MRPack pairing checks, bundle ZIP integrity checks, and SHA-256 verification. It uploaded the Actions artifact `Azyron-v1.0.4-native-bundles-NOT-PUBLISHED`; this is a validation artifact, not a release or a public download. The workflow does not create, edit, or publish a GitHub release.
+The candidate job also passed native JAR/mixin/bytecode checks, exact JAR-to-MRPack pairing checks, bundle ZIP integrity checks, and SHA-256 verification. The generated files were assembled from both real target builds; the workflow's draft step was manually enabled for this run.
 
-The bundle layout is one Client ZIP with `1.20.1/Azyron-Client-1.0.4-mc1.20.1.jar` and `1.21.11/Azyron-Client-1.0.4-mc1.21.11.jar`; and one Modpack ZIP with `1.20.1/Azyron-Modpack-1.0.4-mc1.20.1.mrpack` and `1.21.11/Azyron-Modpack-1.0.4-mc1.21.11.mrpack`. These are separate target-specific files, not additional public download links or cross-version binaries.
+## Draft release assets
+
+GitHub release **AZYRON CLIENT v1.0.4** was created as a **draft only** (release ID `441244221`; `draft=true`, `published_at=null`, `prerelease=false`). The draft targets source commit `073a99f` and contains exactly the two requested bundle archives:
+
+| Draft asset | Size | SHA-256 |
+|---|---:|---|
+| `Azyron-Client-v1.0.4.zip` | 411,668 bytes | `1c2c0282703120cc7877328cf0d2a37653d0f82bbb83477d8775a1c99b7e1226` |
+| `Azyron-Modpack-v1.0.4.zip` | 445,810 bytes | `83fe62742128c79b13572fadb496a3fc2d297ace4c11467ffe3647e68309d8d4` |
+
+[Open the v1.0.4 draft](https://github.com/AzyronClientteam/Azyron-Client/releases/tag/untagged-a0d4e8fc6e2c2cb00f3d). The draft is not published. Neither the individual per-version JARs nor the individual `.mrpack` profiles are separate release assets.
+
+The Client ZIP contains `1.20.1/Azyron-Client-1.0.4-mc1.20.1.jar` and `1.21.11/Azyron-Client-1.0.4-mc1.21.11.jar`. The Modpack ZIP contains `1.20.1/Azyron-Modpack-1.0.4-mc1.20.1.mrpack` and `1.21.11/Azyron-Modpack-1.0.4-mc1.21.11.mrpack`. These are distinct native target files, not cross-version binaries.
 
 ## Structural regression tests
 
-- Offline packaging/configuration tests: **10/10 passed** in CI run 42959203065.
-- Release portal integration tests: **5/5 passed** locally; they are also included in the current CI workflow for subsequent runs.
-- These suites use explicitly synthetic metadata-only fixture JARs for schema, bundle, route, and checksum regression coverage. They are **not** compiled mods and do not establish Fabric compatibility or gameplay.
+- Offline packaging/configuration tests: **10/10 passed** in run 42960143679.
+- Release portal integration tests: **5/5 passed** in run 42960143679.
+- Both suites use explicitly synthetic metadata-only fixture JARs for schema, bundle, route, and checksum regression coverage. They are **not** compiled mods and do not establish Fabric compatibility or gameplay.
 
 ## What build/package checks establish
 
@@ -44,4 +55,4 @@ The 6-view / 5-simulation chunk profile and 60 FPS cap are configuration targets
 
 ## Draft-release gate
 
-Publication is **NOT AUTHORIZED**. Any v1.0.4 GitHub release must remain a draft until JIGNESH GAMING explicitly approves publication. The previous v1.0.3 draft is separate and must not be replaced. The validation workflow does not change GitHub releases on ordinary pushes; its manual `create_draft=true` option only creates or refreshes a guarded draft after both native builds pass. It attaches exactly the two requested download bundles, with no individual per-version files presented as separate public assets.
+Publication is **NOT AUTHORIZED**. Release ID `441244221` must remain a draft until JIGNESH GAMING explicitly approves publication. The previous v1.0.3 draft is separate and has not been replaced. The manual validation-workflow option creates or refreshes the v1.0.4 draft only; ordinary pushes do not modify releases, and no workflow step publishes it.
