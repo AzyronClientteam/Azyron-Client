@@ -4,24 +4,32 @@
 **Download format:** one Client bundle ZIP and one Modpack bundle ZIP; each contains native payloads for both targets.
 **Targets:** Minecraft 1.20.1 Fabric and Minecraft 1.21.11 Fabric.
 
-## Validation status
+## Native build and packaging status — PASSED
 
-The v1.0.4 real Fabric/Loom build matrix is **PENDING CI**. Each game target must build separately against its own Minecraft, Yarn, Fabric Loader, and Fabric API dependencies. The CI candidate step must validate each native JAR and matching Modrinth profile before assembling the two user download bundles.
+GitHub Actions run [42959203065](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42959203065), commit [`4accb54`](https://github.com/AzyronClientteam/Azyron-Client/commit/4accb54fdabee903c901d1f529b0bd26f0dad66d), completed successfully. Each target ran a separate Gradle Fabric/Loom `build` against real Minecraft/Yarn/Fabric dependencies. The normal `check` task also ran the actual-classpath compatibility audit; both matrix jobs passed. No generated Minecraft/Fabric stubs were used for these builds.
 
-| Target | Native Fabric/Loom build | Actual-classpath audit | Bundle payload |
+| Target | Native Fabric/Loom build | Actual-classpath audit | Native package |
 |---|---|---|---|
-| Minecraft 1.20.1 / Fabric | PENDING | PENDING | Native Java 17 JAR + matching 1.20.1 `.mrpack` |
-| Minecraft 1.21.11 / Fabric | PENDING | PENDING | Native Java 21 JAR + matching 1.21.11 `.mrpack` |
+| Minecraft 1.20.1 / Fabric | **PASSED** | **PASSED** | Java 17 JAR + matching 1.20.1 `.mrpack` |
+| Minecraft 1.21.11 / Fabric | **PASSED** | **PASSED** | Java 21 JAR + matching 1.21.11 `.mrpack` |
 
-The client bundle is intended to contain `1.20.1/Azyron-Client-1.0.4-mc1.20.1.jar` and `1.21.11/Azyron-Client-1.0.4-mc1.21.11.jar`. The modpack bundle is intended to contain `1.20.1/Azyron-Modpack-1.0.4-mc1.20.1.mrpack` and `1.21.11/Azyron-Modpack-1.0.4-mc1.21.11.mrpack`. Those are internal target-specific payloads, not additional public download links.
+The candidate job also passed native JAR/mixin/bytecode checks, exact JAR-to-MRPack pairing checks, bundle ZIP integrity checks, and SHA-256 verification. It uploaded the Actions artifact `Azyron-v1.0.4-native-bundles-NOT-PUBLISHED`; this is a validation artifact, not a release or a public download. The workflow does not create, edit, or publish a GitHub release.
 
-## What build/package checks can establish
+The bundle layout is one Client ZIP with `1.20.1/Azyron-Client-1.0.4-mc1.20.1.jar` and `1.21.11/Azyron-Client-1.0.4-mc1.21.11.jar`; and one Modpack ZIP with `1.20.1/Azyron-Modpack-1.0.4-mc1.20.1.mrpack` and `1.21.11/Azyron-Modpack-1.0.4-mc1.21.11.mrpack`. These are separate target-specific files, not additional public download links or cross-version binaries.
 
-- Each target's source compiles against real Minecraft/Fabric dependencies, rather than generated stubs.
+## Structural regression tests
+
+- Offline packaging/configuration tests: **10/10 passed** in CI run 42959203065.
+- Release portal integration tests: **5/5 passed** locally; they are also included in the current CI workflow for subsequent runs.
+- These suites use explicitly synthetic metadata-only fixture JARs for schema, bundle, route, and checksum regression coverage. They are **not** compiled mods and do not establish Fabric compatibility or gameplay.
+
+## What build/package checks establish
+
+- Each target's source compiles against its real Minecraft/Fabric classpath.
 - The actual-classpath audit checks configured injections and target references for that build.
-- The target's JAR metadata, Java class-file version, mixin config, and required feature classes are internally consistent.
-- The corresponding `.mrpack` declares the same Minecraft version and embeds the exact matching client JAR.
-- The outer bundle ZIPs contain the two expected target payloads with valid checksums and archive integrity.
+- Each JAR's target metadata, Java class-file version, mixin config, and required feature classes are internally consistent.
+- Each `.mrpack` declares one matching Minecraft version and embeds the exact corresponding native client JAR.
+- The two outer bundle ZIPs contain the expected target payloads and pass archive/checksum verification.
 
 These checks do **not** demonstrate full runtime Mixin transformation or a successful game launch.
 
@@ -36,4 +44,4 @@ The 6-view / 5-simulation chunk profile and 60 FPS cap are configuration targets
 
 ## Draft-release gate
 
-The v1.0.4 release must remain a GitHub draft until JIGNESH GAMING approves publication. The previous v1.0.3 draft is a separate release and must not be replaced by this update. The v1.0.4 draft should contain exactly the two requested download bundles, with no individual per-version downloads presented as separate public assets.
+Publication is **NOT AUTHORIZED**. Any v1.0.4 GitHub release must remain a draft until JIGNESH GAMING explicitly approves publication. The previous v1.0.3 draft is separate and must not be replaced. The validation workflow does not change GitHub releases on ordinary pushes; its manual `create_draft=true` option only creates or refreshes a guarded draft after both native builds pass. It attaches exactly the two requested download bundles, with no individual per-version files presented as separate public assets.

@@ -17,6 +17,12 @@ on:
       - azyron-client/RELEASE_NOTES_v1.0.4.md
       - azyron-client/TESTING_REPORT_v1.0.4.md
   workflow_dispatch:
+    inputs:
+      create_draft:
+        description: Create or refresh the v1.0.4 GitHub draft after both native builds pass; never publish
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -126,6 +132,9 @@ jobs:
           path: validation-inputs
       - name: Offline packaging regression tests (synthetic fixtures only)
         run: python3 azyron-client/scripts/test-low-ram-packaging.py
+      - name: Release portal integration tests (synthetic fixture bundles only)
+        working-directory: azyron-client/releases-portal
+        run: python3 -m unittest -v test_server.py
       - name: Prepare bundles from both genuine native builds
         run: |
           python3 azyron-client/scripts/prepare-native-candidates.py \
@@ -148,3 +157,163 @@ jobs:
       - name: Verify downloaded artifact bytes and hashes
         working-directory: verified-download
         run: sha256sum --check --strict SHA256SUMS.txt
+
+  create-draft-only:
+    name: Create or refresh v1.0.4 draft only
+    needs: [fabric-build, prepare-candidates]
+    if: >-
+      github.repository == 'AzyronClientteam/Azyron-Client' &&
+      github.ref == 'refs/heads/arena/a6dbb848-azyron-client' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.create_draft == true
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: Azyron-v1.0.4-native-bundles-NOT-PUBLISHED
+          path: candidates
+      - name: Guard the candidate bytes and provenance
+        env:
+          RUN_ID: ${{ github.run_id }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          cd candidates
+          sha256sum --check --strict SHA256SUMS.txt
+          python3 - <<'PY'
+          import hashlib
+          import io
+          import json
+          import os
+          from pathlib import Path
+          import zipfile
+
+          version = '1.0.4'
+          targets = ('1.20.1', '1.21.11')
+          run_id = os.environ['RUN_ID']
+          commit = os.environ['SOURCE_COMMIT']
+          provenance = json.loads(Path('BUILD-PROVENANCE.json').read_text())
+          if provenance.get('product') != 'AZYRON CLIENT' or provenance.get('developer') != 'JIGNESH GAMING':
+              raise RuntimeError('Unexpected candidate product/developer')
+          if provenance.get('version') != version or str(provenance.get('ci_run')) != run_id:
+              raise RuntimeError('Candidate version/run ID mismatch')
+          if provenance.get('source_commit') != commit:
+              raise RuntimeError('Candidate does not match this workflow commit')
+          if 'real Fabric/Loom' not in provenance.get('native_builds', '') or 'no generated stubs' not in provenance.get('native_builds', ''):
+              raise RuntimeError('Candidate lacks real native build provenance')
+          if set(provenance.get('targets', {})) != set(targets):
+              raise RuntimeError('Candidate must contain both supported native targets')
+
+          expected = {
+              'Azyron-Client-v1.0.4.zip': 'client',
+              'Azyron-Modpack-v1.0.4.zip': 'modpack',
+          }
+          hashes = {}
+          for line in Path('SHA256SUMS.txt').read_text().splitlines():
+              digest, name = line.split('  ', 1)
+              if name in hashes or len(digest) != 64:
+                  raise RuntimeError('Malformed or duplicate SHA-256 entry')
+              hashes[name] = digest
+          if set(hashes) != set(expected):
+              raise RuntimeError(f'Expected exactly two user download bundles: {sorted(hashes)}')
+          if set(provenance.get('downloads', {})) != set(expected.values()):
+              raise RuntimeError('Candidate provenance download set mismatch')
+
+          for name, kind in expected.items():
+              data = Path(name).read_bytes()
+              if hashlib.sha256(data).hexdigest() != hashes[name]:
+                  raise RuntimeError(f'SHA-256 mismatch: {name}')
+              with zipfile.ZipFile(io.BytesIO(data)) as bundle:
+                  if bundle.testzip() is not None:
+                      raise RuntimeError(f'Corrupt bundle ZIP: {name}')
+                  wanted = {'README.txt'}
+                  for mc in targets:
+                      product = 'Azyron-Client' if kind == 'client' else 'Azyron-Modpack'
+                      suffix = 'jar' if kind == 'client' else 'mrpack'
+                      wanted.add(f'{mc}/{product}-1.0.4-mc{mc}.{suffix}')
+                  if set(bundle.namelist()) != wanted:
+                      raise RuntimeError(f'Unexpected {name} contents: {bundle.namelist()}')
+                  for mc in targets:
+                      if kind == 'client':
+                          jar_bytes = bundle.read(f'{mc}/Azyron-Client-1.0.4-mc{mc}.jar')
+                      else:
+                          pack_name = f'{mc}/Azyron-Modpack-1.0.4-mc{mc}.mrpack'
+                          with zipfile.ZipFile(io.BytesIO(bundle.read(pack_name))) as pack:
+                              index = json.loads(pack.read('modrinth.index.json'))
+                              if index.get('versionId') != version or index.get('dependencies', {}).get('minecraft') != mc:
+                                  raise RuntimeError(f'Wrong single-version Modrinth profile: {pack_name}')
+                              jar_bytes = pack.read('overrides/mods/Azyron-Client-1.0.4.jar')
+                      with zipfile.ZipFile(io.BytesIO(jar_bytes)) as jar:
+                          metadata = json.loads(jar.read('fabric.mod.json'))
+                          if metadata.get('version') != version or metadata.get('name') != 'AZYRON CLIENT v1.0.4':
+                              raise RuntimeError(f'Unexpected native JAR metadata for {mc}')
+                          if metadata.get('depends', {}).get('minecraft') != [mc]:
+                              raise RuntimeError(f'JAR does not target exactly Minecraft {mc}')
+                          expected_java = '>=17' if mc == '1.20.1' else '>=21'
+                          if metadata.get('depends', {}).get('java') != expected_java:
+                              raise RuntimeError(f'Wrong Java target for {mc}')
+                          if 'JIGNESH GAMING' not in metadata.get('authors', []):
+                              raise RuntimeError('Developer credit is missing from the native JAR')
+
+          actual_files = {path.name for path in Path('.').iterdir() if path.is_file()}
+          if actual_files != set(expected) | {'SHA256SUMS.txt', 'BUILD-PROVENANCE.json'}:
+              raise RuntimeError(f'Unexpected candidate artifact files: {sorted(actual_files)}')
+          print('Verified exactly two target-bundling archives from successful real Fabric/Loom builds.')
+          print('This validation does not imply gameplay, device, or FPS testing.')
+          PY
+      - name: Create or refresh release information as a draft only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          client='candidates/Azyron-Client-v1.0.4.zip'
+          modpack='candidates/Azyron-Modpack-v1.0.4.zip'
+          if gh release view v1.0.4 --json tagName,isDraft,assets > /tmp/azyron-v104-release.json 2>/dev/null; then
+            python3 - <<'PY'
+          import json
+          from pathlib import Path
+          release = json.loads(Path('/tmp/azyron-v104-release.json').read_text())
+          if release.get('tagName') != 'v1.0.4' or release.get('isDraft') is not True:
+              raise SystemExit('Existing v1.0.4 release is not the expected draft; refusing changes.')
+          allowed = {'Azyron-Client-v1.0.4.zip', 'Azyron-Modpack-v1.0.4.zip'}
+          existing = {asset['name'] for asset in release.get('assets', [])}
+          if not existing.issubset(allowed):
+              raise SystemExit(f'Unexpected draft assets; refusing to remove/replace them: {sorted(existing)}')
+          PY
+            gh release upload v1.0.4 "$client" "$modpack" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit v1.0.4 \
+              --title 'AZYRON CLIENT v1.0.4' \
+              --notes-file azyron-client/RELEASE_NOTES_v1.0.4.md \
+              --draft \
+              --repo "$GITHUB_REPOSITORY"
+          else
+            if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v1.0.4" >/dev/null 2>&1; then
+              echo 'Tag v1.0.4 already exists without a matching release; refusing to move or reuse it.' >&2
+              exit 1
+            fi
+            gh release create v1.0.4 "$client" "$modpack" \
+              --draft \
+              --target "$GITHUB_SHA" \
+              --title 'AZYRON CLIENT v1.0.4' \
+              --notes-file azyron-client/RELEASE_NOTES_v1.0.4.md \
+              --repo "$GITHUB_REPOSITORY"
+          fi
+          gh release view v1.0.4 --json tagName,isDraft,assets,url > /tmp/azyron-v104-release-final.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          release = json.loads(Path('/tmp/azyron-v104-release-final.json').read_text())
+          expected = {'Azyron-Client-v1.0.4.zip', 'Azyron-Modpack-v1.0.4.zip'}
+          actual = {asset['name'] for asset in release.get('assets', [])}
+          if release.get('tagName') != 'v1.0.4' or release.get('isDraft') is not True or actual != expected:
+              raise SystemExit(f'Draft verification failed: {release}')
+          print(f"Verified draft only: {release['url']}")
+          print('Exactly two bundle assets are attached; release was not published.')
+          PY
