@@ -1,6 +1,6 @@
 # AZYRON CLIENT `v1.0.4` — Minecraft `1.21.11` & `1.20.1` Fabric Dependencies & Optimization Stacks
 
-The public v1.0.4 download set is one Client ZIP and one Modpack ZIP. Each bundle contains a separate native **AZYRON CLIENT v1.0.4** payload for each supported target; the files named below are contents inside those bundles, not additional public downloads.
+The v1.0.4 release uses four direct, target-specific files: one native Fabric JAR and its matching Modrinth `.mrpack` for each Minecraft version. **There is no client ZIP bundle.** The unsuffixed filenames target Minecraft `1.21.11`; the `-mc1.20.1` filenames target Minecraft `1.20.1`. The release remains an unpublished draft until explicit approval.
 - **Minecraft `1.21.11` (Fabric)** (`Java 21+`, Fabric Loader `0.20.1`)
 - **Minecraft `1.20.1` (Fabric)** (`Java 17+`, Fabric Loader `0.14.22+`)
 
@@ -12,10 +12,8 @@ Both profiles use version-appropriate companion mods and schemas while keeping t
 
 | Component | Minecraft `1.21.11` profile | Minecraft `1.20.1` profile |
 | :--- | :--- | :--- |
-| **Public Client download** | `Azyron-Client-v1.0.4.zip` | Same bundle |
-| **Client JAR inside bundle** | `1.21.11/Azyron-Client-1.0.4-mc1.21.11.jar` | `1.20.1/Azyron-Client-1.0.4-mc1.20.1.jar` |
-| **Public Modpack download** | `Azyron-Modpack-v1.0.4.zip` | Same bundle |
-| **Modrinth profile inside bundle** | `1.21.11/Azyron-Modpack-1.0.4-mc1.21.11.mrpack` | `1.20.1/Azyron-Modpack-1.0.4-mc1.20.1.mrpack` |
+| **Native Client download** | `Azyron-Client-1.0.4.jar` | `Azyron-Client-1.0.4-mc1.20.1.jar` |
+| **Matching Modrinth profile** | `Azyron-Modpack-1.0.4.mrpack` | `Azyron-Modpack-1.0.4-mc1.20.1.mrpack` |
 | **Java Runtime (JVM)** | **OpenJDK `21+`** (`Internal-21` on Pojav) | **OpenJDK `17+`** (`Internal-17` or `Internal-21`) |
 | **Fabric Loader** | **`0.20.1`** (`>=0.17.3`) | **`0.14.22+`** |
 | **Fabric API** | **`0.141.6+1.21.11`** | **`0.88.1+1.20.1`** |

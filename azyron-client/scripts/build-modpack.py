@@ -40,13 +40,15 @@ def validate_index(index_path: str, expected_mc: str) -> None:
 def default_native_jar_path(mc_version: str) -> str:
     if mc_version not in ("1.20.1", "1.21.11"):
         raise ValueError("Unsupported Minecraft version")
-    return os.path.join(CLIENT_ROOT, "build", "libs", f"Azyron-Client-1.0.4-mc{mc_version}.jar")
+    filename = "Azyron-Client-1.0.4.jar" if mc_version == "1.21.11" else "Azyron-Client-1.0.4-mc1.20.1.jar"
+    return os.path.join(CLIENT_ROOT, "build", "libs", filename)
 
 
 def default_modpack_path(mc_version: str) -> str:
     if mc_version not in ("1.20.1", "1.21.11"):
         raise ValueError("Unsupported Minecraft version")
-    return os.path.join(CLIENT_ROOT, "build", "modpack-profiles", f"Azyron-Modpack-1.0.4-mc{mc_version}.mrpack")
+    filename = "Azyron-Modpack-1.0.4.mrpack" if mc_version == "1.21.11" else "Azyron-Modpack-1.0.4-mc1.20.1.mrpack"
+    return os.path.join(CLIENT_ROOT, "build", "modpack-profiles", filename)
 
 
 def build_mrpack(jar_path: str, out_path: str, mc_version: str = "1.21.11") -> None:
@@ -122,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument("jar", nargs="?", default=None,
                         help="Native client JAR (default: matching build/libs JAR)")
     parser.add_argument("out", nargs="?", default=None,
-                        help="Output path (default: versioned file under releases/)")
+                        help="Output path (default: target-specific file under build/modpack-profiles/)")
     parser.add_argument("--mc", choices=["1.21.11", "1.20.1"], default="1.21.11",
                         help="Minecraft target for both the native JAR and Modrinth index")
     args = parser.parse_args()

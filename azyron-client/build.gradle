@@ -100,9 +100,12 @@ jar {
 	}
 }
 
-// Distinct files prevent accidental cross-version replacement.
+// Minecraft 1.21.11 is the default target and owns the unqualified filename.
+// Keep 1.20.1 explicitly versioned so the two executable native JARs cannot be confused.
 tasks.named('remapJar') {
-    archiveFileName = "Azyron-Client-${project.version}-mc${mcTarget}.jar"
+    archiveFileName = legacyTarget
+            ? "Azyron-Client-${project.version}-mc${mcTarget}.jar"
+            : "Azyron-Client-${project.version}.jar"
 }
 
 // Separate from historical generated-stub tests: reads the actual named game
