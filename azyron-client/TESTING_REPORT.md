@@ -6,7 +6,7 @@
 
 ## Current working tree
 
-The current Java/UI and Gradle metadata changes passed a fresh real Fabric/Loom build and actual-classpath audit for both targets in [CI run 42948465997](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42948465997), source commit `714b6da70cddfbab0b3abdec241304d9261e5106`. Both build jobs and candidate preparation succeeded. The resulting version-specific native pairs passed target/metadata/embedded-byte checks and the CI artifact was downloaded and checksum-verified inside GitHub Actions. The release-attachment job was skipped by the one-time safety guard; the existing draft assets have not been changed by this run.
+The current source passed fresh real Fabric/Loom builds and actual-classpath audits for both targets in [CI run 42953223121](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42953223121), commit `c93bac240e8876a43d1ff6a347b15550749bcc49`. Both build jobs, candidate preparation, and downloaded-artifact checksum verification succeeded. The guarded attachment job also completed and refreshed release `437365942` with the verified version-specific candidates and checksum/provenance sidecars. A subsequent read-only API check returned `draft=true`; this run did not publish the release. This supersedes run 42948465997's skipped-attachment status.
 
 The local sandbox has no `java` or `javac`, so the native builds ran in GitHub Actions rather than locally. These build and package results still do **not** validate game startup, full Mixin transformation, gameplay, renderer compatibility, stability, or FPS/RAM performance.
 
@@ -17,7 +17,7 @@ The local sandbox has no `java` or `javac`, so the native builds ran in GitHub A
 | Minecraft 1.20.1 / Fabric | PASS | 105 checks passed | Java 17 / class-file 61; 73 client classes |
 | Minecraft 1.21.11 / Fabric | PASS | 110 checks passed | Java 21 / class-file 65; 74 client classes |
 
-CI passed all **9/9** packaging/installer tests and prepared the four version-matched candidates. Artifact: [`Azyron-v1.0.3-native-candidates-NOT-PUBLISHED`](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42948465997/artifacts/13823284559), 858,122 bytes, expires 2026-11-25. Its SHA-256 manifest and provenance were verified in the CI runner after download. This artifact is not a release and does not contain game-play benchmark results.
+CI passed all **9/9** packaging/installer tests and prepared the four version-matched candidates. Artifact: [`Azyron-v1.0.3-native-candidates-NOT-PUBLISHED`](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42953223121/artifacts/13826640241), 858,141 bytes, expires 2026-11-25. Its SHA-256 manifest and provenance were verified in the CI runner after download. The artifact itself is not a release and contains no gameplay benchmark results.
 
 ## Earlier native CI result (baseline only)
 
@@ -68,4 +68,4 @@ The 3GB profile's six-view/five-simulation-chunk and 60 FPS-cap configuration is
 
 1. Launch each native target with its matching Fabric Loader/API and dependencies; verify startup/Mixin application, menus, HUD, Armour Hub, controls, worlds, and multiplayer.
 2. Separately test Android/PojavLauncher and measure FPS, frame times, heap/RSS, GC, thermals, and stability on a documented compatible device. Do not report the 60+ FPS goal as achieved without those measurements.
-3. The existing release remains a draft. Its currently attached four assets predate commit `714b6da`; only the verified candidates from run 42948465997 are eligible for replacement. Keep it a draft and do not publish without owner approval.
+3. The latest API check shows release `437365942` (`v1.0.3`) remains a draft and now carries the verified pairs from run 42953223121 plus `SHA256SUMS.txt` and `BUILD-PROVENANCE.json`. The release record has a non-null historical `published_at`; do not infer publication history from that field alone. No game-launch, gameplay, or hardware-performance gate has passed. Do not publish or make any further release changes without explicit owner authorization.

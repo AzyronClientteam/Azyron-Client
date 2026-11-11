@@ -1,6 +1,6 @@
 # AZYRON CLIENT v1.0.3 — Release Notes & Changelog
 
-> **Current-source validation:** The latest source snapshot passed separate real Fabric/Loom builds and actual-classpath audits for Minecraft `1.20.1` and `1.21.11` in [CI run 42948465997](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42948465997). Native candidates were prepared but the older draft release assets were not replaced by that run. No game launch or device benchmark has been performed. Historical generated-stub checks below are not native-build or gameplay acceptance tests.
+> **Current-source validation:** The latest source snapshot passed separate real Fabric/Loom builds and actual-classpath audits for Minecraft `1.20.1` and `1.21.11` in [CI run 42953223121](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42953223121). Candidate packaging and checksum verification passed, and the guarded job attached the verified version-specific pairs to the existing draft; the release remains a draft. No game launch or device benchmark has been performed. Historical generated-stub checks below are not native-build or gameplay acceptance tests.
 
 > **AZYRON CLIENT – PERFORMANCE. SMOOTHNESS. STYLE.**
 > **Developer:** **JIGNESH GAMING**
@@ -40,4 +40,4 @@
 - Certificate timeout investigation is inconclusive without a redacted stack trace;
   no authentication, TLS or secure-chat bypass was added.
 
-See [the detailed report](ANDROID_1201_FIX_REPORT.md). CI run 42948465997 now contains verified native candidates for the current source snapshot; the existing draft still contains the older native pairs until any authorized replacement completes. Native builds do not constitute game-launch or device-performance tests. Keep the release a draft and do not publish.
+See [the detailed report](ANDROID_1201_FIX_REPORT.md). CI run 42953223121 contains verified native candidates for the current source snapshot; the existing release remains a draft and its attached pairs match those candidates. Native builds do not constitute game-launch or device-performance tests. Keep the release a draft and do not publish.

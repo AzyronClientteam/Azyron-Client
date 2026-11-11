@@ -5,20 +5,29 @@ Developer: **JIGNESH GAMING**
 
 ## Scope and release safety
 
-The existing release (numeric ID `437365942`, tag `v1.0.3`) was changed to **draft** on the owner's explicit instruction. The last read-only API check in this worktree returned `draft=true`, tag `v1.0.3`, and the generated draft URL; it also returned a non-null historical `published_at`. It listed four version-specific JAR/MRPack assets. These are genuine outputs from the earlier native CI run documented below, not builds of the current working-tree edits. No generated-stub test binary is a valid release candidate. Any replacement remains gated on fresh real Fabric builds/package checks for **both** targets; do not publish.
+The existing release (numeric ID `437365942`, tag `v1.0.3`) remains **draft**. The latest read-only API check after CI run 42953223121 returned `draft=true`, the current draft URL, and a non-null historical `published_at`; this report does not infer publication history from that field alone. It listed the verified 1.20.1 and 1.21.11 native pairs from that run plus `SHA256SUMS.txt` and `BUILD-PROVENANCE.json`. The CI attachment job did not publish the release. No generated-stub test binary is a valid release candidate. Do not publish or make further release changes without explicit owner authorization.
 
 ## Latest working-tree validation
 
-[CI run 42948465997](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42948465997), source commit `714b6da70cddfbab0b3abdec241304d9261e5106`, includes the current Java/UI, Gradle metadata, builder, portal, test, and documentation changes. Both real Fabric/Loom builds and their actual-classpath audits passed; CI's offline packaging suite passed **9/9** tests. The candidate preparation job verified the exact JAR/MRPack target metadata, embedded JAR bytes, class versions, ZIP integrity, hashes, and downloaded artifact checksums.
+[CI run 42953223121](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42953223121), source commit `c93bac240e8876a43d1ff6a347b15550749bcc49`, includes the current source, build, packaging, portal, test, and documentation changes. Both real Fabric/Loom builds and their actual-classpath audits passed; CI's offline packaging suite passed **9/9** tests. Candidate preparation verified target metadata, embedded JAR bytes, class versions, ZIP integrity, hashes, and downloaded-artifact checksums.
 
 | Candidate file | Bytes | SHA-256 |
 |---|---:|---|
 | `Azyron-Client-1.0.3-mc1.20.1.jar` | 230532 | `d5e5e43373043999c925a95ffdcb5e76fab06dec2ed795539df58d256b9fa77a` |
-| `Azyron-Modpack-1.0.3-mc1.20.1.mrpack` | 224717 | `1edc2c336a4325abe1ae69dba2613af8bf7857210c580764bddf609b2cb446cf` |
+| `Azyron-Modpack-1.0.3-mc1.20.1.mrpack` | 224717 | `e2d91deacb9e816be82ca9d56644947701ec83f74964446baac762c6ce1ac382` |
 | `Azyron-Client-1.0.3-mc1.21.11.jar` | 233108 | `c44930d01fb68b2a815e0baf1665cda0863830a18a3c2182a77ee75458cc154c` |
-| `Azyron-Modpack-1.0.3-mc1.21.11.mrpack` | 227452 | `f30f8d02625403dd9995a0e12d55968a51524fe926d4ccd7d322f715aba1c495` |
+| `Azyron-Modpack-1.0.3-mc1.21.11.mrpack` | 227452 | `f1ab220810aef2a169b0170c48e07ecb96932b14835c7358dca80345150a66a9` |
 
-The successful build audits were 105 checks for 1.20.1 and 110 for 1.21.11; outputs are Java 17/class 61 (73 client classes) and Java 21/class 65 (74 classes), respectively. GitHub Actions artifact [`Azyron-v1.0.3-native-candidates-NOT-PUBLISHED`](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42948465997/artifacts/13823284559) is 858,122 bytes and expires 2026-11-25. CI re-downloaded and checksum-verified it. The release-attachment job was skipped by its one-time guard, so no release asset was changed by this run. The local sandbox has no `java`/`javac`; no game launch, Mixin transformation, device benchmark, or gameplay validation has been performed.
+The successful audits were 105 checks for 1.20.1 and 110 for 1.21.11; outputs are Java 17/class 61 (73 client classes) and Java 21/class 65 (74 classes), respectively. GitHub Actions artifact [`Azyron-v1.0.3-native-candidates-NOT-PUBLISHED`](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42953223121/artifacts/13826640241) is 858,141 bytes and expires 2026-11-25. CI re-downloaded and checksum-verified it.
+
+The guarded release-attachment job completed. The subsequent read-only API check showed release `437365942` still `draft=true` at [the current draft URL](https://github.com/AzyronClientteam/Azyron-Client/releases/tag/untagged-7845987436971d6e483d), with these sidecars in addition to the four candidate files:
+
+| Attached sidecar | Bytes | SHA-256 |
+|---|---:|---|
+| `SHA256SUMS.txt` | 406 | `5285e3664b9e3f3bcc89072721be33f4cd04d5335694cb1146441d34c83d7e51` |
+| `BUILD-PROVENANCE.json` | 1336 | `e96e61ece6a6168703b04da812529752d2e589b8b3223f8c01e96e0993221186` |
+
+The attachment job did not publish the release. The local sandbox has no `java`/`javac`; no game launch, full Mixin transformation, device benchmark, or gameplay validation has been performed.
 
 ## Complete original compiler inventory
 
@@ -153,13 +162,13 @@ The class-count difference is from native adapter/mixin selection, not removal o
 
 After the user explicitly requested an update to the existing release page, CI reran the standard native builds and packaging checks in [run 42785077400](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42785077400) from source commit `f3a566fa65a063334537cf7d2b414164b1b10d24`. Minecraft 1.20.1 and 1.21.11 both built successfully again; the 105/110 actual-classpath checks and eight packaging tests passed. The separate upload job downloaded that run's generated bundle inside GitHub Actions, rechecked its hashes and target metadata, and verified GitHub's asset digests before replacing the previous files.
 
-The existing release **437365942** currently lists four version-specific native JAR/MRPack files; the latest API check did not list `SHA256SUMS.txt` or `BUILD-PROVENANCE.json` as release assets. The two old generic-name stub assets (IDs `729999833` and `729999953`) were removed after the replacements passed verification. The API check returned **draft=true** and `tag_name=v1.0.3`; the release record also retains a non-null `published_at` timestamp, so this report does not claim that it was never published. GitHub returned this draft URL: [open draft release](https://github.com/AzyronClientteam/Azyron-Client/releases/tag/untagged-4a371a230806bb980e48). Draft releases may not resolve through the public `/releases/tag/v1.0.3` route until published; the release record remains associated with tag `v1.0.3`. These four assets predate the current edits. The updated native pairs passed validation in run 42948465997, but that run's release-attachment job was skipped by its one-time guard; the API still listed only the four earlier assets at the last check.
+After the earlier run 42785077400 update, release `437365942` listed four version-specific native JAR/MRPack files; the two old generic-name stub assets (IDs `729999833` and `729999953`) had been removed after verification. That is historical state only. Run 42948465997 validated a newer candidate set but its guarded attachment job was skipped. Run 42953223121 subsequently completed the guarded attachment job; the latest API check lists six assets (the four current native files and the two sidecars in the latest-validation section above) and returns **draft=true**, `tag_name=v1.0.3`, plus a non-null historical `published_at`. The current draft URL is [open draft release](https://github.com/AzyronClientteam/Azyron-Client/releases/tag/untagged-7845987436971d6e483d). Draft releases may not resolve through the public `/releases/tag/v1.0.3` route until published; this update did not publish it.
 
-| Asset attached to the draft | Bytes | SHA-256 |
+| Assets attached after run 42785077400 (historical; superseded by run 42953223121) | Bytes | SHA-256 |
 |---|---:|---|
 | `Azyron-Client-1.0.3-mc1.20.1.jar` | 231812 | `5390cb332c85cd6521bf2440467e1b946ef744b71356a5936171e12157d6c7a7` |
 | `Azyron-Modpack-1.0.3-mc1.20.1.mrpack` | 226057 | `b4ff111aeb32893ab999aad8de9ee7882dfff829418754d3369e0a593d7720a2` |
 | `Azyron-Client-1.0.3-mc1.21.11.jar` | 234391 | `00a5743ff994e86b7b2497264fcf06a6bfb33ca9ed4534add50599f876786f40` |
 | `Azyron-Modpack-1.0.3-mc1.21.11.mrpack` | 228786 | `2b5fe608aff5903c1c7243184b6b465f6ecd6c3e5dbfcbb959303d2990e277be` |
 
-The earlier Actions candidate bundle remains an archived validation artifact; use the attached release assets and their current checksums above as the draft's authoritative files. No physical game/Mixin-transformation test or device FPS benchmark was added by the release update. No 60+ FPS claim is made.
+These hashes document the historical files attached after run 42785077400; they were superseded by the verified pairs from run 42953223121, listed in the latest-validation section above. No physical game/Mixin-transformation test or device FPS benchmark was performed by either release update. No 60+ FPS claim is made.
