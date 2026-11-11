@@ -1,40 +1,45 @@
 # AZYRON CLIENT v1.0.4 — Validation Status
 
 **Developer:** JIGNESH GAMING
-**Selected release mapping:** unsuffixed JAR/MRPack = Minecraft 1.21.11; explicit `-mc1.20.1` files = Minecraft 1.20.1.
-**Release state:** draft only; publication is not authorized.
+**Selected target mapping:** unsuffixed JAR/MRPack = Minecraft 1.21.11; explicit `-mc1.20.1` files = Minecraft 1.20.1.
+**Release state:** unpublished draft; publication is not authorized.
 
-## Corrected direct-file distribution
+## Corrected direct-file distribution — PASSED
 
-The former Client ZIP and Modpack ZIP are superseded and must not be distributed. The corrected release consists of four separate target-native files:
+The former Client ZIP and Modpack ZIP were removed from the v1.0.4 draft after the replacement assets were uploaded and verified. The release now contains four target-native downloads, plus `SHA256SUMS.txt` and `BUILD-PROVENANCE.json`:
 
-| Minecraft target | Native Fabric JAR | Matching Modrinth profile | Java |
-|---|---|---|---:|
-| 1.21.11 | `Azyron-Client-1.0.4.jar` | `Azyron-Modpack-1.0.4.mrpack` | 21+ |
-| 1.20.1 | `Azyron-Client-1.0.4-mc1.20.1.jar` | `Azyron-Modpack-1.0.4-mc1.20.1.mrpack` | 17+ |
+| Minecraft target | Native Fabric JAR | Size | SHA-256 | Matching Modrinth profile | Size | SHA-256 |
+|---|---|---:|---|---|---:|---|
+| **1.21.11** | `Azyron-Client-1.0.4.jar` | 233,108 bytes | `8647f22472a1fac330b22985d3c821d6ec289f657c1c0594c214976031b60caa` | `Azyron-Modpack-1.0.4.mrpack` | 227,455 bytes | `b92a409806383ddf5619fb8eaa16e9ca2a9895edb59fae9a15ee4bcfcc85d58f` |
+| **1.20.1** | `Azyron-Client-1.0.4-mc1.20.1.jar` | 230,532 bytes | `beb0c809121fac6d00006493d5c7ab47bc3f1ec465f3aa61a15f349cbb0b8107` | `Azyron-Modpack-1.0.4-mc1.20.1.mrpack` | 224,722 bytes | `bf1f94b6833341586f89bcf4bca15cd55978113245d6d1590e410c989b2f3c1d` |
 
-Each JAR is intended to be a real Gradle/Fabric Loom remapped mod. Each standard `.mrpack` must declare only its own Minecraft target and embed the exact matching JAR. No client ZIP is produced.
+The unsuffixed files are **only for Minecraft 1.21.11**. The suffixed pair is **only for Minecraft 1.20.1**. Each `.mrpack` declares one Minecraft version and embeds the exact byte-identical native JAR from the same row. No client ZIP is supplied.
 
-## Historical native build validation
+[Open the v1.0.4 draft](https://github.com/AzyronClientteam/Azyron-Client/releases/tag/untagged-5c42243de2e5c21dc359). It remains `draft=true` with `published_at=null`.
 
-GitHub Actions run [42960726074](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42960726074), source commit [`9307b45`](https://github.com/AzyronClientteam/Azyron-Client/commit/9307b45b82971fd7bcf57d2fff5e80784561488e), passed separate real Fabric/Loom builds and actual-classpath audits for Minecraft 1.20.1 and 1.21.11. That run validated the earlier release packaging, which used outer ZIP bundles. It is **not** evidence that the corrected direct-filename pipeline, updated portal, or replacement of the draft's assets has passed.
+## Native builds and package validation — PASSED
 
-## Current correction status
+GitHub Actions workflow run [42965497293](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42965497293), source commit [`3f13d12`](https://github.com/AzyronClientteam/Azyron-Client/commit/3f13d129c2bd91d6c5ecd631d0118b186a77f235), completed successfully. It built each supported target independently with Gradle and Fabric Loom against real Minecraft/Yarn/Fabric dependencies; no generated Minecraft/Fabric stubs were used.
 
-- Offline packaging and installer regression tests: **12/12 passed locally** using explicitly synthetic fixture JARs; these fixtures are not compiled or runnable mods.
-- Release portal integration tests: **5/5 passed locally** with synthetic fixture files.
-- The new workflow must still run both actual Gradle/Fabric Loom builds, verify compiled classes and metadata, generate the four direct assets, and confirm each exact JAR-to-MRPack pair before release assets are changed.
-- The existing v1.0.4 draft currently has its obsolete two ZIP assets. The guarded workflow refresh is pinned to release ID `441244221`, uploads and verifies the four target-native files plus checksums/provenance first, removes only the two previously identified ZIP assets, and leaves the release unpublished. The separate v1.0.3 draft is not modified.
+- Minecraft **1.20.1 Fabric / Java 17**: native build and actual-classpath compatibility audit **PASSED**.
+- Minecraft **1.21.11 Fabric / Java 21**: native build and actual-classpath compatibility audit **PASSED**.
+- Candidate validation confirmed Fabric metadata, exact Minecraft/Java dependencies, compiled client classes, class-file major versions (61 for Java 17 and 65 for Java 21), configured mixin class files, and absence of bundled Minecraft/test stubs.
+- Both target-specific Modrinth packs passed archive/index/config validation and exact JAR-to-MRPack byte pairing.
+- The four uploaded download assets were verified against GitHub's API-reported sizes and SHA-256 digests. The two known obsolete ZIP assets were then removed; final draft asset verification passed.
+- Offline packaging/installer tests: **13/13 passed**. Portal integration tests: **5/5 passed**. These tests use synthetic fixture JARs/files for structural regression checks and are not runtime/game tests.
+- The ordinary push workflow also passed the direct-asset build/package pipeline in run [42965286837](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42965286837); its release-refresh job was correctly skipped.
 
-## What the native build/package checks establish
+The separate v1.0.3 draft was not modified.
 
-Once the corrected workflow passes, its checks establish that each target compiles against its real Minecraft/Fabric classpath; the JAR has target-specific Fabric metadata, Java bytecode, feature classes, and configured mixins; each `.mrpack` has one matching Minecraft dependency and contains the byte-identical native JAR; and the four direct assets pass archive and SHA-256 verification.
+## What build/package validation establishes
 
-These checks do **not** demonstrate full runtime Mixin transformation or a successful game launch.
+The checks establish that each downloadable JAR is a real target-specific Fabric Loom remap build with the expected metadata and bytecode target, and that each `.mrpack` matches one Minecraft version and embeds the exact corresponding native JAR. They also establish archive integrity and release-asset hashes.
+
+They do **not** demonstrate full runtime Mixin transformation or a successful game launch.
 
 ## Gameplay and hardware tests — NOT RUN
 
-- Minecraft startup, world loading, complete Mixin application, menus, HUD, Armour Hub, Mods Menu, and saves: **NOT RUN**.
+- Minecraft startup, world loading, complete runtime Mixin application, menus, HUD, Armour Hub, Mods Menu, and saves: **NOT RUN**.
 - Multiplayer joins, chunk generation, long sessions, and crash/stability testing: **NOT RUN**.
 - Android/PojavLauncher, renderer compatibility, thermal behavior, OOM/ANR, and physical-device testing: **NOT RUN**.
 - Average FPS, frame times/1% lows, heap, process RSS/native memory, GC pauses, and thermal measurements: **NOT MEASURED**.
@@ -43,4 +48,4 @@ The 6-view / 5-simulation chunk profile and 60 FPS cap are configuration targets
 
 ## Draft-release gate
 
-Publication is **NOT AUTHORIZED**. Release ID `441244221` must remain a draft until JIGNESH GAMING explicitly approves publication. The v1.0.3 draft is separate and must remain untouched. Ordinary pushes only validate/build candidates; a manual `create_draft=true` dispatch may refresh the existing v1.0.4 draft but never publishes it.
+Publication is **NOT AUTHORIZED**. Release ID `441244221` remains an unpublished draft until JIGNESH GAMING explicitly approves publication. The manual refresh workflow only updates the existing v1.0.4 draft; it does not create or publish a release.
