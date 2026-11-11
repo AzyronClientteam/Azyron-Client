@@ -1,34 +1,64 @@
-# AZYRON CLIENT `v1.0.2` — Stability, Compatibility & Performance Verification Report
+# AZYRON CLIENT v1.0.3 — Validation Status
 
-**Client:** AZYRON CLIENT `v1.0.2`  
-**Author:** JIGNESH GAMING  
-**Target Environment:** Minecraft Java Edition **`1.21.11`** • Fabric Loader **`0.20.1`** • OpenJDK **`21.0.8`** • Desktop & Android / PojavLauncher
+**Developer:** JIGNESH GAMING
+**Downloads:** separate native JAR/MRPack pairs for Minecraft 1.20.1 and 1.21.11.
+**Scope:** This report separates actual Fabric/Loom build checks, offline package/portal checks, historical generated-stub tests, and gameplay/device validation.
 
----
+## Current working tree
 
-## 1. Root-Cause Diagnosis & Verified Fixes Across All 9 Stability / Performance Areas
+**The current edits have not passed a native build or game launch.** The last successful native CI run predates the current working-tree Java/UI, Gradle metadata, packaging, portal, and documentation changes. A passing earlier build must not be treated as validation of these edits.
 
-| # | Issue | Root Cause in Minecraft `1.21.11` / Mod Stack | Verified Fix Implemented |
-| :---: | :--- | :--- | :--- |
-| **1** | **`raids.dat` Loading Error & Silent Data Loss** | `PersistentStateManager.readFromFile` (`class_26.method_120`) returns `null` when `NbtIo.readCompressed` or `Raids.CODEC` (`next_id`, `tick`, `raids`) fails; `getOrCreate` then creates an empty state and `save()` overwrites `raids.dat` directly without backup or temp file. | Added `PersistentStateGuard` + `PersistentStateManagerMixin`: backs up 0-byte, corrupt GZip, or schema-damaged `.dat` files to `<world>/data/azyron_backups/<id>.dat.<ts>.bak` + `.meta.txt` **before** repair/fallback; migrates legacy `NextAvailableID`/`Tick` & filters broken raid entries without deleting files; saves atomically via `.azyron.tmp` rename. |
-| **2** | **`Fullscreen: off` Invalid Boolean Error** | `GameOptions.load()` (`class_315.method_1636`) parses boolean `SimpleOption`s via `LenientJsonParser.parse` + `Codec.BOOL`, which rejects `"off"` / `"on"` written by PojavLauncher or manual edits. | Added `OptionsConfigSanitizer` + `GameOptionsMixin` (`@Inject` at `TAIL` of `update(NbtCompound)` `method_1626`): normalizes `"off"`/`"0"`/`"disabled"` → `"false"`, `"on"`/`"1"` → `"true"`, and invalid tokens → safe defaults before option parsing. |
-| **3** | **Android / PojavLauncher Narrator Crash (`libflite`)** | `NarratorManager.<init>` (`class_333`) calls `Narrator.getNarrator()`, which rethrows `Narrator.FatalException` uncaught if `NarratorLinux` fails on Android/Bionic, while `checkNarratorLibrary` calls desktop `TinyFileDialogs.tinyfd_messageBox` and throws `InactiveNarratorLibraryException`. | Added `PlatformCompat` + `NarratorManagerMixin`: detects Android/PojavLauncher or absent `libflite.so.1`/`libflite.so`, redirects `Narrator.getNarrator()` to return `Narrator.EMPTY` safely, and cancels `checkNarratorLibrary` cleanly while setting `NarratorMode.OFF` in memory. |
-| **4** | **Offline / Local Realms Auth Error Spam** | `RealmsAvailability.checkInternal` (`class_8647.method_52626`) only checks `isOfflineDeveloperMode()`, sending placeholder offline tokens (`"0"`, `""`) to `RealmsClient` HTTP endpoints. | Added `RealmsAvailabilityMixin` + `PlatformCompat.isOfflineOrLocalSession`: returns `CompletableFuture.completedFuture(new Info(Type.AUTHENTICATION_ERROR))` immediately for local/offline tokens while leaving online Microsoft JWT sessions 100% untouched. |
-| **5** | **Mod Compatibility on `1.21.11` & Android GLES** | `ImmediatelyFast 1.14.3+1.21.11` uses low-level OpenGL buffer/framebuffer hooks unsupported on Android GL translation layers (`RaphiMC/ImmediatelyFast#386`, `PojavLauncher#1948`); `Dynamic FPS` `invisible: 0` stalls Android EGL swap; `immediatelyfast.json` used deprecated `1.13` keys. | Removed `ImmediatelyFast` from universal `.mrpack` (kept `8` universal Android+PC verified `1.21.11` mods; made desktop `ImmediatelyFast` opt-in via `--desktop-immediatelyfast`); set `dynamic_fps.json` `invisible: 1` & `battery_tracker: false`; updated fallback `immediatelyfast.json` to `1.14.3` schema (`enhanced_batching: false`). |
-| **6** | **Singleplayer IntegratedServer Tick Lag** | Vanilla `IntegratedServer.syncChunkWrites()` (`method_27051`) defaults to `options.syncChunkWrites == true` on Windows/Android flash storage, stalling server ticks on chunk saves, and heavy mob/chunk bursts exceed `50 ms` MSPT. | Added `IntegratedServerOptimizer` + `IntegratedServerMixin`: forces `syncChunkWrites = false` for async chunk I/O, tracks a 40-tick rolling MSPT ring buffer, and steps simulation distance down by `1–2` chunks with 5-second hysteresis under `>46 ms` MSPT or critical RAM pressure, restoring automatically once `<30 ms`. |
-| **7** | **`3GB – 8GB` Memory Optimization** | Excess chunk builder threads starve `IntegratedServer` on `3GB–4GB` mobile CPUs, and `>90%` heap occupancy causes GC stop-the-world stalls. | Expanded `MemoryOptimizer` + `PerformanceEngine`: added `getRecommendedJvmHeapMb`, CPU+RAM-bounded `computeOptimalChunkBuilderThreads()` (`[1..4]`), emergency `isCriticalMemoryPressure()` (`>=90%`) view/sim distance clamping, and zero-`System.gc()` allocation-rate monitoring. |
-| **8** | **HUD Rendering Bugs & `1.21.11` `DrawContext` Access** | `ArmorHudModule` called `DrawContext.drawItemBar` (`class_332.method_64860`), which is **`private`** in `1.21.11` (`IllegalAccessError` when enabled!), and HUD module rendering lacked `try/finally` matrix isolation and `NaN` guards. | Updated `ArmorHudModule` to call **`public`** `DrawContext.drawStackOverlay` (`class_332.method_51431`); wrapped `HudModule.renderOnHud` `pushMatrix()`/`popMatrix()` in `try/finally` + per-module `try/catch`; sanitized `NaN`/`Infinity` anchors/scales and clamp bounds in `UiRenderUtils`. |
-| **9** | **Codebase Audit & Corrupt Config Safety** | Malformed `azyron-client.json` was overwritten on load without backup; `Setting.NumberSetting` accepted `NaN`. | Added timestamped `.bak` backup in `AzyronConfig.load()` before restoring defaults; added `Double.isFinite` guard in `Setting.NumberSetting`; audited all `62` compiled Java 21 classes and `15` Mixins against official `intermediary_1.21.11.tiny`. |
-| **10** | **Multiplayer Server-Join Lag, Freeze & Crash** | `MemoryOptimizer` triggered STW `System.gc()` on `ConnectScreen`/`LevelLoadingScreen` & dimension switches; `ChunkBatchSizeCalculator` flooded `25–64` chunks/tick; `ClientWorld.runQueuedChunkUpdates()` drained `10–1,000+` light updates unbudgeted in 1 frame; `InGameHudMixin` ran during `LevelLoadingScreen`; `PotionHudModule` lacked `RegistryEntry.hasKeyAndValue()`. | Added `MultiplayerPerformanceController`, `ChunkBatchSizeCalculatorMixin` (`class_8760.method_53485`), `ClientWorldMixin` (`class_638.method_38534` / `field_34804` nanosecond budget), and `EntityRenderManagerMixin` (`class_898.method_3950`); removed gameplay/join `System.gc()`; guarded transition screens & unbound `RegistryEntry`s; preserved **Armour Hub (`ArmorHudModule`)** & all 11 modules. |
+The local sandbox has no `java` or `javac` executable, so Gradle builds could not be run locally. The required native acceptance check is still a fresh real Fabric/Loom build and actual-classpath audit for both targets, followed by validation of the resulting matching JAR/MRPack pairs.
 
----
+## Earlier native CI result (baseline only)
 
-## 2. Automated Verification Results (`OpenJDK 21.0.8`)
+[CI run 42785077400](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42785077400), source commit `f3a566fa65a063334537cf7d2b414164b1b10d24`, successfully ran the real Fabric/Loom matrix and packaging workflow before the present edits:
 
-| Verification Check | Status | Verified Result |
-| :--- | :---: | :--- |
-| **Java 21 Compilation (`-21`)** | **PASS** | `43` main Java files + `AzyronClientTestSuite` compiled cleanly (`classfile v65.0`, `0` errors) |
-| **Official `intermediary_1.21.11.tiny` Symbol Audit** | **PASS** | `62/62` classes in `Azyron-Client-1.0.2.jar` verified with **`0` unmapped `net/minecraft/*` classes, fields, or methods** |
-| **Mixin Refmap & `@Shadow` Audit (`1.21.11`)** | **PASS** | All `15` Mixins (`1` common + `14` client) and every `@Inject`, `@Redirect`, `@Surrogate`, and `@Shadow` target verified against `1.21.11` Intermediary |
-| **Bytecode Access & Interface Contract Audit** | **PASS** | Verified `public` `class_332.method_51431` (`drawStackOverlay`), **zero** `private` `method_64860` (`drawItemBar`) references, and `CONSTANT_InterfaceMethodref` on `FabricLoader`, `RegistryEntry` (`method_40227` & `comp_349`), `Text`, and `Narrator` |
-| **`AzyronClientTestSuite` (`25` End-to-End & Low-RAM `-Xmx256m` Soak Suites)** | **PASS (`25/25`)** | Suites `1–25` passed (`0` failures): 50 server joins (`0` Full GCs, `0` leaks), `3GB–8GB` chunk-batch pacing, `250` & `1,200` chunk light bursts (`1.85 ms` max frame), `300`-entity hub culling (`86.7%` clutter culled, `100%` combat/nearby preserved), and `36,000`-tick / `72,000`-frame multiplayer soak (`p99 = 7.13 µs`, `0` Full GCs) |
+| Target | Native build | Actual-classpath audit | Java output |
+|---|---:|---:|---:|
+| Minecraft 1.20.1 / Fabric | PASS | 105 checks passed | Java 17 / class-file 61 |
+| Minecraft 1.21.11 / Fabric | PASS | 110 checks passed | Java 21 / class-file 65 |
+
+The run also passed eight offline packaging tests and prepared four target-specific candidate files. Its audit read real named Minecraft/Fabric classpath data; it did not start Minecraft or execute the complete Mixin transformer. The source commit is older than this worktree, so these results are historical baseline evidence only.
+
+## Offline package and portal checks
+
+The checked-in Python packaging tests use a synthetic metadata-only fixture JAR. They can test target guards, Modrinth pack ZIP structure, version-specific default paths, configuration contents, and download-installer safeguards. **The fixture is not a runnable mod and is not a substitute for either native build.**
+
+Portal integration tests similarly create metadata-only JAR/MRPack fixtures. They check static version-specific routes, target matching, ETags/lengths, and rejection of mismatches; they do not validate a real release binary or game compatibility.
+
+**Current post-edit results:** `scripts/test-low-ram-packaging.py` passed **9/9** tests; `python3 -m unittest discover -s releases-portal -v` passed **5/5** integration tests; `py_compile` for the portal, test, and packaging scripts passed; and `bash -n releases/download-dependencies.sh` passed. The Python suites used temporary synthetic fixtures and are not native Fabric/game validation.
+
+Run the offline checks from `azyron-client/`:
+
+```bash
+python3 scripts/test-low-ram-packaging.py
+python3 -m unittest discover -s releases-portal -v
+python3 -m py_compile releases-portal/server.py releases-portal/test_server.py
+bash -n releases/download-dependencies.sh
+```
+
+Record their results separately from native builds and gameplay testing. A passing Python suite proves only the covered deterministic packaging/server behavior.
+
+## Historical generated-stub checks — not native acceptance
+
+Earlier project notes record 26/26 checks per Minecraft target in isolated JVM harnesses built with generated Minecraft/Fabric stubs, plus a constant-pool name audit. They were not actual game runs, are not being presented as current-source results, and do not prove correct invocation descriptors, Mixin application, renderer interoperability, stability, or performance. Synthetic “soak” loops are not elapsed gameplay.
+
+## Gameplay and device validation — NOT RUN
+
+No Minecraft launch, physical-device test, or fresh FPS/RAM/stability benchmark has been performed for the current edits:
+
+- Desktop startup, world loading, Mixin transformation, HUD/Armour Hub/Mods Menu interaction: **NOT RUN**.
+- Android/PojavLauncher renderer, startup, memory pressure, thermal behavior, OOM/ANR, or sustained-play tests: **NOT RUN**.
+- Multiplayer joins, chunk loading, entity rendering, server transitions, and long sessions: **NOT RUN**.
+- FPS averages/1% lows, frame times, JVM heap, process RSS/native memory, GC pauses: **NOT MEASURED**.
+
+The 3GB profile's six-view/five-simulation-chunk and 60 FPS-cap configuration is a **target/configuration**, not an achieved frame rate. **60+ FPS at six chunks is not verified or promised.** No crash-free, stability, RAM-reduction, or measured-performance claim is made. Multiplayer simulation distance remains controlled by the server.
+
+## Required final validation
+
+1. Run a fresh actual Fabric/Loom build and actual-classpath audit for Minecraft 1.20.1 and 1.21.11 after the current source changes.
+2. Build one native JAR and one matching `.mrpack` per target. Check each JAR's exact Minecraft/Java metadata and class version; check each pack's manifest, embedded JAR bytes, config, hashes, and ZIP integrity.
+3. Launch each target with its matching Fabric Loader/API and dependencies; verify startup/Mixin application, menus, HUD, Armour Hub, controls, worlds, and multiplayer.
+4. Separately test Android/PojavLauncher and measure FPS, frame times, heap/RSS, GC, thermals, and stability on a documented compatible device. Do not report the 60+ FPS goal as achieved without those measurements.
+5. Keep the existing release a draft. Do not replace/remove old assets until both native pairs pass build/package validation, and do not publish without owner approval.

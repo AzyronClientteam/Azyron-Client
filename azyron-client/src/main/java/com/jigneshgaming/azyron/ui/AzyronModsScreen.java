@@ -11,7 +11,6 @@ import com.jigneshgaming.azyron.profile.MemoryOptimizer;
 import com.jigneshgaming.azyron.profile.PerformanceEngine;
 import com.jigneshgaming.azyron.profile.PerformanceProfile;
 import com.jigneshgaming.azyron.util.AzyronTheme;
-import com.jigneshgaming.azyron.util.McVersionBridge;
 import com.jigneshgaming.azyron.util.UiRenderUtils;
 import java.util.List;
 import java.util.Locale;
@@ -27,7 +26,7 @@ import org.lwjgl.glfw.GLFW;
  *  - Sidebar category tabs + instant HUD Editor launcher
  *  - Real-time module search filter
  *  - 2-column responsive module cards with ON/OFF toggle + Mod Settings drawer
- *  - Dedicated Performance Profiles, Selectable MC Version Stack & Optimization center
+ *  - Dedicated Performance Profiles & version-specific optimization stack status
  */
 public final class AzyronModsScreen extends AzyronBaseScreen {
     private enum Section {
@@ -138,10 +137,10 @@ public final class AzyronModsScreen extends AzyronBaseScreen {
 
         // Brand badge
         UiRenderUtils.drawAzyronEmblem(ctx, wx + 16, wy + 17, 9, 255);
-        UiRenderUtils.drawText(ctx, this.textRenderer, "AZYRON", wx + 29, wy + 10, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawScaledText(ctx, this.textRenderer, AzyronClient.CLIENT_NAME, wx + 29, wy + 10, 0.82f, AzyronTheme.TEXT_PRIMARY, false);
         UiRenderUtils.drawScaledText(
                 ctx, this.textRenderer,
-                McVersionBridge.getActiveMcVersionString() + " FABRIC",
+                "v" + AzyronClient.CLIENT_VERSION,
                 wx + 29, wy + 20, 0.72f, AzyronTheme.ACCENT_ELECTRIC_BLUE, false
         );
 
@@ -165,7 +164,7 @@ public final class AzyronModsScreen extends AzyronBaseScreen {
         int hudBtnY = wy + winH - 50;
         boolean hudHov = UiRenderUtils.isHovered(mx, my, wx + 6, hudBtnY, sideW - 12, 20);
         UiRenderUtils.drawAccentCard(ctx, wx + 6, hudBtnY, sideW - 12, 20, hudHov ? AzyronTheme.ACCENT_PURPLE : AzyronTheme.BG_CARD_ACTIVE, hudHov, true);
-        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, "✦ HUD Editor", wx + sideW / 2, hudBtnY + 6, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, "HUD Editor", wx + sideW / 2, hudBtnY + 6, AzyronTheme.TEXT_PRIMARY);
 
         int cosBtnY = wy + winH - 26;
         boolean cosHov = UiRenderUtils.isHovered(mx, my, wx + 6, cosBtnY, sideW - 12, 18);
@@ -386,7 +385,7 @@ public final class AzyronModsScreen extends AzyronBaseScreen {
         UiRenderUtils.drawRoundedPanel(ctx, x, py + 2, w, 34, 0xCC090C18, AzyronTheme.BORDER_SUBTLE);
         UiRenderUtils.drawText(
                 ctx, this.textRenderer,
-                "Optimization Mod Stack (" + McVersionBridge.getActiveMcVersionString() + " Fabric):",
+                "Optimization Mod Stack:",
                 x + 8, py + 7, AzyronTheme.TEXT_SECONDARY
         );
 
@@ -440,39 +439,15 @@ public final class AzyronModsScreen extends AzyronBaseScreen {
             UiRenderUtils.drawCenteredText(ctx, this.textRenderer, val ? "ON" : "OFF", bx + 21, ry + 10, AzyronTheme.TEXT_PRIMARY);
         }
 
-        // Selectable Minecraft Version Profile Row (1.21.11 Fabric / 1.20.1 Fabric)
-        int verY = y + 102;
-        McVersionBridge.SupportedMcVersion selectedVer = cfg.getSelectedMcVersion();
-        boolean verHov = UiRenderUtils.isHovered(mx, my, x, verY, w, 34);
-        UiRenderUtils.drawAccentCard(ctx, x, verY, w, 34, AzyronTheme.BG_CARD_ACTIVE, verHov, true);
-        UiRenderUtils.drawText(
-                ctx, this.textRenderer,
-                "Supported Minecraft Profile (Active Runtime: " + McVersionBridge.getActiveMcVersionString() + ")",
-                x + 10, verY + 5, AzyronTheme.TEXT_PRIMARY
-        );
-        UiRenderUtils.drawScaledText(
-                ctx, this.textRenderer,
-                this.textRenderer.trimToWidth(
-                        "Java " + selectedVer.getMinJavaVersion() + "+  •  Fabric API " + selectedVer.getFabricApiVersion()
-                        + "  •  " + selectedVer.getModStackSummary(),
-                        w - 110
-                ),
-                x + 10, verY + 19, 0.72f, AzyronTheme.TEXT_SECONDARY, false
-        );
-        String verBtnLabel = "< " + selectedVer.getVersionId() + " >";
-        int verBtnW = 82;
-        int verBtnX = x + w - verBtnW - 8;
-        UiRenderUtils.drawRoundedPanel(ctx, verBtnX, verY + 8, verBtnW, 18, AzyronTheme.ACCENT_PURPLE_BRIGHT, AzyronTheme.ACCENT_ELECTRIC_BLUE);
-        UiRenderUtils.drawCenteredText(ctx, this.textRenderer, verBtnLabel, verBtnX + verBtnW / 2, verY + 13, AzyronTheme.TEXT_PRIMARY);
-
-        int infoY = y + 142;
+        // Compatibility is documented in the install guide; the runtime version is selected by the launcher.
+        int infoY = y + 102;
         UiRenderUtils.drawRoundedPanel(ctx, x, infoY, w, 52, 0xCC090C18, AzyronTheme.BORDER_SUBTLE);
         UiRenderUtils.drawText(
                 ctx, this.textRenderer,
-                "AZYRON CLIENT  •  v" + AzyronClient.CLIENT_VERSION + "  (Minecraft 1.21.11 & 1.20.1 Fabric)",
+                AzyronClient.CLIENT_DISPLAY_NAME + "  •  Compatible with Minecraft 1.20.1 & 1.21.11 (Fabric)",
                 x + 10, infoY + 7, AzyronTheme.ACCENT_ELECTRIC_BLUE
         );
-        UiRenderUtils.drawText(ctx, this.textRenderer, "Created by JIGNESH GAMING  |  PojavLauncher & Desktop Ready", x + 10, infoY + 20, AzyronTheme.TEXT_PRIMARY);
+        UiRenderUtils.drawText(ctx, this.textRenderer, "Created by JIGNESH GAMING  |  Desktop & PojavLauncher", x + 10, infoY + 20, AzyronTheme.TEXT_PRIMARY);
         UiRenderUtils.drawText(ctx, this.textRenderer, "Keybinds: [Right Shift] Client Menu  •  [C] Smooth Zoom  •  [H] HUD Editor", x + 10, infoY + 33, AzyronTheme.TEXT_MUTED);
     }
 
@@ -676,11 +651,6 @@ public final class AzyronModsScreen extends AzyronBaseScreen {
         }
         if (btn == 0 && UiRenderUtils.isHovered(mx, my, x, y + 66, w, 29)) {
             cfg.setAutoMemoryOptimization(!cfg.isAutoMemoryOptimization());
-            cfg.save();
-            return true;
-        }
-        if (UiRenderUtils.isHovered(mx, my, x, y + 102, w, 34)) {
-            cfg.cycleSelectedMcVersion();
             cfg.save();
             return true;
         }

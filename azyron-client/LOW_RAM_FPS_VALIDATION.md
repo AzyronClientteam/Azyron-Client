@@ -1,11 +1,11 @@
-# Azyron v1.0.3 — unpublished low-RAM optimization pass
+# AZYRON CLIENT v1.0.3 — Low-RAM Optimization & Validation
 
-> **Historical optimization-pass report.** The subsequent native-build repair supersedes the old failed-build/unpublished-source status below. See [COMPATIBILITY_1201_BUILD_REPORT.md](COMPATIBILITY_1201_BUILD_REPORT.md) for the complete compiler inventory, real per-version builds and current draft/candidate status. Do not use old stub-test binaries under `releases/` as release candidates.
+> **Historical implementation report.** The later real Fabric/Loom build repair and draft update are documented in [COMPATIBILITY_1201_BUILD_REPORT.md](COMPATIBILITY_1201_BUILD_REPORT.md). Any results below refer to earlier source snapshots and must not be treated as validation of the current working tree. Never use generated-stub test binaries as release candidates.
 
-**Products:** Azyron Client v1.0.3 / Azyron Modpack v1.0.3
+**Products:** AZYRON CLIENT v1.0.3 and its version-specific Modrinth packs
 **Developer:** JIGNESH GAMING
 **Targets:** Minecraft **1.20.1 Fabric** and **1.21.11 Fabric**, separately.
-**Status:** local implementation and deterministic checks completed; real-game compatibility and hardware acceptance **NOT COMPLETE**. The owner subsequently approved updating the existing v1.0.3 release. Source/config changes were pushed on the Arena branch for real Fabric CI validation; the generated-stub binaries were not uploaded. Existing public assets remain unchanged until genuine builds pass validation.
+**Status:** implementation/configuration claims below are historical; real-game compatibility and hardware acceptance are **NOT COMPLETE**. Earlier native CI passed for both targets and verified pairs were attached to the existing draft. The current source/portal changes postdate that CI run and have not yet been rebuilt. The release must remain a draft; no unverified replacement or removal of release assets is allowed.
 
 ## What changed
 
@@ -17,8 +17,8 @@
 - Corrected the exact Sodium 0.5.3 and 0.8.14 config schemas (details below). GL no-error contexts remain disabled in supplied configs for conservative Pojav behavior.
 - Added separate Dynamic FPS 3.2.1 and 3.11.6 config generators. Legacy required codec fields are supplied. Both use default graphics state on focus changes, avoiding graphics-setting/chunk-reload churn, and neither forces GC. Modern config disables optional native downloads/battery monitoring. No foreground idle throttling was added by Azyron.
 - Runtime companion seeding only happens for installed Sodium / Dynamic FPS, once per engine, and does not overwrite existing user files. Other mods own their upstream defaults instead of receiving guessed cross-version config keys. **Existing bad user configs are not automatically migrated**; back them up before resetting those two files in a test instance.
-- Each `.mrpack` gets its own active `options.txt`, Azyron config, Sodium config, and Dynamic FPS config. Both alternatives are embedded for the local portal, but embedding is not an automatic launcher-version selector.
-- The local portal now switches active configs as well as the manifest, and copies ZIP metadata rather than mutating source offsets while repacking. A regression test caught the latter ZIP-corruption issue.
+- Each version-specific `.mrpack` gets only its matching active `options.txt`, Azyron config, Sodium config, and Dynamic FPS config; the pack builder does not embed the other target's profile.
+- The current portal exposes static, version-specific native JAR/MRPack links and validates target metadata. It does not rewrite a manifest or convert one native artifact to the other Minecraft version. Earlier portal behavior is superseded.
 - Dependency downloaders refuse a known cross-version instance marker, verify downloads in temporary files, and replace the destination only after successful hashing. Failed/corrupt downloads do not replace an existing JAR. This marker is not a complete scanner for manually installed third-party mods.
 
 No HUD module, Armour Hub, Mods Menu, cosmetic, input, authentication, or UI feature was removed. Existing stub HUD/armour/menu checks still pass; this is not certification of their rendering on a physical device. Minimal particles and smaller entity render distance are visual profile settings, not removal of those systems.
@@ -71,7 +71,9 @@ Sources inspected using GitHub API (source inspection is not binary/runtime vali
 - [ModernFix candidate loader requirement](https://github.com/embeddedt/ModernFix/blob/5.25.2%2B1.20.1/fabric/src/main/resources/fabric.mod.json)
 - [Enhanced Block Entities 1.20 source](https://github.com/FoundationGames/EnhancedBlockEntities/tree/1.20)
 
-## Validation actually executed
+## Historical validation snapshot (older source)
+
+> The table below records an earlier optimization pass. Its failure/result counts are not a report on the current working tree; later native CI is recorded in [COMPATIBILITY_1201_BUILD_REPORT.md](COMPATIBILITY_1201_BUILD_REPORT.md).
 
 | Check | 1.20.1 | 1.21.11 | Meaning |
 |---|---:|---:|---|
@@ -97,6 +99,10 @@ bash -n azyron-client/releases/download-dependencies.sh
 
 JVM tests ran via the existing temporary generated-stub helper `/tmp/azyron_toolchain/build_and_verify_v103.py`, then independent version JVMs. This helper is sandbox infrastructure, not a checked-in reproducible full Minecraft toolchain. Logs and structurally checked **stub-build test artifacts** are kept in ignored `azyron-client/build/fps-validation/`. They must not be released as game-tested binaries. No source archives or APK were refreshed for this pass.
 
+## Current post-edit checks
+
+The current packaging and portal code passed **9/9** offline packaging tests and **5/5** portal integration tests. Portal fixtures are synthetic metadata-only JAR/MRPack pairs and do not test native builds or gameplay. Python byte-compilation and the dependency installer shell syntax check also passed. There is no `java`/`javac` executable in the sandbox, so no Gradle/Loom build was run for the current edits; actual launches and hardware measurements remain pending.
+
 ## Local packaging
 
 Build each target explicitly after obtaining a genuine, approved client build:
@@ -106,7 +112,7 @@ python3 azyron-client/scripts/build-modpack.py /path/to/approved-client.jar /pat
 python3 azyron-client/scripts/build-modpack.py /path/to/approved-client.jar /path/to/pack-1.21.11.mrpack --mc 1.21.11
 ```
 
-The JAR must contain expanded v1.0.3 metadata declaring both supported versions. These checks alone do not prove the JAR can launch. Without an explicit output path, `--mc 1.20.1` now uses the `-mc1.20.1` filename to avoid overwriting the default 1.21.11 output. Product names inside manifests remain unchanged.
+Each input JAR must contain expanded v1.0.3 metadata declaring exactly its selected Minecraft target (`["1.20.1"]` or `["1.21.11"]`). The builder rejects cross-version relabeling and packages the exact matching bytes. By default it reads `build/libs/Azyron-Client-1.0.3-mc<version>.jar` and writes `releases/Azyron-Modpack-1.0.3-mc<version>.mrpack`. These structural checks do not prove game startup.
 
 Use separate launcher instances. Runtime `selectedMcVersion` is metadata, **not** a way to change the already-running Minecraft engine. Fresh packs supply low-RAM defaults. Back up existing worlds, configs and options before importing; runtime companion seeding intentionally preserves existing files.
 
@@ -123,10 +129,10 @@ For **each version independently**, use a genuine Fabric build, the intended Jav
 
 **Owner approval to update the existing release was subsequently received.** Never upload the generated-stub test artifacts. Real Fabric build failures must block replacement of the public client/modpack downloads; disclose real-game and hardware-validation limits even if builds pass.
 
-## Approved release-update attempt
+## Historical native CI and current draft state
 
-The owner explicitly requested updating the existing public `v1.0.3` release. Source/configuration/validation changes were pushed only to `arena/a6dbb848-azyron-client`; no release binaries or source archives were committed. The build uses Loom 1.14-SNAPSHOT with Gradle 9.2.1 and a Java 21 compiler; Java 17 bytecode remains the configured output target.
+An earlier run, [42772512030](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42772512030), had a 1.20.1 compile failure while 1.21.11 passed. That result was superseded for its later source snapshot by [run 42785077400](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42785077400), which passed both real Fabric/Loom builds, the 105/110 actual-classpath audits, and eight packaging tests. After the owner's approval to update the existing draft, that run's verified, version-specific native pairs were attached. The results and hashes are in [COMPATIBILITY_1201_BUILD_REPORT.md](COMPATIBILITY_1201_BUILD_REPORT.md).
 
-Real CI validation: [run 42772512030](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42772512030). The 1.21.11 `remapJar` job passed; compiling the same source against 1.20.1 failed with missing-symbol errors. The generated-stub test success therefore does **not** establish a successful independent 1.20.1 build. This is an API compatibility/compile blocker, not a measured runtime crash or evidence of missing optimization mods.
+The latest read-only API check returned release ID `437365942`, `tag_name=v1.0.3`, `draft=true`, the untagged draft URL, and four version-specific JAR/MRPack assets. It also returned a non-null historical `published_at`; this does not establish that the release is currently published. Do not publish or modify assets without fresh validation and owner authorization.
 
-The [existing release](https://github.com/AzyronClientteam/Azyron-Client/releases/tag/v1.0.3) title/notes were updated to disclose the blocker and distinguish the published older downloads from the new source. The API response was re-read to verify the update and unchanged existing asset IDs, sizes and recorded digests. **No refreshed binaries were uploaded.** Neither the version tag nor the target branch was moved to imply a tested dual-version release. A fresh anonymous download/checksum verification of new artifacts is not applicable because none were published.
+**The current working-tree edits postdate run 42785077400.** No current-source Fabric build, game launch, or device benchmark has been performed. The existing four release assets are historical native outputs and do not contain these edits. Rebuild and validate both native pairs before any replacement; keep the release a draft. Generated-stub artifacts are never release candidates.

@@ -1,35 +1,32 @@
-# AZYRON CLIENT Modpack Configuration & Metadata (`1.21.11` Fabric)
+# AZYRON CLIENT v1.0.3 — Native Modrinth Profiles
 
-This directory contains the source configuration and Modrinth Format `v1` metadata used to build `Azyron-Modpack-1.0.2.mrpack` for **Minecraft Java Edition `1.21.11`** (`Fabric Loader 0.20.1`, `Java 21`).
+This directory is the source for two **separate standard Modrinth packs**. Each pack contains one native client JAR and one matching Minecraft/Fabric profile. Use the pair for the game version selected in the launcher; a manifest edit cannot convert a JAR built for another Minecraft version.
 
-## Verified Compatibility Matrix (`1.21.11` Fabric + Desktop & Android/PojavLauncher)
+| Minecraft target | Source index | Native JAR | Pack output |
+|---|---|---|---|
+| **1.20.1 Fabric** | `modrinth.index.1.20.1.json` | `Azyron-Client-1.0.3-mc1.20.1.jar` | `Azyron-Modpack-1.0.3-mc1.20.1.mrpack` |
+| **1.21.11 Fabric** | `modrinth.index.json` | `Azyron-Client-1.0.3-mc1.21.11.jar` | `Azyron-Modpack-1.0.3-mc1.21.11.mrpack` |
 
-| Mod | Version (`1.21.11` Fabric) | Desktop PC | Android / PojavLauncher | Modpack Status |
-|---|---|---|---|---|
-| **Fabric API** | `0.141.6+1.21.11` | Verified | Verified | **Included (`required`)** |
-| **Sodium** | `0.8.14+mc1.21.11` | Verified | Verified (`use_no_error_g_l_context: false`) | **Included (`required`)** |
-| **Lithium** | `0.21.4+mc1.21.11` | Verified | Verified (Pure Java tick/chunk/AI engine) | **Included (`required`)** |
-| **FerriteCore** | `8.2.0-fabric` | Verified | Verified (Pure Java 3GB–8GB RAM deduplication) | **Included (`required`)** |
-| **EntityCulling** | `1.11.3-mc1.21.11` | Verified | Verified (CPU raycast occlusion culling) | **Included (`required`)** |
-| **MoreCulling** (+ Cloth Config) | `1.21.11-1.6.2` | Verified | Verified (`entityModelCulling = false`) | **Included (`required`)** |
-| **Dynamic FPS** | `3.11.6+minecraft-1.21.11-fabric` | Verified | Verified (`invisible` target `1 FPS`, `battery_tracker: false`) | **Included (`required`)** |
-| **ImmediatelyFast** | `1.14.3+1.21.11` | Verified | **Incompatible** (`RaphiMC/ImmediatelyFast#386`: unsupported on Pojav/mobile OpenGL translation layers; causes mob texture corruption & `SIGABRT`) | **Excluded from universal `.mrpack`** (opt-in `--desktop-immediatelyfast` in downloader) |
+## Target-matched contents
 
-## Directory Structure
+- Each index pins its own Minecraft version, Fabric Loader, Fabric API, and optimization-mod versions. `DEPENDENCIES.md` lists the pins and checksums.
+- `overrides/config/` contains shared Azyron settings. The version-specific profile folders provide matching `options.txt` and companion config schemas.
+- `icon.png` is the existing Azyron modpack icon.
+- The pack builder verifies that the input JAR declares **exactly** the selected Minecraft target and embeds the unmodified JAR bytes. It rejects cross-version relabeling.
+- The 1.20.1 and 1.21.11 profiles are alternatives, not two versions selected from inside one pack.
 
-- `modrinth.index.json` — Modrinth Format `v1` index pinning Minecraft `1.21.11`, Fabric Loader `0.20.1`, and `8` universal PC + Android/PojavLauncher verified `1.21.11` Fabric dependencies with exact `sha1`, `sha512`, byte size, and Modrinth CDN URLs.
-- `icon.png` — AZYRON CLIENT modpack icon (`13,867` bytes).
-- `overrides/config/` — Pre-tuned client and companion optimization configurations deployed into `.minecraft/config/`:
-  - `azyron-client.json` — Default AZYRON CLIENT `v1.0.2` module states, HUD coordinates, and auto-calibrated 3GB–8GB RAM settings.
-  - `sodium-options.json` — Tuned chunk renderer & mobile-safe GL context defaults for Sodium `0.8.14+mc1.21.11`.
-  - `lithium.properties` — Safe Integrated Server tick, chunk, AI, and physics optimization flags for Lithium `0.21.4+mc1.21.11`.
-  - `entityculling.json` — Async path-tracing entity/block-entity culling config for EntityCulling `1.11.3-mc1.21.11`.
-  - `moreculling.toml` — Block-face, leaf, and item-frame culling config for More Culling `1.21.11-1.6.2`.
-  - `dynamic_fps.json` — Android/desktop-safe background frame-rate throttling config for Dynamic FPS `3.11.6+minecraft-1.21.11-fabric`.
-  - `immediatelyfast.json` — Safe fallback `1.14.3` config (`enhanced_batching: false`, `avoid_redundant_framebuffer_switching: false`, `map_atlas_size: 1024`) in case a user manually installs ImmediatelyFast.
+## Build
 
-## Rebuilding the `.mrpack` Bundle
+Run from `azyron-client/`, with the actual Gradle/Minecraft dependencies available:
 
 ```bash
-python3 scripts/build-modpack.py
+./gradlew clean build -Pminecraft_version=1.20.1
+python3 scripts/build-modpack.py --mc 1.20.1
+cp build/libs/Azyron-Client-1.0.3-mc1.20.1.jar releases/
+
+./gradlew clean build -Pminecraft_version=1.21.11
+python3 scripts/build-modpack.py --mc 1.21.11
+cp build/libs/Azyron-Client-1.0.3-mc1.21.11.jar releases/
 ```
+
+The builder reads the matching native JAR from `build/libs/` and writes the versioned `.mrpack` under `releases/`. These build/package checks do not test a game launch or provide FPS/RAM benchmarks. Physical-device, renderer, multiplayer, and stability validation remain separate acceptance work; the 60+ FPS at six chunks goal is not a measured result.

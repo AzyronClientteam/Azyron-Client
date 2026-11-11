@@ -3,7 +3,6 @@ package com.jigneshgaming.azyron.mixin;
 import com.jigneshgaming.azyron.AzyronClient;
 import com.jigneshgaming.azyron.profile.MultiplayerPerformanceController;
 import com.jigneshgaming.azyron.ui.AzyronMainMenuScreen;
-import com.jigneshgaming.azyron.util.McVersionBridge;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
@@ -41,10 +40,6 @@ public abstract class MinecraftClientMixin {
         try {
             if (screen instanceof TitleScreen && !(screen instanceof AzyronMainMenuScreen)) {
                 MinecraftClient mc = (MinecraftClient) (Object) this;
-                if (AzyronMainMenuScreen.bypassRedirectOnce) {
-                    AzyronMainMenuScreen.bypassRedirectOnce = false;
-                    return;
-                }
                 AzyronClient inst = AzyronClient.getInstance();
                 if (inst != null && inst.getConfig() != null && inst.getConfig().isCustomMainMenuEnabled()) {
                     azyron$redirectingTitle = true;
@@ -65,10 +60,7 @@ public abstract class MinecraftClientMixin {
     @Inject(method = "getWindowTitle", at = @At("RETURN"), cancellable = true, require = 0)
     private void azyron$brandWindowTitle(CallbackInfoReturnable<String> cir) {
         try {
-            String original = cir.getReturnValue();
-            if (original != null && !original.startsWith("AZYRON CLIENT")) {
-                cir.setReturnValue("AZYRON CLIENT " + McVersionBridge.getActiveMcVersionString() + "  |  " + original);
-            }
+            cir.setReturnValue(AzyronClient.CLIENT_DISPLAY_NAME);
         } catch (Throwable t) {
             MultiplayerPerformanceController.logRateLimitedWarning("getWindowTitle warning", t);
         }

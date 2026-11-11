@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 AZYRON CLIENT — Reproducible Modrinth (.mrpack) Builder for v1.0.3
-Supports selectable Minecraft target profiles:
-  - Minecraft 1.21.11 (Fabric 0.20.1) [default]
+Builds separate standard Modrinth packs for native Minecraft targets:
+  - Minecraft 1.21.11 (Fabric 0.20.1)
   - Minecraft 1.20.1  (Fabric 0.14.22+) [--mc 1.20.1]
-Embeds a native, version-specific client JAR and only the matching profile.
-A manifest edit cannot convert a native JAR to a different Minecraft version.
+Each pack embeds the matching native client JAR and profile. A manifest edit cannot
+convert a native JAR to a different Minecraft version.
 """
 
 import argparse
@@ -36,6 +36,18 @@ def validate_index(index_path: str, expected_mc: str) -> None:
         hashes = f.get("hashes", {})
         if len(hashes.get("sha1", "")) != 40 or len(hashes.get("sha512", "")) != 128:
             raise ValueError(f"Missing valid sha1/sha512 in {index_path} for {p}")
+
+
+def default_native_jar_path(mc_version: str) -> str:
+    if mc_version not in ("1.20.1", "1.21.11"):
+        raise ValueError("Unsupported Minecraft version")
+    return os.path.join(CLIENT_ROOT, "build", "libs", f"Azyron-Client-1.0.3-mc{mc_version}.jar")
+
+
+def default_modpack_path(mc_version: str) -> str:
+    if mc_version not in ("1.20.1", "1.21.11"):
+        raise ValueError("Unsupported Minecraft version")
+    return os.path.join(RELEASES_DIR, f"Azyron-Modpack-1.0.3-mc{mc_version}.mrpack")
 
 
 def build_mrpack(jar_path: str, out_path: str, mc_version: str = "1.21.11") -> None:
@@ -107,12 +119,14 @@ def build_mrpack(jar_path: str, out_path: str, mc_version: str = "1.21.11") -> N
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build Azyron-Modpack-1.0.3.mrpack")
-    parser.add_argument("jar", nargs="?", default=os.path.join(RELEASES_DIR, "Azyron-Client-1.0.3.jar"))
-    parser.add_argument("out", nargs="?", default=None)
+    parser = argparse.ArgumentParser(description="Build a version-specific Azyron Modrinth pack")
+    parser.add_argument("jar", nargs="?", default=None,
+                        help="Native client JAR (default: matching build/libs JAR)")
+    parser.add_argument("out", nargs="?", default=None,
+                        help="Output path (default: versioned file under releases/)")
     parser.add_argument("--mc", choices=["1.21.11", "1.20.1"], default="1.21.11",
-                        help="Target Minecraft version for root modrinth.index.json (default: 1.21.11)")
+                        help="Minecraft target for both the native JAR and Modrinth index")
     args = parser.parse_args()
-    out = args.out or os.path.join(RELEASES_DIR, "Azyron-Modpack-1.0.3"
-                                    + ("-mc1.20.1" if args.mc == "1.20.1" else "") + ".mrpack")
-    build_mrpack(args.jar, out, args.mc)
+    jar = args.jar or default_native_jar_path(args.mc)
+    out = args.out or default_modpack_path(args.mc)
+    build_mrpack(jar, out, args.mc)

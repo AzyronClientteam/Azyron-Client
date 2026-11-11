@@ -1,8 +1,8 @@
 package com.jigneshgaming.azyron.ui;
 
+import com.jigneshgaming.azyron.AzyronClient;
 import com.jigneshgaming.azyron.util.AzyronTheme;
 import com.jigneshgaming.azyron.util.PlatformCompat;
-import com.jigneshgaming.azyron.util.McVersionBridge;
 import com.jigneshgaming.azyron.util.UiRenderUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -117,11 +117,11 @@ public final class AzyronLoadingRenderer {
 
         if (font != null) {
             UiRenderUtils.drawScaledText(
-                    ctx, font, "AZYRON CLIENT", cx, cy - 4, 1.45f,
+                    ctx, font, AzyronClient.CLIENT_DISPLAY_NAME, cx, cy - 4, 1.2f,
                     AzyronTheme.withAlpha(AzyronTheme.TEXT_PRIMARY, a), true
             );
             UiRenderUtils.drawCenteredText(
-                    ctx, font, "Welcome to AZYRON CLIENT", cx, cy + 14,
+                    ctx, font, "Welcome to " + AzyronClient.CLIENT_DISPLAY_NAME, cx, cy + 14,
                     AzyronTheme.withAlpha(AzyronTheme.ACCENT_ELECTRIC_BLUE, a)
             );
             UiRenderUtils.drawCenteredText(
@@ -139,11 +139,11 @@ public final class AzyronLoadingRenderer {
         } else {
             // Cold-boot shader-safe GUI quad text (never invokes minecraft:core/rendertype_text prematurely)
             UiRenderUtils.drawCenteredBootPixelText(
-                    ctx, "AZYRON CLIENT", cx, cy - 4, 2,
+                    ctx, AzyronClient.CLIENT_DISPLAY_NAME, cx, cy - 4, 1,
                     AzyronTheme.withAlpha(AzyronTheme.TEXT_PRIMARY, a)
             );
             UiRenderUtils.drawCenteredBootPixelText(
-                    ctx, "WELCOME TO AZYRON CLIENT", cx, cy + 16, 1,
+                    ctx, "WELCOME TO " + AzyronClient.CLIENT_DISPLAY_NAME, cx, cy + 16, 1,
                     AzyronTheme.withAlpha(AzyronTheme.ACCENT_ELECTRIC_BLUE, a)
             );
             UiRenderUtils.drawCenteredBootPixelText(
@@ -175,16 +175,16 @@ public final class AzyronLoadingRenderer {
                 AzyronTheme.withAlpha(AzyronTheme.ACCENT_ELECTRIC_BLUE, alpha));
         int color = AzyronTheme.withAlpha(AzyronTheme.TEXT_PRIMARY, alpha);
         if (textReady && client != null && client.textRenderer != null) {
-            UiRenderUtils.drawCenteredText(ctx, client.textRenderer, "AZYRON CLIENT", cx, cy - 12, color);
+            UiRenderUtils.drawCenteredText(ctx, client.textRenderer, AzyronClient.CLIENT_DISPLAY_NAME, cx, cy - 12, color);
         } else {
-            UiRenderUtils.drawCenteredBootPixelText(ctx, "AZYRON CLIENT", cx, cy - 12, 1, color);
+            UiRenderUtils.drawCenteredBootPixelText(ctx, AzyronClient.CLIENT_DISPLAY_NAME, cx, cy - 12, 1, color);
         }
     }
 
     private static String getStageDescription(float progress) {
-        if (progress < 0.25f) return "Initializing AZYRON " + McVersionBridge.getActiveMcVersionString() + "...";
+        if (progress < 0.25f) return "Initializing " + AzyronClient.CLIENT_DISPLAY_NAME + "...";
         if (progress < 0.55f) return "Optimizing Render Pipelines & Memory...";
         if (progress < 0.85f) return "Loading Client Modules, HUD & Textures...";
-        return "Finalizing High-FPS Workspace...";
+        return "Finalizing Client Setup...";
     }
 }

@@ -1,58 +1,47 @@
-# AZYRON CLIENT — PojavLauncher & Desktop Installation Guide
+# AZYRON CLIENT v1.0.3 — Standard Fabric Launcher Installation
 
-**Client:** AZYRON CLIENT `v1.0.2` (by **JIGNESH GAMING**)  
-**Minecraft Version:** Java Edition **`1.21.11` ONLY**  
-**Mod Loader:** **Fabric Loader** (`0.20.1` recommended, `>=0.17.3` supported)  
-**Java Runtime:** **Java 21** (`OpenJDK 21` — mandatory for Minecraft `1.21.11`)
+**Developer:** **JIGNESH GAMING**
 
----
+AZYRON CLIENT v1.0.3 is distributed as separate native JAR and Modrinth pack pairs. Choose the Minecraft version in your launcher and install only the matching pair.
 
-## Part 1: PojavLauncher Installation (Android / iOS)
+| Minecraft target | Native client JAR | Matching Modrinth pack | Java |
+|---|---|---|---|
+| **1.20.1 Fabric** | `Azyron-Client-1.0.3-mc1.20.1.jar` | `Azyron-Modpack-1.0.3-mc1.20.1.mrpack` | Java 17 or 21 |
+| **1.21.11 Fabric** | `Azyron-Client-1.0.3-mc1.21.11.jar` | `Azyron-Modpack-1.0.3-mc1.21.11.mrpack` | Java 21+ |
 
-### Prerequisites in PojavLauncher
-1. Open **PojavLauncher** and go to **Settings → Java Tweaks**:
-   - **Runtime**: Select **Internal-21 (Java 21)** (Minecraft `1.21.11` requires Java 21).
-   - **Memory Allocation (`3GB – 8GB` Safe Guide)**:
-     - **`3 GB` device RAM** → allocate **`1280 MB – 1408 MB`** *(AZYRON auto-activates Potato Mode + `6/5` chunk clamp)*
-     - **`4 GB` device RAM** → allocate **`1600 MB – 2048 MB`** *(AZYRON auto-activates Smooth FPS Mode + `7/6` chunk clamp)*
-     - **`6 GB` device RAM** → allocate **`2560 MB – 3072 MB`** *(AZYRON auto-activates Balanced Mode)*
-     - **`8 GB+` device RAM** → allocate **`3072 MB – 4096 MB`** *(avoid allocating >50% of total phone RAM so Android's Low Memory Killer keeps background services stable)*.
-2. Go to **Settings → Video & Renderer**:
-   - Select **LTW (LightThatWay / GL4ES 1.21+)** or **MobileGlues** (recommended for Minecraft `1.21.11` + Sodium `0.8.14`), or **Holy GL4ES** if using Vanilla renderer without Sodium on older Adreno/Mali GPUs.
-   - Set **Resolution Scaler** to **`75% – 85%`** on `3GB–4GB` phones for higher FPS with crisp HUD text.
+The game version is selected by the launcher—not by an in-game client setting. Never install a 1.20.1 JAR/profile in a 1.21.11 instance, or vice versa.
 
----
+## PojavLauncher (Android)
 
-### Method A: One-Click Modpack Import (`.mrpack`) — *Recommended*
-1. Copy `releases/Azyron-Modpack-1.0.2.mrpack` to your phone's `Downloads` folder.
-2. Open **PojavLauncher** → tap the **Profile Selector** → **Create New Profile** → **Modpack** (or **Import Modrinth `.mrpack`**).
-3. Select `Azyron-Modpack-1.0.2.mrpack`.
-4. PojavLauncher will automatically install:
-   - Minecraft **`1.21.11`** + **Fabric Loader `0.20.1`**
-   - **`Azyron-Client-1.0.2.jar`**
-   - All **8 universal Android/PC verified `1.21.11` mods** (**Fabric API `0.141.6+1.21.11`**, **Sodium `0.8.14+mc1.21.11`**, **Lithium `0.21.4+mc1.21.11`**, **FerriteCore `8.2.0-fabric`**, **EntityCulling `1.11.3-mc1.21.11`**, **More Culling `1.21.11-1.6.2`**, **Cloth Config `21.11.153-fabric`**, **Dynamic FPS `3.11.6+minecraft-1.21.11-fabric`**)
-   - Mobile GLES-safe `config/` overrides (`use_no_error_g_l_context: false`, `invisible.frame_rate_target: 1`, `battery_tracker.enabled: false`).
-   - *(Note: `ImmediatelyFast` is intentionally omitted on Android/PojavLauncher because mobile GL translation layers do not support its desktop buffer/framebuffer extensions.)*
-5. Tap **Play**.
+1. Create or select a PojavLauncher profile for the target Minecraft version above.
+2. Install Fabric Loader for that exact version (`0.14.22+` for 1.20.1; `0.20.1` for 1.21.11) and select Java 17/21 or Java 21 respectively.
+3. Copy the matching native JAR into that profile's `mods` folder and install the matching Fabric API. The matching `.mrpack` contains the version-specific optimization dependencies and config files, but use it only with a launcher that supports importing Modrinth packs.
+4. For an approximately 3GB device, the built-in profile targets up to 6 view / 5 simulation chunks and a 60 FPS cap. As a starting JVM allocation, use about 1280–1408 MB and leave headroom for Android and graphics-driver memory. These are configuration suggestions, not a guarantee of stable operation or 60 FPS.
+5. Choose a renderer supported by your device and launcher. No specific Android GPU/renderer combination has been physically validated in this task.
+6. In game, open the Mods Menu with **Right Shift** or from the pause screen; open the HUD Editor with **H** or its pause-screen button. HUD, Armour Hub, and the other existing client modules remain part of the client.
 
----
+## Desktop launchers
 
-### Method B: Manual Installation on PojavLauncher
-1. Install **Fabric Loader `0.20.1`** for **Minecraft `1.21.11`** using the official Universal Fabric Installer JAR.
-2. Copy `releases/Azyron-Client-1.0.2.jar` into `.minecraft/mods/` *(remove any older `Azyron-Client-1.0*.jar` so there is no duplicate mod ID)*.
-3. Add **Fabric API `0.141.6+1.21.11`** (required) and the verified universal `1.21.11` optimization mods listed in [`DEPENDENCIES.md`](DEPENDENCIES.md) into `.minecraft/mods/`.
-4. Select **`fabric-loader-0.20.1-1.21.11`** and tap **Play**.
+### Standard Fabric JAR
 
----
+1. Create a separate game profile for Minecraft `1.20.1` or `1.21.11` and install the matching Fabric Loader.
+2. Place the matching native client JAR and Fabric API in that instance's `mods` folder.
+3. Add only the companion mods intended for that Minecraft target. See [DEPENDENCIES.md](DEPENDENCIES.md) for the pinned versions and hashes.
 
-### Built-In Android & PojavLauncher Compatibility Protections in `v1.0.2`
-- **Missing `libflite.so` Narrator Protection**: Android/PojavLauncher does not ship desktop Linux `libflite.so` TTS libraries. AZYRON `v1.0.2` detects missing Flite libraries automatically and falls back cleanly to `Narrator.EMPTY` with zero native crashes or error dialogs.
-- **`fullscreen:off` Option Normalization**: PojavLauncher and legacy launchers sometimes write `fullscreen:off` into `options.txt`, which causes vanilla `1.21.11` to log boolean parse errors. AZYRON automatically normalizes `"off"` → `"false"` and `"on"` → `"true"` before option parsing.
-- **Offline / Local Account Realms Silence**: When playing on a PojavLauncher Local/Offline profile (`accessToken: "0"`), AZYRON skips unnecessary background `pc.realms.minecraft.net` checks cleanly without modifying or bypassing online Microsoft authentication.
+### Modrinth `.mrpack`
 
----
+In a launcher that supports Modrinth pack import, import the `.mrpack` whose filename matches the target Minecraft version in the table above. Each pack contains one game version and its matching native client build; it is not a multi-version installer.
 
-## Part 2: Desktop Installation (Prism Launcher / Modrinth App / Official Launcher)
+## Building both native pairs from source
 
-1. In **Prism Launcher** or **Modrinth App**, click **Add Instance → Import from zip / Modpack** and select `releases/Azyron-Modpack-1.0.2.mrpack`.
-2. For the **Official Minecraft Launcher**, install **Fabric Loader `0.20.1`** for **Minecraft `1.21.11`**, place `Azyron-Client-1.0.2.jar` into `.minecraft/mods/`, run `download-dependencies.sh` / `.ps1` *(pass `--desktop-immediatelyfast` or `-DesktopImmediatelyFast` on PC if desired)*, and launch with **Java 21**.
+Run from `azyron-client/` with Gradle/Minecraft dependencies available:
+
+```bash
+./gradlew clean build -Pminecraft_version=1.20.1
+python3 scripts/build-modpack.py --mc 1.20.1
+
+./gradlew clean build -Pminecraft_version=1.21.11
+python3 scripts/build-modpack.py --mc 1.21.11
+```
+
+The builder checks the JAR's declared Minecraft target before creating the matching pack. Build/package checks do not exercise an actual game launch. Desktop/mobile gameplay, multiplayer, renderer stability, and device FPS/RAM measurements remain pending; 60+ FPS at six chunks is a target, not a measured result. See [COMPATIBILITY_1201_BUILD_REPORT.md](COMPATIBILITY_1201_BUILD_REPORT.md) and [TESTING_REPORT.md](TESTING_REPORT.md) for validation scope.

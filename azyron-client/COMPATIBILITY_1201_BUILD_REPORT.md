@@ -1,11 +1,15 @@
 # Minecraft 1.20.1 / 1.21.11 native Fabric build repair
 
-**Azyron Client v1.0.3 / Azyron Modpack v1.0.3**
+**AZYRON CLIENT v1.0.3 / Azyron Modpack v1.0.3**
 Developer: **JIGNESH GAMING**
 
 ## Scope and release safety
 
-The existing release (numeric ID `437365942`, tag `v1.0.3`) was public when this task began. On the owner's explicit instruction it has been changed to **draft**; the numeric release and tag were retained. A public tag-page URL may stop working while the release is a draft. No old/stub-built binaries are uploaded by this task. Candidate packaging is gated on successful real Fabric builds for **both** versions and requires separate publication approval.
+The existing release (numeric ID `437365942`, tag `v1.0.3`) was changed to **draft** on the owner's explicit instruction. The last read-only API check in this worktree returned `draft=true`, tag `v1.0.3`, and the generated draft URL; it also returned a non-null historical `published_at`. It listed four version-specific JAR/MRPack assets. These are genuine outputs from the earlier native CI run documented below, not builds of the current working-tree edits. No generated-stub test binary is a valid release candidate. Any replacement remains gated on fresh real Fabric builds/package checks for **both** targets; do not publish.
+
+## Current working-tree validation status
+
+The successful CI results below validate their recorded source commits only. Current UI/branding, Gradle metadata, package-builder, portal, test, and documentation edits are later worktree changes and have **not** been included in a native build. This sandbox has no `java` or `javac`, so it cannot run Gradle locally. Fresh real Fabric/Loom builds and actual-classpath audits for both Minecraft targets, then matching JAR/MRPack validation, are still required. No game launch or device benchmark has been performed.
 
 ## Complete original compiler inventory
 
@@ -140,7 +144,7 @@ The class-count difference is from native adapter/mixin selection, not removal o
 
 After the user explicitly requested an update to the existing release page, CI reran the standard native builds and packaging checks in [run 42785077400](https://github.com/AzyronClientteam/Azyron-Client/actions/runs/42785077400) from source commit `f3a566fa65a063334537cf7d2b414164b1b10d24`. Minecraft 1.20.1 and 1.21.11 both built successfully again; the 105/110 actual-classpath checks and eight packaging tests passed. The separate upload job downloaded that run's generated bundle inside GitHub Actions, rechecked its hashes and target metadata, and verified GitHub's asset digests before replacing the previous files.
 
-The existing release **437365942** now has four version-specific native files plus `SHA256SUMS.txt` and `BUILD-PROVENANCE.json` attached. The two old generic-name stub assets (IDs `729999833` and `729999953`) were removed after the replacements passed verification. The release remains **draft=true**; it was not published, and the existing Git tag reference was not moved. GitHub currently returns this draft URL: [open draft release](https://github.com/AzyronClientteam/Azyron-Client/releases/tag/untagged-cb657c3dd524580623db). Draft releases may not resolve through the public `/releases/tag/v1.0.3` route until published; the release record remains associated with tag `v1.0.3`.
+The existing release **437365942** currently lists four version-specific native JAR/MRPack files; the latest API check did not list `SHA256SUMS.txt` or `BUILD-PROVENANCE.json` as release assets. The two old generic-name stub assets (IDs `729999833` and `729999953`) were removed after the replacements passed verification. The API check returned **draft=true** and `tag_name=v1.0.3`; the release record also retains a non-null `published_at` timestamp, so this report does not claim that it was never published. GitHub returned this draft URL: [open draft release](https://github.com/AzyronClientteam/Azyron-Client/releases/tag/untagged-4a371a230806bb980e48). Draft releases may not resolve through the public `/releases/tag/v1.0.3` route until published; the release record remains associated with tag `v1.0.3`. These four assets predate the current working-tree edits and must not be replaced until both updated native pairs pass validation.
 
 | Asset attached to the draft | Bytes | SHA-256 |
 |---|---:|---|

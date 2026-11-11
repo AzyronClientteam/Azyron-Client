@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Offline packaging/schema tests. Fixture JAR is NOT a runnable game mod."""
 import importlib.util
-import io
 import json
 import os
 from pathlib import Path
@@ -87,6 +86,14 @@ class LowRamPackaging(unittest.TestCase):
             self.assertEqual([n for n in z.namelist() if n.startswith("overrides/mods/")],
                              ["overrides/mods/Azyron-Client-1.0.3.jar"])
 
+    def test_native_default_paths_are_version_specific(self):
+        for mc in ("1.20.1", "1.21.11"):
+            with self.subTest(mc=mc):
+                self.assertEqual(Path(builder.default_native_jar_path(mc)).name,
+                                 f"Azyron-Client-1.0.3-mc{mc}.jar")
+                self.assertEqual(Path(builder.default_modpack_path(mc)).name,
+                                 f"Azyron-Modpack-1.0.3-mc{mc}.mrpack")
+
     def test_1201(self):
         self.assert_profile(self.build("1.20.1"), "1.20.1")
 
@@ -96,27 +103,27 @@ class LowRamPackaging(unittest.TestCase):
     def test_portal_selects_native_artifact(self):
         for mc in ("1.20.1", "1.21.11"):
             source = self.build(mc)
+            (self.directory / f"Azyron-Client-1.0.3-mc{mc}.jar").write_bytes(self.jar.read_bytes())
             (self.directory / f"Azyron-Modpack-1.0.3-mc{mc}.mrpack").write_bytes(source.read_bytes())
         old = portal.RELEASES_DIR
         try:
             portal.RELEASES_DIR = str(self.directory)
-            for mc in ("1.20.1", "1.21.11"):
-                self.assert_profile(io.BytesIO(portal.build_mrpack_bytes_for_mc(mc)), mc)
+            assets = portal.load_live_assets()
+            self.assertEqual({asset["display_name"] for asset in assets}, {
+                "Azyron-Client-1.0.3-mc1.20.1.jar",
+                "Azyron-Modpack-1.0.3-mc1.20.1.mrpack",
+                "Azyron-Client-1.0.3-mc1.21.11.jar",
+                "Azyron-Modpack-1.0.3-mc1.21.11.mrpack",
+            })
+            for asset in assets:
+                self.assertEqual(asset["minecraft_target"], "1.20.1" if "1.20.1" in asset["display_name"] else "1.21.11")
         finally:
             portal.RELEASES_DIR = old
 
     def test_native_jar_cannot_be_relabelled(self):
-        source = self.build("1.21.11")
-        (self.directory / "Azyron-Modpack-1.0.3.mrpack").write_bytes(source.read_bytes())
+        self.build("1.21.11")
         with self.assertRaisesRegex(ValueError, "Native client JAR"):
             builder.build_mrpack(str(self.jar), str(self.directory / "wrong.mrpack"), "1.20.1")
-        old = portal.RELEASES_DIR
-        try:
-            portal.RELEASES_DIR = str(self.directory)
-            with self.assertRaisesRegex(ValueError, "unsafe"):
-                portal.build_mrpack_bytes_for_mc("1.20.1")
-        finally:
-            portal.RELEASES_DIR = old
 
     def test_reject_unknown_target(self):
         with self.assertRaises(ValueError):

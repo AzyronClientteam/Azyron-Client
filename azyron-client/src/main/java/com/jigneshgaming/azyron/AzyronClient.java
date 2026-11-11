@@ -22,12 +22,13 @@ import org.slf4j.LoggerFactory;
 
 /**
  * AZYRON CLIENT – PERFORMANCE. SMOOTHNESS. STYLE.
- * Unified High-FPS Minecraft 1.21.11 & 1.20.1 Fabric Client created by JIGNESH GAMING.
+ * Version-specific Fabric builds for Minecraft 1.20.1 and 1.21.11 by JIGNESH GAMING.
  */
 public final class AzyronClient implements ClientModInitializer {
     public static final String MOD_ID = "azyron-client";
     public static final String CLIENT_NAME = "AZYRON CLIENT";
     public static final String CLIENT_VERSION = "1.0.3";
+    public static final String CLIENT_DISPLAY_NAME = CLIENT_NAME + " v" + CLIENT_VERSION;
     public static final String TARGET_MC_VERSION = "1.21.11";
     public static final String LEGACY_MC_VERSION = "1.20.1";
     public static final List<String> SUPPORTED_MC_VERSIONS = List.of("1.21.11", "1.20.1");
