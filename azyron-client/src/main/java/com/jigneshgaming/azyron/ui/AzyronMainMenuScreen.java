@@ -2,6 +2,7 @@ package com.jigneshgaming.azyron.ui;
 
 import com.jigneshgaming.azyron.AzyronClient;
 import com.jigneshgaming.azyron.cosmetics.CosmeticsManager;
+import com.jigneshgaming.azyron.profile.MemoryOptimizer;
 import com.jigneshgaming.azyron.profile.PerformanceProfile;
 import com.jigneshgaming.azyron.util.AzyronTheme;
 import com.jigneshgaming.azyron.util.McVersionBridge;
